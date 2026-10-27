@@ -18,7 +18,7 @@ Phase 1 chỉ mở khi `P0-04` có `Decision: go` và `P0-05` là `done`.
 
 ## P0-01 — Skeleton monorepo
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: không
 - Skill: `implement-task`

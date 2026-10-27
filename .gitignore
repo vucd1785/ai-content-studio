@@ -1,4 +1,15 @@
 .env
 .env.local
 node_modules/
+dist/
 data/
+*.log
+.DS_Thumbs.db
+Thumbs.db
+
+# Media output
+*.mp4
+*.wav
+*.webm
+preview/
+export/

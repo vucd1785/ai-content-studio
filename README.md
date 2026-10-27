@@ -10,9 +10,9 @@ Web, cổng duyệt, orchestration và studio 3D nằm sau mốc đó. Xem [docs
 
 ## Trạng thái repository
 
-Bộ tài liệu, Cursor Rules, Skills và ADR đã được duyệt ngày 27/10/2026. Chưa có package, chưa cài dependency, chưa có container ứng dụng.
+Skeleton monorepo (`P0-01`) đã có: workspace pnpm, TypeScript strict, Biome, Compose PostgreSQL 17 và Redis 7. Chưa có route API, TTS hay Remotion.
 
-Đọc [AGENTS.md](AGENTS.md) trước khi giao việc cho model. Task đầu tiên, khi được phép triển khai, là `P0-01` trong [docs/11-TASKS.md](docs/11-TASKS.md).
+Đọc [AGENTS.md](AGENTS.md) trước khi giao việc cho model. Task tiếp theo thường là `P0-02`, `P0-03`, hoặc `P0-05` (cùng phụ thuộc `P0-01`).
 
 ## Bản đồ thư mục
 
@@ -41,13 +41,23 @@ pnpm, React 19, Vite, Tailwind CSS v4, shadcn/ui, Zustand, TanStack Query, React
 
 Chi tiết process: [docs/02-SYSTEM-ARCHITECTURE.md](docs/02-SYSTEM-ARCHITECTURE.md).
 
-## Bắt đầu phát triển
+## Cài đặt
 
-Chưa chạy cài đặt ở bước tài liệu này. Khi Director cho phép Phase 0:
+Yêu cầu: Node.js 24+, pnpm 9+, Docker Compose (cho Postgres và Redis).
 
-1. Đổi model sang Composer 2.5.
-2. Dán tin nhắn bàn giao của `P0-01` trong [docs/12-MODEL-HANDOFF.md](docs/12-MODEL-HANDOFF.md).
-3. Để phiên đó tạo workspace, Compose và `.env.example`.
-4. Đọc `reports/P0-01.md` trước khi mở task sau.
+```bash
+cp .env.example .env
+# Điền STUDIO_PASSWORD, STUDIO_SESSION_SECRET, GEMINI_API_KEY khi cần task LLM.
+
+pnpm install
+pnpm run typecheck
+pnpm -r run typecheck
+docker compose config
+docker compose up -d postgres redis
+```
+
+Runtime Node cho container app TypeScript: `node:24` (ghi trong `package.json` engines và comment `docker-compose.yml`). `services/tts` là Python và không nằm trong pnpm workspace.
+
+Task và báo cáo: [docs/11-TASKS.md](docs/11-TASKS.md), [reports/P0-01.md](reports/P0-01.md).
 
 `P0-04` phải kết thúc bằng `Decision: go` thì Phase 1 mới được mở. Pipeline MP4 từ fixture là task `P1-06`.
