@@ -28,5 +28,47 @@ services:
       retries: 5
       start_period: 5s
 
+  tts:
+    profiles: ["cpu"]
+    build:
+      context: ./services/tts
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATA_DIR: /data
+      HF_HOME: /cache/huggingface
+      VIENEU_BACKEND: onnx
+      VIENEU_PRECISION: fp32
+      TTS_DEFAULT_VOICE: "Mai Anh"
+      TTS_PRELOAD_MODEL: "1"
+    volumes:
+      - ./data:/data
+      - tts_hf_cache:/cache/huggingface
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=5); sys.exit(0 if b'\"status\":\"ok\"' in r.read() else 1)",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 600s
+      retries: 10
+
+  video-render:
+    profiles: ["render"]
+    build:
+      context: .
+      dockerfile: apps/video/Dockerfile
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    shm_size: "1gb"
+
 volumes:
   postgres_data:
+  tts_hf_cache:

@@ -51,7 +51,7 @@ Ghi chú cho phiên sau: dừng sau task này. Không tạo FastAPI hay Remotion
 
 ## P0-02 — Schema script
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-01`
 - Skill: `implement-task`
@@ -73,7 +73,7 @@ Ghi chú: chưa gọi Gemini.
 
 ## P0-03 — TTS một câu
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-01`
 - Skill: `implement-task`
@@ -118,7 +118,7 @@ Ghi chú: không chia đều thời lượng cho các từ để vượt cổng.
 
 ## P0-05 — Remotion trong container
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-01`
 - Skill: `build-video-template`

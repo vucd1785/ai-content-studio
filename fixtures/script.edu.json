@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "language": "vi",
+  "title": "Redis là gì trong 60 giây?",
+  "hook": "Bạn nghe Redis mỗi ngày nhưng chưa biết nó làm gì — xem nhanh cách nó lưu dữ liệu trong bộ nhớ.",
+  "scenes": [
+    {
+      "id": "intro-title",
+      "narration": "Redis là kho lưu trữ key-value chạy trên RAM, giúp ứng dụng đọc và ghi dữ liệu cực nhanh.",
+      "onScreenText": "Redis trong 60 giây",
+      "visualIntent": "Tiêu đề lớn trên nền gradient đỏ cam, icon database nhỏ góc dưới.",
+      "templateSlot": "title"
+    },
+    {
+      "id": "what-is-redis",
+      "narration": "Thay vì đọc ổ cứng mỗi lần, Redis giữ dữ liệu trong bộ nhớ. Cache trang web, hàng đợi job và session đăng nhập thường dùng Redis.",
+      "onScreenText": "RAM = tốc độ",
+      "visualIntent": "Hai cột so sánh đĩa chậm và RAM nhanh, arrow chỉ sang use case cache.",
+      "templateSlot": "explain"
+    },
+    {
+      "id": "redis-set-get",
+      "narration": "Cú pháp cơ bản là SET để ghi và GET để đọc một key. Ví dụ lưu tên người dùng cho phiên đăng nhập.",
+      "onScreenText": "SET / GET",
+      "visualIntent": "Khung terminal tối, highlight lệnh SET và GET.",
+      "templateSlot": "code",
+      "codeSnippet": {
+        "language": "bash",
+        "code": "SET user:42 \"An\"\nGET user:42"
+      }
+    },
+    {
+      "id": "redis-flow",
+      "narration": "Ứng dụng gửi lệnh tới Redis server. Server trả giá trị ngay từ RAM mà không phải truy vấn database nặng.",
+      "onScreenText": "App → Redis → RAM",
+      "visualIntent": "Sơ đồ ba hộp: ứng dụng, Redis server, bộ nhớ RAM.",
+      "templateSlot": "diagram",
+      "diagram": {
+        "nodes": [
+          { "id": "app", "label": "Ứng dụng" },
+          { "id": "redis", "label": "Redis" },
+          { "id": "ram", "label": "RAM" }
+        ],
+        "edges": [
+          { "from": "app", "to": "redis", "label": "lệnh" },
+          { "from": "redis", "to": "ram", "label": "đọc/ghi" }
+        ]
+      }
+    },
+    {
+      "id": "outro-cta",
+      "narration": "Bắt đầu với cache session hoặc rate limit là cách an toàn để học Redis trên project thật.",
+      "onScreenText": "Thử cache session hôm nay",
+      "visualIntent": "Trang kết với nút CTA và logo Redis stylized flat.",
+      "templateSlot": "cta"
+    }
+  ],
+  "cta": "Đăng ký series backend để nhận bài tiếp theo về persistence và replication.",
+  "sources": []
+}
