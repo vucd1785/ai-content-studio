@@ -1,0 +1,22 @@
+---
+description: Quy ước TypeScript cho package và app của studio.
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript
+
+- Bật strict. Không dùng `any`. Biên I/O parse bằng Zod từ `packages/contracts`.
+- Import Zod qua `zod/v4`.
+- Dùng `import type` cho kiểu chỉ dùng lúc biên dịch.
+- Lỗi trả về có `code` ổn định. Không nuốt `catch` rỗng.
+- Hàm thuần không đọc environment. `packages/config` đọc env một lần ở biên process.
+
+```ts
+const parsed = scriptSchema.safeParse(input);
+if (!parsed.success) {
+  throw new ContractError("schema_invalid", parsed.error.message);
+}
+```
+
+Nếu rule này lệch `core.mdc` hoặc một ADR, dừng task và báo cáo.

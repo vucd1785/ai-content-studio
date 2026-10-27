@@ -1,0 +1,16 @@
+---
+description: Fastify, Drizzle và PostgreSQL cho API và worker.
+globs: "apps/api/**/*.ts,apps/worker/**/*.ts,packages/db/**/*.ts,packages/config/**/*.ts"
+alwaysApply: false
+---
+
+# Backend và database
+
+- Schema bảng theo `docs/03-DATABASE-DESIGN.md`. Đổi cột thì sửa tài liệu đó trong cùng task nếu task cho phép.
+- Query nằm trong `packages/db`. Route Fastify không viết SQL thô rải rác.
+- Approval và đổi `workflow_runs.status` dùng một transaction.
+- Payload BullMQ chỉ chứa `jobId`.
+- Bind API là `127.0.0.1` ở cấu hình local.
+- `storage_key` resolve trong volume `data/`. Từ chối `..` và path tuyệt đối.
+
+Nếu cần Prisma, queue mới, hoặc ghi `approved` trong worker, dừng và báo cáo.

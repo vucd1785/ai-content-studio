@@ -1,0 +1,19 @@
+---
+description: React, shadcn và canvas 3D trong apps/web.
+globs: "apps/web/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# React và 3D
+
+- UI tiếng Việt qua từ điển trong `apps/web`. Không hard-code chuỗi trên nút duyệt.
+- Server state dùng TanStack Query. Trạng thái studio dùng store riêng, cập nhật từ SSE.
+- Canvas fiber 9 và drei 10. Không import package `apps/video`.
+- Không gọi API trong `useFrame`. Đọc snapshot đã có.
+- Progress bar chỉ render khi event có số frame từ Remotion.
+- Tôn trọng `prefers-reduced-motion`. Chế độ hiệu năng thấp đặt `dpr` 1 và tắt shadow.
+- Component shadcn do CLI sinh giữ kiểu file của CLI. Component studio dùng named export.
+
+```tsx
+{progress ? <RenderBar renderedFrames={progress.renderedFrames} /> : null}
+```

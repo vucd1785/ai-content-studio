@@ -1,0 +1,16 @@
+---
+description: Quy tắc lõi của AI Content Studio cho mọi phiên làm việc.
+alwaysApply: true
+---
+
+# AI Content Studio
+
+- Đọc `AGENTS.md` và một task `pending` trong `docs/11-TASKS.md` trước khi sửa code.
+- Chỉ sửa đường dẫn trong **File được phép** của task đó.
+- UI và tài liệu viết tiếng Việt. Giữ identifier, tên file, API và tên công nghệ bằng English.
+- Director duyệt script và video cuối. Không ghi `approved` ngoài route approval.
+- Không sửa `docs/decisions/` trong task triển khai. Cần đổi ADR thì dừng và báo cáo.
+- Avatar 3D chỉ vẽ trạng thái đã lưu. Không tạo progress giả.
+- Secret chỉ lấy từ environment. Không commit `.env`.
+- LLM chạy trong ứng dụng là provider cấu hình, tách khỏi model đang viết code trong Cursor.
+- Một phiên làm một task. Dừng sau khi viết `reports/<task-id>.md`.

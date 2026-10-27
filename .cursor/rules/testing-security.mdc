@@ -1,0 +1,16 @@
+---
+description: Kiểm thử, upload, fetch và các đường nhạy cảm bảo mật.
+globs: "**/*.{test,spec}.ts,**/*.test.tsx,apps/api/**/*.ts,apps/worker/**/*.ts,services/tts/**/*.py"
+alwaysApply: false
+---
+
+# Kiểm thử và bảo mật
+
+- Test theo `docs/09-TEST-STRATEGY.md`. Không `skip` để task thành `done`.
+- LLM giả nằm trong test thường. Gọi Gemini chỉ ở test đánh dấu `external`.
+- Assert mã lỗi: `unauthorized`, `schema_invalid`, `approval_required`, `invalid_transition`.
+- Test một key `../` và một URL metadata bị từ chối.
+- Không log mật khẩu, cookie, hay API key trong fixture.
+- Không thêm endpoint đăng mạng xã hội.
+
+Khi test chỉ xanh nếu đổi ADR, dừng và viết report `blocked`.

@@ -1,0 +1,18 @@
+---
+description: Remotion, TTS và alignment cho pipeline video.
+globs: "apps/video/**/*.{ts,tsx},services/tts/**/*.py,apps/worker/src/media*/**/*.ts,apps/worker/src/cli/**/*.ts"
+alwaysApply: false
+---
+
+# Video và TTS
+
+- Composition đọc `render_props`. Không gọi LLM, không đo audio bên trong frame.
+- Khung MVP: 1080×1920, 30 fps, H.264. Duration cảnh lấy từ ffprobe cộng đệm 200 ms.
+- Không chia đều thời lượng WAV cho các từ.
+- Caption giữ khoảng trắng theo `@remotion/captions`.
+- `caption_override` không được gọi synthesize.
+- Cùng hash props và `templateVersion` thì không gọi `renderMedia()` lại.
+- Package video không import `@react-three/fiber`.
+- TTS mặc định là profile CPU của VieNeu v3 Turbo qua facade `/synthesize` và `/align`.
+
+Thiếu WAV thật thì báo `blocked`. Không ghi file im lặng để test nhìn như đã xong.

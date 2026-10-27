@@ -1,0 +1,17 @@
+---
+description: State machine, job Agent và artifact có version.
+globs: "apps/worker/**/*.ts,packages/contracts/**/*.ts"
+alwaysApply: false
+---
+
+# Điều phối Agent
+
+- Transition đúng `docs/04-AGENT-ORCHESTRATION.md`. Cạnh lạ là `invalid_transition`.
+- Research, script, visual mới được gọi LLM. Voice, align, render, QA mặc định là code.
+- Sai Zod thì một lần repair, rồi `failed`. Không nới schema để qua.
+- Cùng `idempotency_key` đã `completed` thì không gọi provider.
+- Fact `verified` phải khớp `fetch_log` hoặc reference của project.
+- Sửa script không enqueue lại research. Sửa caption không enqueue TTS.
+- Trần số lần gọi LLM là config. Hết trần thì `cost_ceiling`.
+
+Không thêm vòng hội thoại giữa các vai trò.
