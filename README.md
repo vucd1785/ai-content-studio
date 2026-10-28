@@ -45,16 +45,22 @@ Chi tiết process: [docs/02-SYSTEM-ARCHITECTURE.md](docs/02-SYSTEM-ARCHITECTURE
 
 Yêu cầu: Node.js 24+, pnpm 9+, Docker Compose (cho Postgres và Redis).
 
-```bash
+Node 24 cho repo này nằm tại **`E:\NodeVersions`** (fnm). Cài đặt Node 22 tại `D:\nodejs` dùng cho project khác — **không** đổi PATH hệ thống hay `fnm default`.
+
+Trên Windows, mọi lệnh `pnpm`/`node` nên chạy qua wrapper:
+
+```powershell
 cp .env.example .env
 # Điền STUDIO_PASSWORD, STUDIO_SESSION_SECRET, GEMINI_API_KEY khi cần task LLM.
 
-pnpm install
-pnpm run typecheck
-pnpm -r run typecheck
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/with-node24.ps1 pnpm install
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/with-node24.ps1 pnpm run typecheck
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/with-node24.ps1 pnpm -r run typecheck
 docker compose config
 docker compose up -d postgres redis
 ```
+
+Terminal tích hợp: profile **AI Studio Node 24** (`.vscode/settings.json`, script `scripts/dev/enter-node24.ps1`). Shell Agent Cursor có thể vẫn thấy Node 22 — dùng `scripts/with-node24.ps1` hoặc `fnm --fnm-dir "E:\NodeVersions" exec --using=24 -- cmd /c "corepack pnpm ..."` (xem `.cursor/rules/node-environment.mdc`).
 
 Runtime Node cho container app TypeScript: `node:24` (ghi trong `package.json` engines và comment `docker-compose.yml`). `services/tts` là Python và không nằm trong pnpm workspace.
 

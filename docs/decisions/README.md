@@ -12,3 +12,4 @@
 | [ADR-008](ADR-008-local-storage.md) | Đĩa local, key tương đối |
 | [ADR-009](ADR-009-3d-monitoring.md) | 3D giám sát, fiber 9 |
 | [ADR-010](ADR-010-zod-contracts.md) | Zod 4 trong `packages/contracts` |
+| [ADR-011](ADR-011-whisper-alignment-default.md) | Whisper + stable-ts alignment mặc định MVP |

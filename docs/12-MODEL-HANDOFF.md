@@ -40,18 +40,34 @@ Viết `reports/<task-id>.md`:
 
 Commit chỉ khi Director yêu cầu.
 
+## Node.js 24 (Windows, repo này)
+
+- Store fnm: **`E:\NodeVersions`**. `.node-version`: `24`. Không dùng `fnm default 24`, không sửa `D:\nodejs`.
+- Terminal tích hợp: profile **AI Studio Node 24** (`.vscode/settings.json`) chạy `scripts/dev/enter-node24.ps1`.
+- **Shell Cursor Agent** thường không nạp profile terminal. Mọi lệnh `node`/`pnpm` TypeScript phải qua:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/with-node24.ps1 pnpm run typecheck
+```
+
+Hoặc `fnm --fnm-dir "E:\NodeVersions" exec --using=24 -- cmd /c "corepack pnpm ..."`. Gọi `pnpm` trực tiếp trong `fnm exec` (không qua `cmd /c corepack`) thường lỗi *program not found* trên Windows — đó là giới hạn shim PATH, không chứng minh Node 24 hỏng.
+
+Chi tiết: `.cursor/rules/node-environment.mdc`, `README.md` mục Cài đặt.
+
 ## Tin nhắn bàn giao cho Composer
 
 Người điều phối dán khối này khi đổi model:
 
 ```text
-Làm đúng task <ID> trong docs/11-TASKS.md.
+Làm đúng task P1-01 trong docs/11-TASKS.md.
 Đọc AGENTS.md, task đó, và các ADR mà task nêu.
 Skill: implement-task.
+Shell Agent: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/with-node24.ps1 pnpm run typecheck
 Chỉ sửa File được phép.
+Không sửa docs/decisions/ (trừ khi task hoặc Director yêu cầu ADR).
 Chạy mục Kiểm tra.
-Viết reports/<ID>.md theo docs/12-MODEL-HANDOFF.md.
+Viết reports/P1-01.md theo docs/12-MODEL-HANDOFF.md.
 Dừng sau task này.
 ```
 
-Task đang mở cho phiên đầu: `P0-01`.
+Task đang mở cho phiên triển khai Phase 1: **`P1-01`** (xem [11-TASKS.md](11-TASKS.md)).

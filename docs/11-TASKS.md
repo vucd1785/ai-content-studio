@@ -96,7 +96,7 @@ Ghi chú: chưa có endpoint align. Đó là `P0-04` và `P1-02`.
 
 ## P0-04 — Spike alignment
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-03`
 - Skill: `debug-pipeline` nếu lệch; không thì `implement-task`

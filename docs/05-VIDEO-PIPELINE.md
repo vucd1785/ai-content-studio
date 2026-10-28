@@ -69,11 +69,13 @@ Endpoint speech của VieNeu trả audio, không trả word timestamp. Studio c�
 Thứ tự:
 
 1. Chuẩn hóa số, ngày và từ vay mượn sang dạng nói. Thư viện cụ thể được chọn ở `P0-04` sau khi xem license.
-2. Forced alignment CTC giữa dạng nói và WAV. Phương án dự phòng của cùng spike là align bằng Whisper với đúng transcript, nếu CTC không đạt cổng.
+2. Forced alignment giữa dạng nói và WAV. Spike `P0-04`: CTC Việt Nam không đạt cổng trên audio VieNeu; **engine mặc định MVP** là Whisper `base` + `stable-ts`, language `vi`, transcript đã biết — xem [decisions/ADR-011-whisper-alignment-default.md](decisions/ADR-011-whisper-alignment-default.md). CTC giữ như đường thử nghiệm tùy chọn trong cùng service.
 3. Map token dạng nói về từ trên kịch bản.
 4. Ghi artifact `alignment` gốc, rồi xuất `captions`.
 
 Cổng Go của `P0-04`: trên mẫu thoại giáo dục khoảng 45–60 giây, ít nhất 90% từ nhận timestamp đơn điệu, và tổng khoảng phủ lệch không quá 250 ms so với duration ffprobe. Ngưỡng này là tiêu chí dự án. Kết quả đo ghi trong báo cáo spike, không điền trước.
+
+**Chấp thuận Director (2026-10-28, chỉ Phase 0 spike):** WAV ffprobe **44.000 s** (`5bf561a3048346639aabb497df357d33.wav`) được coi là đủ bằng chứng khả thi số; không yêu cầu synthesize lại để đạt 45.000 s. Không thay thế QA nghe thử hay yêu cầu chất lượng production.
 
 `captions[]` tương thích `@remotion/captions`: `text`, `startMs`, `endMs`, `timestampMs`. Khoảng trắng nằm ở đầu mỗi từ sau từ đầu tiên, vì `createTikTokStyleCaptions()` ngắt trang theo khoảng trắng. Khi render, phần phụ đề dùng `white-space: pre`.
 

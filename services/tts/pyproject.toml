@@ -20,6 +20,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+align = [
+  "numpy>=2,<3",
+  "soundfile>=0.13,<1",
+  "torch>=2.5,<3",
+  "torchaudio>=2.5,<3",
+  "transformers>=4.46,<5",
+]
+align-whisper = [
+  "stable-ts>=2.17,<3",
+  "openai-whisper>=20240930",
+]
 dev = [
   "httpx>=0.28,<1",
   "pytest>=8.3,<9",

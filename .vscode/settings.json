@@ -1,0 +1,16 @@
+{
+  "terminal.integrated.profiles.windows": {
+    "AI Studio Node 24": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell",
+      "args": [
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/dev/enter-node24.ps1"
+      ]
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "AI Studio Node 24"
+}

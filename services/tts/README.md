@@ -30,3 +30,15 @@ python scripts/synthesize_once.py --text "Redis là một hệ thống lưu tr�
 ```
 
 Biến môi trường: `DATA_DIR`, `TTS_DEFAULT_VOICE`, `VIENEU_BACKEND`, `VIENEU_PRECISION`.
+
+## Spike alignment (P0-04)
+
+Cài optional deps và chạy trên WAV + transcript đã biết (không chia đều duration):
+
+```bash
+pip install -e ".[align,align-whisper]"
+python scripts/align_once.py --wav "$DATA_DIR/tts/<id>.wav" --transcript "..." --engine whisper
+python scripts/inspect_alignment.py "$DATA_DIR/alignment/<id>.json"
+```
+
+Chi tiết model, license và cổng Go: [docs/spikes/P0-04-alignment.md](../../docs/spikes/P0-04-alignment.md).

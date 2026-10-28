@@ -7,7 +7,12 @@ data/
 .DS_Thumbs.db
 Thumbs.db
 
-# Media output
+# Python (services/tts)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
 *.mp4
 *.wav
 *.webm

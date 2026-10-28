@@ -1,0 +1,41 @@
+---
+description: Node.js 24 qua fnm (E:\NodeVersions) cho lệnh shell trong repo này.
+alwaysApply: true
+---
+
+# Node.js 24 (chỉ repo này)
+
+- Yêu cầu: `package.json` `engines.node` `>=24`, `.node-version` là `24`. Store fnm: **`E:\NodeVersions`** (không dùng `fnm default`, không sửa `D:\nodejs`).
+- Shell Agent Cursor thường **chưa** nạp `fnm env`; `node` trên PATH có thể vẫn là **`D:\nodejs\node.exe` (v22)** nếu thư mục đó đứng trước fnm. Luôn dùng wrapper hoặc `fnm exec` bên dưới cho lệnh TypeScript.
+
+## Cách chạy lệnh (bắt buộc)
+
+Ưu tiên wrapper (quoting an toàn trên Windows):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/with-node24.ps1 <lệnh...>
+```
+
+Ví dụ: `... with-node24.ps1 pnpm run typecheck`, `... with-node24.ps1 node -v`.
+
+Hoặc gọi trực tiếp fnm (pnpm phải qua **corepack** trong `cmd /c`):
+
+```powershell
+fnm --fnm-dir "E:\NodeVersions" exec --using=24 -- node -p "process.version + ' | ' + process.execPath"
+fnm --fnm-dir "E:\NodeVersions" exec --using=24 -- cmd /c "corepack pnpm run typecheck"
+```
+
+Mọi lệnh **`node`**, **`pnpm`**, **`corepack`**, **`npx`**, **`pnpm exec`**, script npm của monorepo phải đi qua một trong hai cách trên. Python/TTS/Docker không bị ảnh hưởng.
+
+## Kiểm tra nhanh
+
+```powershell
+node -v
+(Get-Command node).Source
+fnm --fnm-dir "E:\NodeVersions" exec --using=24 node -p "process.version + ' | ' + process.execPath"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/with-node24.ps1 pnpm --version
+```
+
+Dòng `node -v` đầu tiên có thể vẫn là v22; dòng fnm và wrapper phải là v24 trên `E:\NodeVersions\...`.
+
+Profile terminal: **AI Studio Node 24** trong `.vscode/settings.json` (`scripts/dev/enter-node24.ps1`). **Không** đảm bảo shell Agent.
