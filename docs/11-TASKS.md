@@ -232,7 +232,7 @@ Ghi chú: đây là mốc MVP kỹ thuật nếu `P1-07` chưa chạy.
 
 ## P1-07 — Adapter Gemini
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-02`, `P1-06`
 - Skill: `implement-task`

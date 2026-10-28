@@ -6,13 +6,17 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "pipeline:fixture": "node --import tsx src/cli/run-fixture.ts"
+    "pipeline:fixture": "node --import tsx src/cli/run-fixture.ts",
+    "llm:external": "node --import tsx src/llm/run-external-script-cli.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
     "@remotion/bundler": "4.0.539",
     "@remotion/renderer": "4.0.539",
+    "@studio/config": "workspace:*",
     "@studio/contracts": "workspace:*",
     "@studio/video": "workspace:*",
+    "redis": "^5.8.2",
     "remotion": "4.0.539",
     "zod": "^4.2.0"
   },
