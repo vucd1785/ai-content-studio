@@ -1,4 +1,30 @@
 export {
+  assertAlignmentReadyForCaptions,
+  buildCaptionsFromSceneAlignments,
+  CaptionMappingError,
+  type CaptionMappingErrorCode,
+  mapSceneAlignmentToCaptions,
+  type SceneAlignmentForCaptions,
+} from "./captions/map-alignment-to-captions.js";
+export { type RemotionCaption, remotionCaptionSchema } from "./captions/types.js";
+export {
+  type AlignmentValidation,
+  type AlignmentWord,
+  type AlignRequest,
+  type AlignResponse,
+  alignmentEngineSchema,
+  alignmentGateSchema,
+  alignmentValidationSchema,
+  alignmentWordSchema,
+  alignRequestSchema,
+  alignResponseSchema,
+  type SynthesizeRequest,
+  type SynthesizeResponse,
+  synthesizeRequestSchema,
+  synthesizeResponseSchema,
+  ttsErrorBodySchema,
+} from "./media/tts.js";
+export {
   type CodeSnippet,
   type Diagram,
   parseScript,
@@ -21,20 +47,3 @@ export {
   type SceneTimingPlan,
   sceneDurationMsFromMeasured,
 } from "./timing/scene-duration.js";
-export {
-  alignRequestSchema,
-  alignResponseSchema,
-  alignmentEngineSchema,
-  alignmentGateSchema,
-  alignmentValidationSchema,
-  alignmentWordSchema,
-  type AlignRequest,
-  type AlignResponse,
-  type AlignmentValidation,
-  type AlignmentWord,
-  type SynthesizeRequest,
-  type SynthesizeResponse,
-  synthesizeRequestSchema,
-  synthesizeResponseSchema,
-  ttsErrorBodySchema,
-} from "./media/tts.js";

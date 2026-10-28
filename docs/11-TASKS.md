@@ -170,7 +170,7 @@ Kiểm tra: test client với service Compose, hoặc test hợp đồng nếu s
 
 ## P1-03 — Captions
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P1-02`
 - Skill: `implement-task`
