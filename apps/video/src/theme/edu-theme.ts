@@ -1,0 +1,16 @@
+export const eduTheme = {
+  background: "linear-gradient(180deg, #0b1120 0%, #1e1b4b 55%, #312e81 100%)",
+  panel: "rgba(15, 23, 42, 0.82)",
+  accent: "#f97316",
+  accentSoft: "#fb923c",
+  textPrimary: "#f8fafc",
+  textSecondary: "#cbd5e1",
+  codeBackground: "#0f172a",
+  codeBorder: "#334155",
+  captionBackground: "rgba(0, 0, 0, 0.72)",
+  safeHorizontal: 56,
+  safeBottom: 160,
+  safeTop: 96,
+  fontFamily: 'system-ui, "Segoe UI", sans-serif',
+  fontMono: 'ui-monospace, "Cascadia Code", Consolas, monospace',
+} as const;

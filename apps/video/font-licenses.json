@@ -1,0 +1,15 @@
+{
+  "fonts": [
+    {
+      "name": "Segoe UI",
+      "source": "system",
+      "license": "Proprietary (Windows system font); not redistributed in this package"
+    },
+    {
+      "name": "system-ui",
+      "source": "system",
+      "license": "OS-provided UI font stack; not bundled"
+    }
+  ],
+  "icons": []
+}

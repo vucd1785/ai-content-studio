@@ -42,6 +42,10 @@ COPY apps/video/scripts apps/video/scripts
 COPY apps/video/remotion.config.ts apps/video/
 COPY apps/video/tsconfig.json apps/video/
 COPY apps/video/tests apps/video/tests
+COPY apps/video/vitest.config.ts apps/video/
+COPY apps/video/fixtures apps/video/fixtures
+COPY packages/contracts/src packages/contracts/src
+COPY fixtures/script.edu.json fixtures/
 
 WORKDIR /workspace/apps/video
 RUN pnpm run remotion:browser

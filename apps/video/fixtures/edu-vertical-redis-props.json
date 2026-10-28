@@ -1,0 +1,853 @@
+{
+  "templateId": "EduVertical",
+  "templateVersion": "1.0.0",
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "audio": {
+    "storageKey": "fixture/silence.wav",
+    "durationMs": 6900
+  },
+  "scenes": [
+    {
+      "sceneId": "intro-title",
+      "fromMs": 0,
+      "durationMs": 1300,
+      "onScreenText": "Redis trong 60 giây",
+      "visualIntent": "Tiêu đề lớn trên nền gradient đỏ cam, icon database nhỏ góc dưới.",
+      "templateSlot": "title",
+      "headline": "Redis là gì trong 60 giây?",
+      "hook": "Bạn nghe Redis mỗi ngày nhưng chưa biết nó làm gì — xem nhanh cách nó lưu dữ liệu trong bộ nhớ."
+    },
+    {
+      "sceneId": "what-is-redis",
+      "fromMs": 1300,
+      "durationMs": 1500,
+      "onScreenText": "RAM = tốc độ",
+      "visualIntent": "Hai cột so sánh đĩa chậm và RAM nhanh, arrow chỉ sang use case cache.",
+      "templateSlot": "explain"
+    },
+    {
+      "sceneId": "redis-set-get",
+      "fromMs": 2800,
+      "durationMs": 1400,
+      "onScreenText": "SET / GET",
+      "visualIntent": "Khung terminal tối, highlight lệnh SET và GET.",
+      "templateSlot": "code",
+      "codeSnippet": {
+        "language": "bash",
+        "code": "SET user:42 \"An\"\nGET user:42"
+      }
+    },
+    {
+      "sceneId": "redis-flow",
+      "fromMs": 4200,
+      "durationMs": 1400,
+      "onScreenText": "App → Redis → RAM",
+      "visualIntent": "Sơ đồ ba hộp: ứng dụng, Redis server, bộ nhớ RAM.",
+      "templateSlot": "diagram",
+      "diagram": {
+        "nodes": [
+          {
+            "id": "app",
+            "label": "Ứng dụng"
+          },
+          {
+            "id": "redis",
+            "label": "Redis"
+          },
+          {
+            "id": "ram",
+            "label": "RAM"
+          }
+        ],
+        "edges": [
+          {
+            "from": "app",
+            "to": "redis",
+            "label": "lệnh"
+          },
+          {
+            "from": "redis",
+            "to": "ram",
+            "label": "đọc/ghi"
+          }
+        ]
+      }
+    },
+    {
+      "sceneId": "outro-cta",
+      "fromMs": 5600,
+      "durationMs": 1300,
+      "onScreenText": "Thử cache session hôm nay",
+      "visualIntent": "Trang kết với nút CTA và logo Redis stylized flat.",
+      "templateSlot": "cta",
+      "ctaText": "Đăng ký series backend để nhận bài tiếp theo về persistence và replication."
+    }
+  ],
+  "captions": [
+    {
+      "text": "Redis",
+      "startMs": 200,
+      "endMs": 1300,
+      "timestampMs": 200,
+      "confidence": null
+    },
+    {
+      "text": " là",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " kho",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " lưu",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " trữ",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " key-value",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " chạy",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " trên",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " RAM,",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " giúp",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " ứng",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " dụng",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " đọc",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " và",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " ghi",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " dữ",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " liệu",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " cực",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": " nhanh.",
+      "startMs": 1299,
+      "endMs": 1300,
+      "timestampMs": 1299,
+      "confidence": null
+    },
+    {
+      "text": "Thay",
+      "startMs": 1500,
+      "endMs": 2800,
+      "timestampMs": 1500,
+      "confidence": null
+    },
+    {
+      "text": " vì",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " đọc",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " ổ",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " cứng",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " mỗi",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " lần,",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " Redis",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " giữ",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " dữ",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " liệu",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " trong",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " bộ",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " nhớ.",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " Cache",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " trang",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " web,",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " hàng",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " đợi",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " job",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " và",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " session",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " đăng",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " nhập",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " thường",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " dùng",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": " Redis.",
+      "startMs": 2799,
+      "endMs": 2800,
+      "timestampMs": 2799,
+      "confidence": null
+    },
+    {
+      "text": "Cú",
+      "startMs": 3000,
+      "endMs": 4200,
+      "timestampMs": 3000,
+      "confidence": null
+    },
+    {
+      "text": " pháp",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " cơ",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " bản",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " là",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " SET",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " để",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " ghi",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " và",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " GET",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " để",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " đọc",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " một",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " key.",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " Ví",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " dụ",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " lưu",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " tên",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " người",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " dùng",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " cho",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " phiên",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " đăng",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": " nhập.",
+      "startMs": 4199,
+      "endMs": 4200,
+      "timestampMs": 4199,
+      "confidence": null
+    },
+    {
+      "text": "Ứng",
+      "startMs": 4400,
+      "endMs": 5600,
+      "timestampMs": 4400,
+      "confidence": null
+    },
+    {
+      "text": " dụng",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " gửi",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " lệnh",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " tới",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " Redis",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " server.",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " Server",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " trả",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " giá",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " trị",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " ngay",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " từ",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " RAM",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " mà",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " không",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " phải",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " truy",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " vấn",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " database",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": " nặng.",
+      "startMs": 5599,
+      "endMs": 5600,
+      "timestampMs": 5599,
+      "confidence": null
+    },
+    {
+      "text": "Bắt",
+      "startMs": 5800,
+      "endMs": 6900,
+      "timestampMs": 5800,
+      "confidence": null
+    },
+    {
+      "text": " đầu",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " với",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " cache",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " session",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " hoặc",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " rate",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " limit",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " là",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " cách",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " an",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " toàn",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " để",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " học",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " Redis",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " trên",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " project",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    },
+    {
+      "text": " thật.",
+      "startMs": 6899,
+      "endMs": 6900,
+      "timestampMs": 6899,
+      "confidence": null
+    }
+  ]
+}

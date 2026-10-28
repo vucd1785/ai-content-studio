@@ -185,7 +185,7 @@ Kiểm tra: unit test.
 
 ## P1-04 — Template EduVertical
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-05`, `P0-02`, `P0-04` với decision `go`
 - Skill: `build-video-template`
