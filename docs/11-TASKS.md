@@ -200,7 +200,7 @@ Kiểm tra: render fixture và ffprobe.
 
 ## P1-05 — Preview và export
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P1-04`
 - Skill: `build-video-template`
