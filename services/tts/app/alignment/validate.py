@@ -17,8 +17,7 @@ def validate_alignment(
     missing: list[str] = []
 
     if len(words) != len(expected_tokens):
-        missing_count = abs(len(words) - len(expected_tokens))
-        warnings.append(
+        errors.append(
             f"token count mismatch: expected {len(expected_tokens)}, got {len(words)}"
         )
         if len(words) < len(expected_tokens):
@@ -31,6 +30,8 @@ def validate_alignment(
             errors.append(f"negative timestamp at index {idx}")
         if word.endMs <= word.startMs:
             errors.append(f"invalid interval at index {idx}: {word.text!r}")
+            if word.text and word.text not in missing:
+                missing.append(word.text)
         if word.startMs < prev_end:
             non_mono += 1
             errors.append(f"overlapping or out-of-order at index {idx}: {word.text!r}")
@@ -58,11 +59,17 @@ def validate_alignment(
                 f"coverage end delta {duration_delta} ms vs audio duration (threshold 250 ms)"
             )
 
-    ratio = None
+    timeline_order_ratio: float | None = None
+    non_monotonic_word_ratio: float | None = None
     if words:
-        ratio = 1.0 - (non_mono / len(words))
+        non_monotonic_word_ratio = non_mono / len(words)
+        timeline_order_ratio = 1.0 - non_monotonic_word_ratio
 
-    ok = len(errors) == 0 and len(aligned) == len(words)
+    ok = (
+        len(errors) == 0
+        and len(aligned) == len(words)
+        and len(words) == len(expected_tokens)
+    )
 
     return AlignmentValidation(
         ok=ok,
@@ -74,5 +81,6 @@ def validate_alignment(
         coverageStartMs=coverage_start,
         coverageEndMs=coverage_end,
         durationDeltaMs=duration_delta,
-        nonMonotonicWordRatio=ratio,
+        nonMonotonicWordRatio=non_monotonic_word_ratio,
+        timelineOrderRatio=timeline_order_ratio,
     )

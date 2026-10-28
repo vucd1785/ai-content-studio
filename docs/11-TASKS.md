@@ -155,7 +155,7 @@ Kiểm tra: unit test của package chứa hàm.
 
 ## P1-02 — Hợp đồng media
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-03`, `P0-04` với decision `go`
 - Skill: `implement-task`

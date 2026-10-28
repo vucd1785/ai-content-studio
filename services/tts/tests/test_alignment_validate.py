@@ -29,6 +29,23 @@ def test_validate_rejects_exceed_duration() -> None:
     assert not result.ok
 
 
+def test_validate_token_count_mismatch_fails() -> None:
+    words = [AlignmentWord(text="a", startMs=0, endMs=100)]
+    result = validate_alignment(words, ["a", "b"], duration_ms=500)
+    assert not result.ok
+    assert any("token count mismatch" in e for e in result.errors)
+
+
+def test_validate_timeline_order_ratio() -> None:
+    words = [
+        AlignmentWord(text="a", startMs=0, endMs=100),
+        AlignmentWord(text="b", startMs=50, endMs=200),
+    ]
+    result = validate_alignment(words, ["a", "b"], duration_ms=500)
+    assert result.timelineOrderRatio == 0.5
+    assert result.nonMonotonicWordRatio == 0.5
+
+
 def test_validate_empty_transcript_words() -> None:
     result = validate_alignment([], [], duration_ms=1000)
     assert result.ok

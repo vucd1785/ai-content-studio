@@ -5,5 +5,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p ../../tsconfig.base.json --noEmit"
+  },
+  "dependencies": {
+    "@studio/contracts": "workspace:*"
   }
 }

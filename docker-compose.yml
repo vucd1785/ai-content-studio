@@ -42,9 +42,11 @@ services:
       VIENEU_PRECISION: fp32
       TTS_DEFAULT_VOICE: "Mai Anh"
       TTS_PRELOAD_MODEL: "1"
+      WHISPER_CACHE_DIR: /cache/whisper
     volumes:
       - ./data:/data
       - tts_hf_cache:/cache/huggingface
+      - tts_whisper_cache:/cache/whisper
     healthcheck:
       test:
         [
@@ -72,3 +74,4 @@ services:
 volumes:
   postgres_data:
   tts_hf_cache:
+  tts_whisper_cache:

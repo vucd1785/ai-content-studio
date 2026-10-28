@@ -22,6 +22,7 @@ class AlignmentValidation(BaseModel):
     coverageEndMs: int | None = None
     durationDeltaMs: int | None = None
     nonMonotonicWordRatio: float | None = None
+    timelineOrderRatio: float | None = None
 
 
 class AlignmentArtifact(BaseModel):

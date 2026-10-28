@@ -41,4 +41,15 @@ python scripts/align_once.py --wav "$DATA_DIR/tts/<id>.wav" --transcript "..." -
 python scripts/inspect_alignment.py "$DATA_DIR/alignment/<id>.json"
 ```
 
-Chi tiết model, license và cổng Go: [docs/spikes/P0-04-alignment.md](../../docs/spikes/P0-04-alignment.md).
+## Biến môi trường alignment (P1-02)
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `ALIGNMENT_ENGINE` | `whisper` | Engine mặc định (`whisper` hoặc `ctc`) |
+| `WHISPER_MODEL` | `base` | Tên checkpoint Whisper |
+| `WHISPER_CACHE_DIR` | *(hệ thống)* | Thư mục cache weight Whisper (dev Windows: `E:\AIModels\Whisper`) |
+
+API: `POST /align` body `{ "audioArtifactId", "transcript", "engine"? }` — trả JSON alignment + cổng `gate`, ghi `data/alignment/<id>.json`. Không nhận path output từ client.
+
+Hợp đồng Zod: `packages/contracts/src/media/tts.ts`.
+

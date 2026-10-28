@@ -1,21 +1,66 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import uuid
 from pathlib import Path
+from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app import engine
+from app.alignment.metrics import evaluate_go_gate
+from app.alignment.pipeline import align_transcript_to_wav
+from app.alignment.schema import AlignmentValidation, AlignmentWord
+from app.artifacts import alignment_json_path, resolve_tts_wav_path, validate_artifact_id
 from app.audio_meta import is_valid_wav_header, wav_duration_seconds, wav_metadata
-from app.config import DATA_DIR, DEFAULT_VOICE_ID, OUTPUT_SUBDIR, VIENEU_BACKEND
+from app.config import (
+    DATA_DIR,
+    DEFAULT_ALIGNMENT_ENGINE,
+    DEFAULT_VOICE_ID,
+    OUTPUT_SUBDIR,
+    VIENEU_BACKEND,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI Content Studio TTS", version="0.1.0")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
+    if isinstance(exc.detail, dict) and "error" in exc.detail:
+        return JSONResponse(status_code=exc.status_code, content=exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": "http_error",
+                "message": str(exc.detail),
+            }
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    _request: object, exc: RequestValidationError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Request body failed validation",
+                "details": {"issues": exc.errors()},
+            }
+        },
+    )
 
 
 @app.on_event("startup")
@@ -45,6 +90,68 @@ class SynthesizeResponse(BaseModel):
     voiceId: str
 
 
+AlignmentEngine = Literal["whisper", "ctc"]
+
+
+class AlignRequest(BaseModel):
+    audioArtifactId: str = Field(..., pattern=r"^[a-fA-F0-9]{32}$")
+    transcript: str = Field(..., min_length=1, max_length=50_000)
+    engine: AlignmentEngine | None = None
+
+
+class AlignmentGate(BaseModel):
+    alignedWordRatio: float
+    durationDeltaMs: int | None
+    coverageWithin250Ms: bool
+    ratioAtLeast90Pct: bool
+    validationOk: bool
+    passesGate: bool
+
+
+class AlignResponse(BaseModel):
+    alignmentArtifactId: str
+    audioArtifactId: str
+    durationMs: int
+    transcript: str
+    engine: AlignmentEngine
+    modelId: str
+    words: list[AlignmentWord]
+    validation: AlignmentValidation
+    gate: AlignmentGate
+    processingMs: int
+
+
+def _api_error(status: int, code: str, message: str, **details: Any) -> HTTPException:
+    body: dict[str, Any] = {"error": {"code": code, "message": message}}
+    if details:
+        body["error"]["details"] = details
+    return HTTPException(status_code=status, detail=body)
+
+
+def _resolve_audio_artifact(audio_artifact_id: str) -> Path:
+    try:
+        validate_artifact_id(audio_artifact_id)
+    except ValueError as exc:
+        raise _api_error(400, "invalid_artifact_id", str(exc)) from exc
+
+    wav_path = resolve_tts_wav_path(audio_artifact_id)
+    if not wav_path.is_file():
+        raise _api_error(
+            404,
+            "artifact_not_found",
+            "Audio artifact not found",
+            audioArtifactId=audio_artifact_id.lower(),
+        )
+    if not is_valid_wav_header(wav_path):
+        raise _api_error(
+            422,
+            "invalid_audio_artifact",
+            "Audio artifact is missing or not a valid WAV file",
+            audioArtifactId=audio_artifact_id.lower(),
+        )
+    return wav_path
+
+
 @app.get("/health")
 def health() -> dict[str, object]:
     ready = engine.is_ready()
@@ -52,6 +159,7 @@ def health() -> dict[str, object]:
         "status": "ok" if ready else "degraded",
         "model": "VieNeu-TTS-v3-Turbo",
         "backend": VIENEU_BACKEND,
+        "defaultAlignmentEngine": DEFAULT_ALIGNMENT_ENGINE,
     }
     if not ready:
         payload["error"] = engine.load_error_message() or "model not loaded"
@@ -115,6 +223,74 @@ def synthesize(body: SynthesizeRequest) -> SynthesizeResponse:
         backend=result.backend,
         model=result.model,
         voiceId=voice,
+    )
+
+
+@app.post("/align", response_model=AlignResponse)
+def align(body: AlignRequest) -> AlignResponse:
+    audio_id = body.audioArtifactId.lower()
+    wav_path = _resolve_audio_artifact(body.audioArtifactId)
+    engine_name = body.engine or DEFAULT_ALIGNMENT_ENGINE
+
+    try:
+        artifact = align_transcript_to_wav(
+            wav_path,
+            body.transcript,
+            audio_id,
+            engine=engine_name,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "empty transcript" in message:
+            raise _api_error(400, "empty_transcript", message) from exc
+        if "unknown alignment engine" in message:
+            raise _api_error(400, "invalid_alignment_engine", message) from exc
+        raise _api_error(400, "alignment_rejected", message) from exc
+    except FileNotFoundError as exc:
+        raise _api_error(
+            404,
+            "artifact_not_found",
+            "Audio artifact not found",
+            audioArtifactId=audio_id,
+        ) from exc
+    except ModuleNotFoundError as exc:
+        logger.exception("alignment dependency missing")
+        raise _api_error(
+            503,
+            "alignment_engine_unavailable",
+            "Alignment engine dependencies are not installed",
+        ) from exc
+    except Exception as exc:
+        logger.exception("alignment failed")
+        raise _api_error(
+            503,
+            "alignment_failed",
+            "Alignment engine failed",
+        ) from exc
+
+    gate_payload = evaluate_go_gate(artifact)
+    gate = AlignmentGate.model_validate(gate_payload)
+
+    out_path = alignment_json_path(audio_id)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = artifact.to_json_dict()
+    payload["gate"] = gate_payload
+    out_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    return AlignResponse(
+        alignmentArtifactId=audio_id,
+        audioArtifactId=audio_id,
+        durationMs=artifact.durationMs,
+        transcript=artifact.transcript,
+        engine=artifact.engine,  # type: ignore[arg-type]
+        modelId=artifact.modelId,
+        words=artifact.words,
+        validation=artifact.validation,
+        gate=gate,
+        processingMs=artifact.processingMs,
     )
 
 

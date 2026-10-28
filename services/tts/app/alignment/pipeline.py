@@ -8,7 +8,8 @@ from app.alignment.ctc_backend import align_with_ctc, DEFAULT_VI_CTC_MODEL
 from app.alignment.schema import AlignmentArtifact
 from app.alignment.tokenize import preprocess_transcript, tokenize_transcript_words
 from app.alignment.validate import validate_alignment
-from app.alignment.whisper_backend import align_with_whisper, DEFAULT_WHISPER_MODEL
+from app.alignment.whisper_backend import align_with_whisper
+from app.config import DEFAULT_ALIGNMENT_ENGINE, WHISPER_MODEL_NAME
 
 
 def align_transcript_to_wav(
@@ -16,9 +17,9 @@ def align_transcript_to_wav(
     transcript: str,
     audio_id: str,
     *,
-    engine: str = "ctc",
+    engine: str = DEFAULT_ALIGNMENT_ENGINE,
     ctc_model_id: str = DEFAULT_VI_CTC_MODEL,
-    whisper_model: str = DEFAULT_WHISPER_MODEL,
+    whisper_model: str = WHISPER_MODEL_NAME,
 ) -> AlignmentArtifact:
     cleaned = preprocess_transcript(transcript)
     if not cleaned:

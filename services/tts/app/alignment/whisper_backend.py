@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from app.alignment.schema import AlignmentWord
 from app.alignment.tokenize import tokenize_transcript_words
 
+from app.config import WHISPER_CACHE_DIR, WHISPER_MODEL_NAME
+
 logger = logging.getLogger(__name__)
 
-DEFAULT_WHISPER_MODEL = "base"
+DEFAULT_WHISPER_MODEL = WHISPER_MODEL_NAME
 
 
 @dataclass(frozen=True)
@@ -30,7 +32,10 @@ def align_with_whisper(
     if not script_words:
         return WhisperAlignResult(words=[], model_id=model_name)
 
-    model = stable_whisper.load_model(model_name)
+    model = stable_whisper.load_model(
+        model_name,
+        download_root=str(WHISPER_CACHE_DIR) if WHISPER_CACHE_DIR else None,
+    )
     result = model.align(
         wav_path,
         transcript.strip(),

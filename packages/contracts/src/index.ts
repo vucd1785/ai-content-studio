@@ -21,3 +21,20 @@ export {
   type SceneTimingPlan,
   sceneDurationMsFromMeasured,
 } from "./timing/scene-duration.js";
+export {
+  alignRequestSchema,
+  alignResponseSchema,
+  alignmentEngineSchema,
+  alignmentGateSchema,
+  alignmentValidationSchema,
+  alignmentWordSchema,
+  type AlignRequest,
+  type AlignResponse,
+  type AlignmentValidation,
+  type AlignmentWord,
+  type SynthesizeRequest,
+  type SynthesizeResponse,
+  synthesizeRequestSchema,
+  synthesizeResponseSchema,
+  ttsErrorBodySchema,
+} from "./media/tts.js";

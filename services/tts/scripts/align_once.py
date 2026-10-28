@@ -21,7 +21,7 @@ def main() -> int:
     parser.add_argument("--wav", type=Path, required=True)
     parser.add_argument("--transcript", required=True)
     parser.add_argument("--audio-id", default=None)
-    parser.add_argument("--engine", choices=("ctc", "whisper"), default="ctc")
+    parser.add_argument("--engine", choices=("ctc", "whisper"), default="whisper")
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
@@ -53,7 +53,7 @@ def main() -> int:
     print(f"validationOk={artifact.validation.ok}")
     print(f"processingMs={artifact.processingMs}")
     print(f"durationDeltaMs={artifact.validation.durationDeltaMs}")
-    print(f"nonMonotonicWordRatio={artifact.validation.nonMonotonicWordRatio}")
+    print(f"timelineOrderRatio={artifact.validation.timelineOrderRatio}")
     return 0
 
 
