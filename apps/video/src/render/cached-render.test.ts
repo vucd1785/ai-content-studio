@@ -11,10 +11,13 @@ import {
 } from "./cached-render";
 
 describe("renderEduVerticalWithCache", () => {
+  const audioSha = "deadbeef".repeat(8);
+  const acceptAnyMp4 = () => true;
+
   it("lần hai cùng hash không gọi renderMedia và trả path cũ", async () => {
     const cacheRoot = mkdtempSync(join(tmpdir(), "studio-video-cache-"));
     const props = buildRedisEduVerticalFixtureProps();
-    const contentHash = hashEduVerticalRenderProps(props);
+    const contentHash = hashEduVerticalRenderProps(props, { audioContentSha256: audioSha });
     let calls = 0;
     const renderMedia: RenderMediaFn = async ({ outputLocation, crf }) => {
       calls += 1;
@@ -28,6 +31,8 @@ describe("renderEduVerticalWithCache", () => {
         cacheRoot,
         serveUrl: "http://local.test",
         composition: {},
+        audioContentSha256: audioSha,
+        validateCachedMp4: acceptAnyMp4,
         renderMedia,
       });
       expect(first.cacheHit).toBe(false);
@@ -39,6 +44,8 @@ describe("renderEduVerticalWithCache", () => {
         cacheRoot,
         serveUrl: "http://local.test",
         composition: {},
+        audioContentSha256: audioSha,
+        validateCachedMp4: acceptAnyMp4,
         renderMedia,
       });
       expect(second.cacheHit).toBe(true);
@@ -68,6 +75,8 @@ describe("renderEduVerticalWithCache", () => {
         cacheRoot,
         serveUrl: "http://local.test",
         composition: {},
+        audioContentSha256: audioSha,
+        validateCachedMp4: acceptAnyMp4,
         renderMedia,
       });
       await renderEduVerticalWithCache({
@@ -76,6 +85,8 @@ describe("renderEduVerticalWithCache", () => {
         cacheRoot,
         serveUrl: "http://local.test",
         composition: {},
+        audioContentSha256: audioSha,
+        validateCachedMp4: acceptAnyMp4,
         renderMedia,
       });
       expect(calls).toBe(2);
@@ -84,13 +95,13 @@ describe("renderEduVerticalWithCache", () => {
         templateId: props.templateId,
         templateVersion: props.templateVersion,
         purpose: "preview",
-        contentHash: hashEduVerticalRenderProps(props),
+        contentHash: hashEduVerticalRenderProps(props, { audioContentSha256: audioSha }),
       });
       const exportPath = resolveCachedMp4Path(cacheRoot, {
         templateId: props.templateId,
         templateVersion: props.templateVersion,
         purpose: "export",
-        contentHash: hashEduVerticalRenderProps(props),
+        contentHash: hashEduVerticalRenderProps(props, { audioContentSha256: audioSha }),
       });
       expect(previewPath).not.toBe(exportPath);
     } finally {
@@ -101,7 +112,7 @@ describe("renderEduVerticalWithCache", () => {
   it("file cache có sẵn không gọi renderMedia dù chưa render trong phiên", async () => {
     const cacheRoot = mkdtempSync(join(tmpdir(), "studio-video-cache-"));
     const props = buildRedisEduVerticalFixtureProps();
-    const contentHash = hashEduVerticalRenderProps(props);
+    const contentHash = hashEduVerticalRenderProps(props, { audioContentSha256: audioSha });
     const existing = resolveCachedMp4Path(cacheRoot, {
       templateId: props.templateId,
       templateVersion: props.templateVersion,
@@ -119,6 +130,8 @@ describe("renderEduVerticalWithCache", () => {
         cacheRoot,
         serveUrl: "http://local.test",
         composition: {},
+        audioContentSha256: audioSha,
+        validateCachedMp4: acceptAnyMp4,
         renderMedia: async () => {
           calls += 1;
         },
@@ -126,6 +139,40 @@ describe("renderEduVerticalWithCache", () => {
       expect(result.cacheHit).toBe(true);
       expect(result.outputLocation).toBe(existing);
       expect(calls).toBe(0);
+    } finally {
+      rmSync(cacheRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("file cache hỏng bị bỏ qua và render lại", async () => {
+    const cacheRoot = mkdtempSync(join(tmpdir(), "studio-video-cache-"));
+    const props = buildRedisEduVerticalFixtureProps();
+    const contentHash = hashEduVerticalRenderProps(props, { audioContentSha256: audioSha });
+    const existing = resolveCachedMp4Path(cacheRoot, {
+      templateId: props.templateId,
+      templateVersion: props.templateVersion,
+      purpose: "preview",
+      contentHash,
+    });
+    mkdirSync(dirname(existing), { recursive: true });
+    writeFileSync(existing, "corrupt-not-mp4");
+    let calls = 0;
+
+    try {
+      await renderEduVerticalWithCache({
+        purpose: "preview",
+        props,
+        cacheRoot,
+        serveUrl: "http://local.test",
+        composition: {},
+        audioContentSha256: audioSha,
+        validateCachedMp4: (path) => readFileSync(path, "utf8") !== "corrupt-not-mp4",
+        renderMedia: async ({ outputLocation, crf }) => {
+          calls += 1;
+          writeFileSync(outputLocation, `fake;crf=${crf}`);
+        },
+      });
+      expect(calls).toBe(1);
     } finally {
       rmSync(cacheRoot, { recursive: true, force: true });
     }

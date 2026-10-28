@@ -50,6 +50,8 @@ export const alignmentValidationSchema = z.object({
   timelineOrderRatio: z.number().nullable(),
 });
 
+export const coverageAcceptanceReasonSchema = z.enum(["within_250ms", "verified_trailing_silence"]);
+
 export const alignmentGateSchema = z.object({
   alignedWordRatio: z.number(),
   durationDeltaMs: z.number().int().nullable(),
@@ -57,6 +59,14 @@ export const alignmentGateSchema = z.object({
   ratioAtLeast90Pct: z.boolean(),
   validationOk: z.boolean(),
   passesGate: z.boolean(),
+  gatePolicyVersion: z.string().min(1),
+  trailingSilenceVerified: z.boolean(),
+  trailingSilenceMs: z.number().int().nullable(),
+  coverageAcceptanceReason: coverageAcceptanceReasonSchema.nullable(),
+});
+
+export const revalidateGateRequestSchema = z.object({
+  audioArtifactId: artifactIdSchema,
 });
 
 export const alignResponseSchema = z.object({
@@ -86,3 +96,4 @@ export type AlignRequest = z.infer<typeof alignRequestSchema>;
 export type AlignResponse = z.infer<typeof alignResponseSchema>;
 export type AlignmentWord = z.infer<typeof alignmentWordSchema>;
 export type AlignmentValidation = z.infer<typeof alignmentValidationSchema>;
+export type RevalidateGateRequest = z.infer<typeof revalidateGateRequestSchema>;

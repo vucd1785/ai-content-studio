@@ -13,9 +13,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app import engine
-from app.alignment.metrics import evaluate_go_gate
+from app.alignment.gate import evaluate_go_gate
 from app.alignment.pipeline import align_transcript_to_wav
-from app.alignment.schema import AlignmentValidation, AlignmentWord
+from app.alignment.revalidate import artifact_from_saved_json, reevaluate_gate_on_disk
+from app.alignment.schema import AlignmentArtifact, AlignmentValidation, AlignmentWord
 from app.artifacts import alignment_json_path, resolve_tts_wav_path, validate_artifact_id
 from app.audio_meta import is_valid_wav_header, wav_duration_seconds, wav_metadata
 from app.config import (
@@ -106,6 +107,33 @@ class AlignmentGate(BaseModel):
     ratioAtLeast90Pct: bool
     validationOk: bool
     passesGate: bool
+    gatePolicyVersion: str
+    trailingSilenceVerified: bool
+    trailingSilenceMs: int | None
+    coverageAcceptanceReason: str | None
+
+
+class RevalidateGateRequest(BaseModel):
+    audioArtifactId: str = Field(..., pattern=r"^[a-fA-F0-9]{32}$")
+
+
+def _align_response_from_artifact(
+    artifact: AlignmentArtifact,
+    gate: AlignmentGate,
+    audio_id: str,
+) -> AlignResponse:
+    return AlignResponse(
+        alignmentArtifactId=audio_id,
+        audioArtifactId=audio_id,
+        durationMs=artifact.durationMs,
+        transcript=artifact.transcript,
+        engine=artifact.engine,  # type: ignore[arg-type]
+        modelId=artifact.modelId,
+        words=artifact.words,
+        validation=artifact.validation,
+        gate=gate,
+        processingMs=artifact.processingMs,
+    )
 
 
 class AlignResponse(BaseModel):
@@ -268,7 +296,7 @@ def align(body: AlignRequest) -> AlignResponse:
             "Alignment engine failed",
         ) from exc
 
-    gate_payload = evaluate_go_gate(artifact)
+    gate_payload = evaluate_go_gate(artifact, wav_path)
     gate = AlignmentGate.model_validate(gate_payload)
 
     out_path = alignment_json_path(audio_id)
@@ -280,18 +308,31 @@ def align(body: AlignRequest) -> AlignResponse:
         encoding="utf-8",
     )
 
-    return AlignResponse(
-        alignmentArtifactId=audio_id,
-        audioArtifactId=audio_id,
-        durationMs=artifact.durationMs,
-        transcript=artifact.transcript,
-        engine=artifact.engine,  # type: ignore[arg-type]
-        modelId=artifact.modelId,
-        words=artifact.words,
-        validation=artifact.validation,
-        gate=gate,
-        processingMs=artifact.processingMs,
-    )
+    return _align_response_from_artifact(artifact, gate, audio_id)
+
+
+@app.post("/align/revalidate-gate", response_model=AlignResponse)
+def revalidate_gate(body: RevalidateGateRequest) -> AlignResponse:
+    audio_id = body.audioArtifactId.lower()
+    wav_path = _resolve_audio_artifact(body.audioArtifactId)
+    json_path = alignment_json_path(audio_id)
+    if not json_path.is_file():
+        raise _api_error(
+            404,
+            "artifact_not_found",
+            "Alignment artifact not found",
+            audioArtifactId=audio_id,
+        )
+
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+        artifact = artifact_from_saved_json(data, audio_id)
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise _api_error(422, "invalid_alignment_artifact", str(exc)) from exc
+
+    gate_payload = reevaluate_gate_on_disk(wav_path, json_path, audio_id)
+    gate = AlignmentGate.model_validate(gate_payload)
+    return _align_response_from_artifact(artifact, gate, audio_id)
 
 
 @app.get("/voices")

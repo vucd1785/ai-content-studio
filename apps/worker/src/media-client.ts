@@ -1,11 +1,13 @@
 import {
-  alignRequestSchema,
-  alignResponseSchema,
   type AlignRequest,
   type AlignResponse,
-  synthesizeRequestSchema,
+  alignRequestSchema,
+  alignResponseSchema,
+  type RevalidateGateRequest,
+  revalidateGateRequestSchema,
   type SynthesizeRequest,
   type SynthesizeResponse,
+  synthesizeRequestSchema,
   synthesizeResponseSchema,
 } from "@studio/contracts";
 
@@ -35,6 +37,20 @@ export class TtsMediaClient {
       throw new Error(`TTS synthesize failed (${response.status})`);
     }
     return synthesizeResponseSchema.parse(json);
+  }
+
+  async revalidateGate(body: RevalidateGateRequest): Promise<AlignResponse> {
+    const payload = revalidateGateRequestSchema.parse(body);
+    const response = await this.fetchImpl(`${this.baseUrl}/align/revalidate-gate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json: unknown = await response.json();
+    if (!response.ok) {
+      throw new Error(`TTS revalidate-gate failed (${response.status})`);
+    }
+    return alignResponseSchema.parse(json);
   }
 
   async align(body: AlignRequest): Promise<AlignResponse> {

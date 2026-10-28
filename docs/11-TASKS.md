@@ -215,7 +215,7 @@ Kiểm tra: unit test cộng một render thật ngắn.
 
 ## P1-06 — CLI fixture
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P1-01`, `P1-03`, `P1-05`
 - Skill: `implement-task`

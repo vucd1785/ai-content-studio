@@ -1,29 +1,5 @@
-from __future__ import annotations
+"""Backward-compatible re-export; gate logic lives in gate.py."""
 
-from app.alignment.schema import AlignmentArtifact, AlignmentWord
+from app.alignment.gate import aligned_word_ratio, evaluate_go_gate
 
-
-def aligned_word_ratio(words: list[AlignmentWord]) -> float:
-    if not words:
-        return 0.0
-    valid = sum(1 for w in words if w.endMs > w.startMs)
-    return valid / len(words)
-
-
-def evaluate_go_gate(artifact: AlignmentArtifact) -> dict[str, object]:
-    """Cổng trong docs/05-VIDEO-PIPELINE.md (spike + P1-02 structural checks)."""
-    ratio = aligned_word_ratio(artifact.words)
-    delta = artifact.validation.durationDeltaMs
-    abs_delta = abs(delta) if delta is not None else None
-    coverage_ok = abs_delta is not None and abs_delta <= 250
-    ratio_ok = ratio >= 0.9
-    validation_ok = artifact.validation.ok
-    passes = coverage_ok and ratio_ok and validation_ok
-    return {
-        "alignedWordRatio": round(ratio, 4),
-        "durationDeltaMs": delta,
-        "coverageWithin250Ms": coverage_ok,
-        "ratioAtLeast90Pct": ratio_ok,
-        "validationOk": validation_ok,
-        "passesGate": passes,
-    }
+__all__ = ["aligned_word_ratio", "evaluate_go_gate"]

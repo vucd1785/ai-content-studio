@@ -1,8 +1,12 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { hashEduVerticalRenderProps } from "../render-props/content-hash";
+import {
+  hashEduVerticalRenderProps,
+  type RenderPropsHashOptions,
+} from "../render-props/content-hash";
 import type { EduVerticalRenderProps } from "../render-props/schema";
 import { crfForPurpose, RENDER_CODEC, type RenderPurpose } from "./config";
+import { isValidCachedMp4 } from "./validate-cached-mp4";
 
 export type RenderMediaInvokeOptions = {
   codec: typeof RENDER_CODEC;
@@ -23,7 +27,10 @@ export type RenderEduVerticalWithCacheParams = {
   serveUrl: string;
   composition: unknown;
   renderMedia: RenderMediaFn;
+  audioContentSha256: string;
   frameRange?: [number, number];
+  /** Injectable for unit tests; defaults to ffprobe validation. */
+  validateCachedMp4?: (path: string) => boolean;
 };
 
 export type RenderEduVerticalWithCacheResult = {
@@ -51,7 +58,10 @@ export function resolveCachedMp4Path(
 export async function renderEduVerticalWithCache(
   params: RenderEduVerticalWithCacheParams,
 ): Promise<RenderEduVerticalWithCacheResult> {
-  const contentHash = hashEduVerticalRenderProps(params.props);
+  const hashOptions: RenderPropsHashOptions = {
+    audioContentSha256: params.audioContentSha256,
+  };
+  const contentHash = hashEduVerticalRenderProps(params.props, hashOptions);
   const crf = crfForPurpose(params.purpose);
   const outputLocation = resolveCachedMp4Path(params.cacheRoot, {
     templateId: params.props.templateId,
@@ -62,7 +72,8 @@ export async function renderEduVerticalWithCache(
 
   mkdirSync(dirname(outputLocation), { recursive: true });
 
-  if (existsSync(outputLocation)) {
+  const validate = params.validateCachedMp4 ?? isValidCachedMp4;
+  if (existsSync(outputLocation) && validate(outputLocation)) {
     return {
       outputLocation,
       contentHash,
@@ -73,15 +84,35 @@ export async function renderEduVerticalWithCache(
     };
   }
 
+  if (existsSync(outputLocation)) {
+    try {
+      unlinkSync(outputLocation);
+    } catch {
+      // best-effort; render will overwrite via temp file
+    }
+  }
+
+  const tempLocation = outputLocation.replace(/\.mp4$/i, ".partial.mp4");
   await params.renderMedia({
     codec: RENDER_CODEC,
     crf,
     composition: params.composition,
     serveUrl: params.serveUrl,
-    outputLocation,
+    outputLocation: tempLocation,
     inputProps: params.props,
     ...(params.frameRange ? { frameRange: params.frameRange } : {}),
   });
+
+  if (!validate(tempLocation)) {
+    try {
+      unlinkSync(tempLocation);
+    } catch {
+      // ignore
+    }
+    throw new Error("render produced invalid MP4 (missing streams or corrupt output)");
+  }
+
+  renameSync(tempLocation, outputLocation);
 
   return {
     outputLocation,

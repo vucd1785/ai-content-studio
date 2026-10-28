@@ -14,9 +14,15 @@ function stableStringify(value: unknown): string {
   return `{${entries.join(",")}}`;
 }
 
+export type RenderPropsHashOptions = {
+  /** SHA-256 hex of combined narration WAV bytes (required for render cache). */
+  audioContentSha256: string;
+};
+
 /** Canonical payload for cache keys; omits ephemeral `audio.src`. */
 export function eduVerticalRenderPropsPayload(
   props: EduVerticalRenderProps,
+  options: RenderPropsHashOptions,
 ): Record<string, unknown> {
   return {
     templateId: props.templateId,
@@ -27,6 +33,7 @@ export function eduVerticalRenderPropsPayload(
     audio: {
       storageKey: props.audio.storageKey,
       durationMs: props.audio.durationMs,
+      contentSha256: options.audioContentSha256,
     },
     scenes: props.scenes,
     captions: props.captions,
@@ -34,7 +41,10 @@ export function eduVerticalRenderPropsPayload(
 }
 
 /** SHA-256 hex digest of stable render props content (`content_hash`). */
-export function hashEduVerticalRenderProps(props: EduVerticalRenderProps): string {
-  const payload = eduVerticalRenderPropsPayload(props);
+export function hashEduVerticalRenderProps(
+  props: EduVerticalRenderProps,
+  options: RenderPropsHashOptions,
+): string {
+  const payload = eduVerticalRenderPropsPayload(props, options);
   return createHash("sha256").update(stableStringify(payload)).digest("hex");
 }

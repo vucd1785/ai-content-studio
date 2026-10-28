@@ -3,6 +3,7 @@ import {
   alignRequestSchema,
   alignResponseSchema,
   alignmentValidationSchema,
+  revalidateGateRequestSchema,
   synthesizeRequestSchema,
 } from "./tts.js";
 
@@ -82,6 +83,10 @@ describe("media tts contracts", () => {
         ratioAtLeast90Pct: true,
         validationOk: true,
         passesGate: true,
+        gatePolicyVersion: "2.0.0-silence-aware",
+        trailingSilenceVerified: false,
+        trailingSilenceMs: null,
+        coverageAcceptanceReason: "within_250ms",
       },
       processingMs: 10,
     });

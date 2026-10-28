@@ -9,6 +9,18 @@ import { describe, expect, it } from "vitest";
 import { EDU_VERTICAL_COMPOSITION_ID, parseEduVerticalRenderProps } from "../render-props/schema";
 import { renderEduVerticalWithCache } from "./cached-render";
 import { PREVIEW_CRF, RENDER_CODEC } from "./config";
+import { probeMp4Summary } from "./validate-cached-mp4";
+
+const validateShortPreviewMp4 = (path: string): boolean => {
+  const summary = probeMp4Summary(path);
+  if (!summary?.hasVideo) {
+    return false;
+  }
+  if (summary.width !== 1080 || summary.height !== 1920) {
+    return false;
+  }
+  return (summary.durationSeconds ?? 0) > 0;
+};
 
 const propsPath = join(
   fileURLToPath(import.meta.url),
@@ -61,6 +73,8 @@ describe("renderEduVerticalWithCache integration", () => {
         serveUrl,
         composition,
         frameRange: [0, 29],
+        audioContentSha256: "a".repeat(64),
+        validateCachedMp4: validateShortPreviewMp4,
         renderMedia: async (opts) => {
           renderMediaCalls += 1;
           await renderMedia({
@@ -86,6 +100,8 @@ describe("renderEduVerticalWithCache integration", () => {
         serveUrl,
         composition,
         frameRange: [0, 29],
+        audioContentSha256: "a".repeat(64),
+        validateCachedMp4: validateShortPreviewMp4,
         renderMedia: async () => {
           renderMediaCalls += 1;
         },
@@ -107,5 +123,5 @@ describe("renderEduVerticalWithCache integration", () => {
     } finally {
       rmSync(cacheRoot, { recursive: true, force: true });
     }
-  }, 180_000);
+  }, 300_000);
 });

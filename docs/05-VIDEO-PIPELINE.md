@@ -75,6 +75,8 @@ Thứ tự:
 
 Cổng Go của `P0-04`: trên mẫu thoại giáo dục khoảng 45–60 giây, ít nhất 90% từ nhận timestamp đơn điệu, và tổng khoảng phủ lệch không quá 250 ms so với duration ffprobe. Ngưỡng này là tiêu chí dự án. Kết quả đo ghi trong báo cáo spike, không điền trước.
 
+**P1-06 / ADR-012:** `durationDeltaMs` vẫn là hiệu số thô `durationMs − lastWord.endMs`. Pass cổng khi (1) `|durationDeltaMs| ≤ 250`, hoặc (2) `250 < durationDeltaMs ≤ 400` và PCM đuôi WAV (từ `lastWord.endMs` đến hết file) im lặng liên tục (peak &lt; −40 dBFS / cửa sổ 50 ms). Response gate ghi `coverageAcceptanceReason` (`within_250ms` | `verified_trailing_silence`). Tái đánh giá không Whisper: `POST /align/revalidate-gate`.
+
 **Chấp thuận Director (2026-10-28, chỉ Phase 0 spike):** WAV ffprobe **44.000 s** (`5bf561a3048346639aabb497df357d33.wav`) được coi là đủ bằng chứng khả thi số; không yêu cầu synthesize lại để đạt 45.000 s. Không thay thế QA nghe thử hay yêu cầu chất lượng production.
 
 `captions[]` tương thích `@remotion/captions`: `text`, `startMs`, `endMs`, `timestampMs`. Khoảng trắng nằm ở đầu mỗi từ sau từ đầu tiên, vì `createTikTokStyleCaptions()` ngắt trang theo khoảng trắng. Khi render, phần phụ đề dùng `white-space: pre`.

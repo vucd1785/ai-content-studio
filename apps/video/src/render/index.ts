@@ -7,3 +7,8 @@ export {
   resolveCachedMp4Path,
 } from "./cached-render";
 export { crfForPurpose, EXPORT_CRF, PREVIEW_CRF, RENDER_CODEC, type RenderPurpose } from "./config";
+export {
+  isValidCachedMp4,
+  type Mp4StreamSummary,
+  probeMp4Summary,
+} from "./validate-cached-mp4";

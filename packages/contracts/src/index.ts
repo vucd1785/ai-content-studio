@@ -20,6 +20,8 @@ export {
   alignResponseSchema,
   type SynthesizeRequest,
   type SynthesizeResponse,
+  revalidateGateRequestSchema,
+  type RevalidateGateRequest,
   synthesizeRequestSchema,
   synthesizeResponseSchema,
   ttsErrorBodySchema,
