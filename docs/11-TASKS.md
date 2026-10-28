@@ -140,7 +140,7 @@ Ghi chú: template giáo dục đầy đủ là `P1-04`.
 
 ## P1-01 — Duration cảnh
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-02`, `P0-03`, `P0-04` với decision `go`
 - Skill: `implement-task`
