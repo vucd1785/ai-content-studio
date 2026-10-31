@@ -21,10 +21,13 @@ const RAW_SOURCES = import.meta.glob<string>(["./*.ts", "./*.tsx", "!./*.test.ts
   import: "default",
   eager: true,
 });
-const FIXTURES = import.meta.glob<Record<string, unknown>>("../../../../video/fixtures/edu-vertical-redis-props.json", {
-  import: "default",
-  eager: true,
-});
+const FIXTURES = import.meta.glob<Record<string, unknown>>(
+  "../../../../video/fixtures/edu-vertical-redis-props.json",
+  {
+    import: "default",
+    eager: true,
+  },
+);
 const BASE_PROPS = Object.values(FIXTURES)[0] ?? {};
 
 const RUN_ID = "00000000-0000-4000-8000-0000000000a9";
@@ -79,12 +82,18 @@ function installServer(artifacts: { id: string; type: string; version: number }[
         approvals: [],
         artifacts: artifacts.map((a) => ({ ...a, createdAt: NOW_ISO })),
       }),
-    [`GET /api/artifacts/${IDS.rp1}`]: () => jsonResponse(200, artifactBody(IDS.rp1, "render_props", 1, propsWithHeadline("Bản một"))),
-    [`GET /api/artifacts/${IDS.rp2}`]: () => jsonResponse(200, artifactBody(IDS.rp2, "render_props", 2, propsWithHeadline("Bản hai"))),
-    [`GET /api/artifacts/${IDS.script}`]: () => jsonResponse(200, artifactBody(IDS.script, "script", 1, { variants: ["a", "b"] })),
-    [`GET /api/artifacts/${IDS.preview}`]: () => jsonResponse(200, artifactBody(IDS.preview, "preview", 1, null)),
-    [`GET /api/artifacts/${IDS.broken}`]: () => jsonResponse(200, artifactBody(IDS.broken, "render_props", 3, { fps: "x" })),
-    [`GET /api/artifacts/${IDS.audio}`]: () => jsonResponse(200, artifactBody(IDS.audio, "audio", 1, null)),
+    [`GET /api/artifacts/${IDS.rp1}`]: () =>
+      jsonResponse(200, artifactBody(IDS.rp1, "render_props", 1, propsWithHeadline("Bản một"))),
+    [`GET /api/artifacts/${IDS.rp2}`]: () =>
+      jsonResponse(200, artifactBody(IDS.rp2, "render_props", 2, propsWithHeadline("Bản hai"))),
+    [`GET /api/artifacts/${IDS.script}`]: () =>
+      jsonResponse(200, artifactBody(IDS.script, "script", 1, { variants: ["a", "b"] })),
+    [`GET /api/artifacts/${IDS.preview}`]: () =>
+      jsonResponse(200, artifactBody(IDS.preview, "preview", 1, null)),
+    [`GET /api/artifacts/${IDS.broken}`]: () =>
+      jsonResponse(200, artifactBody(IDS.broken, "render_props", 3, { fps: "x" })),
+    [`GET /api/artifacts/${IDS.audio}`]: () =>
+      jsonResponse(200, artifactBody(IDS.audio, "audio", 1, null)),
     // Chỉ bản 2 có WAV; bản 1 thì route media trả 404 (mặc định của fake API).
     [`HEAD /api/artifacts/${IDS.rp2}/media`]: () => new Response(null, { status: 200 }),
   });
@@ -92,14 +101,18 @@ function installServer(artifacts: { id: string; type: string; version: number }[
 
 function renderPanel() {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <PreviewPanel runId={RUN_ID} />
     </QueryClientProvider>,
   );
 }
 
 function lastHeadline() {
-  const inputProps = playerProps.at(-1)?.inputProps as { scenes: { headline?: string }[] } | undefined;
+  const inputProps = playerProps.at(-1)?.inputProps as
+    | { scenes: { headline?: string }[] }
+    | undefined;
   return inputProps?.scenes[0]?.headline;
 }
 
@@ -123,7 +136,12 @@ describe("preview và version (P2-08)", () => {
     expect(screen.getByTestId("version-render_props-2").getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("version-render_props-1").getAttribute("aria-pressed")).toBe("false");
     expect(lastHeadline()).toBe("Bản hai");
-    expect(playerProps.at(-1)).toMatchObject({ fps: 30, compositionWidth: 1080, compositionHeight: 1920, controls: true });
+    expect(playerProps.at(-1)).toMatchObject({
+      fps: 30,
+      compositionWidth: 1080,
+      compositionHeight: 1920,
+      controls: true,
+    });
   });
 
   it("artifact cũ vẫn mở được; chọn bản cũ không ghi gì lên server và bản mới vẫn còn", async () => {
@@ -137,8 +155,14 @@ describe("preview và version (P2-08)", () => {
     await user.click(screen.getByTestId("version-render_props-2"));
     await waitFor(() => expect(lastHeadline()).toBe("Bản hai"));
     // Chỉ đọc (GET, và HEAD tới route media); không POST/PUT/DELETE, không route export hay render.
-    const calls = api.fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? "GET"} ${String(url)}`);
-    expect(calls.every((call) => call.startsWith("GET ") || /^HEAD \/api\/artifacts\/[^/]+\/media$/.test(call))).toBe(true);
+    const calls = api.fetchMock.mock.calls.map(
+      ([url, init]) => `${init?.method ?? "GET"} ${String(url)}`,
+    );
+    expect(
+      calls.every(
+        (call) => call.startsWith("GET ") || /^HEAD \/api\/artifacts\/[^/]+\/media$/.test(call),
+      ),
+    ).toBe(true);
     expect(calls.some((call) => /export|render/.test(call))).toBe(false);
   });
 
@@ -152,7 +176,9 @@ describe("preview và version (P2-08)", () => {
     renderPanel();
     const user = userEvent.setup();
     // Bản 3 (hỏng) là mới nhất nên mặc định mở.
-    expect((await screen.findByText(vi.preview.invalidProps)).textContent).toBe(vi.preview.invalidProps);
+    expect((await screen.findByText(vi.preview.invalidProps)).textContent).toBe(
+      vi.preview.invalidProps,
+    );
     expect(playerProps).toHaveLength(0);
     await user.click(screen.getByTestId("version-script-1"));
     expect((await screen.findByTestId("artifact-json")).textContent).toContain('"variants"');
@@ -168,12 +194,16 @@ describe("preview và version (P2-08)", () => {
     renderPanel();
     const user = userEvent.setup();
     await waitFor(() =>
-      expect((playerProps.at(-1)?.inputProps as { audio: { src?: string } }).audio.src).toBe(`/api/artifacts/${IDS.rp2}/media`),
+      expect(
+        (playerProps.at(-1)?.inputProps as { audio: { src?: string } } | undefined)?.audio.src,
+      ).toBe(`/api/artifacts/${IDS.rp2}/media`),
     );
     expect(screen.queryByText(vi.preview.noAudio)).toBeNull();
     await user.click(screen.getByTestId("version-render_props-1"));
     expect(await screen.findByText(vi.preview.noAudio)).toBeTruthy();
-    expect((playerProps.at(-1)?.inputProps as { audio: { src?: string } }).audio.src).toBeUndefined();
+    expect(
+      (playerProps.at(-1)?.inputProps as { audio: { src?: string } } | undefined)?.audio.src,
+    ).toBeUndefined();
   });
 
   it("nhóm theo loại, version mới trước, không bỏ version nào", () => {
@@ -190,7 +220,9 @@ describe("preview và version (P2-08)", () => {
 
   it("nguồn preview không gọi render/export và không dùng entry render của apps/video", () => {
     for (const [file, source] of Object.entries(RAW_SOURCES)) {
-      expect(source, file).not.toMatch(/renderMedia|@remotion\/renderer|@studio\/video\/render|\/export/);
+      expect(source, file).not.toMatch(
+        /renderMedia|@remotion\/renderer|@studio\/video\/render|\/export/,
+      );
       expect(source, file).not.toMatch(/method: "(POST|PUT|DELETE)"/);
     }
   });

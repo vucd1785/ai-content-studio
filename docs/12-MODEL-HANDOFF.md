@@ -230,24 +230,42 @@ Director mở việc (quyết định 7). `GET /api/artifacts/:artifactId/media`
 
 Panel preview phát `<video>` cho preview/export và gắn tiếng cho player render props khi có WAV. Phát hiện `.gitignore` (`preview/`) đã bỏ qua mã nguồn panel preview của P2-08 nên chưa từng được commit; đã thêm ngoại lệ. Api 110, web 58. Chi tiết: [reports/P2-09.md](../reports/P2-09.md).
 
+### P2-10 — UI cổng final, hủy và resume (done 2026-10-31, Director PASS)
+
+`apps/web/src/features/final-review/`, gắn trong trang project:
+- **Panel cổng final:** phát preview mới nhất qua route media, đọc QA của đúng bản đó, ba nút decision. Nút duyệt khóa khi QA chưa đạt; server vẫn chặn bằng 409.
+- **Điều khiển lượt chạy:** trạng thái run, hủy bấm hai lần, resume khi `failed` có `resume_from`.
+
+Web 66/66. Chi tiết: [reports/P2-10.md](../reports/P2-10.md).
+
+### P3-10 — Consumer queue llm và bắt đầu run (done 2026-10-31, Director PASS)
+
+Quyết định 5 đã mở:
+- `startWorkflowRun` và route `POST /api/projects/:projectId/workflow-runs` (route này trước đó chưa có);
+- `createLlmConsumer`: BullMQ Worker queue `llm`, concurrency 1, research/script/visual, `failStuckJob` khi hết retry;
+- process `worker:llm`: đọc `.env`, đối chiếu mỗi 5 s;
+- nút "Bắt đầu lượt chạy" trên web.
+
+Test dùng client giả (worker 109 + 1 skip, api 111, web 69). Lần chạy Gemini thật đầu tiên (Director nhờ, 2026-10-31): run `6ecffe78…` tới `waiting_script_approval`, 2 lời gọi `gemini-3.6-flash`, không repair, 0 approval. Chi tiết: [reports/P3-10.md](../reports/P3-10.md).
+
 ## Checkpoint agent
 
 Cập nhật bởi phiên tự hành ([13-AUTONOMOUS-AGENT-WORKFLOW.md](13-AUTONOMOUS-AGENT-WORKFLOW.md)). Mục này luôn là trạng thái mới nhất.
 
 - Thời điểm: 2026-10-31, phiên tự hành thứ năm.
-- Đã closeout (Director PASS): `P4-02`, `P5-02`, `P5-01`, `P4-03`, `P3-04`, `P2-07`, `P4-04`, `P2-08`, `P3-05`, `P3-06`, `P3-08`, `P5-03`, `P2-09` (cùng các task trước).
-- Task chờ Director verify: không.
+- Đã closeout (Director PASS): `P4-02`, `P5-02`, `P5-01`, `P4-03`, `P3-04`, `P2-07`, `P4-04`, `P2-08`, `P3-05`, `P3-06`, `P3-08`, `P5-03`, `P2-09`, `P2-10`, `P3-10` (cùng các task trước).
+- Task chờ Director verify: không. Project thử `[Thử Gemini] Redis TTL` còn trong DB.
 - Task đang làm: không. Không còn lỗi mở.
-- Lệnh cuối đã chạy (exit 0, P2-09): api 110/110, web 58/58, typecheck api/web, build web. Trước đó (P5-03): video 25/25, `render:p5-03`. Trước nữa (P3-08): worker 106 + 1 skip, api 105/105, contracts 84/84, db 7/7. DB `studio` còn 0 hàng test. Migration và `data/` không đổi.
+- Lệnh cuối đã chạy (exit 0, P3-10): worker 109 + 1 skip, api 111/111, web 69/69, db 7/7, typecheck db/api/worker/web. Redis không còn key test. Trước đó (P2-10): build web. Trước nữa (P5-03): video 25/25, `render:p5-03`. Trước nữa (P3-08): worker 106 + 1 skip, api 105/105, contracts 84/84, db 7/7. DB `studio` còn 0 hàng test. Migration và `data/` không đổi.
 - Đủ điều kiện kế tiếp: không còn task `pending` trong `11-TASKS`.
 - Quyết định chờ Director:
   1. ~~Định dạng artifact script và route đọc artifact~~: đã chốt 2026-10-31.
   2. ~~Gắn UI~~: đã làm 2026-10-31 (mục Quyết định 2 ở trên).
   3. Bảng giá cho `estimated_cost_usd`.
   4. Parse PDF cho research (dependency mới) hay giữ `pdf_not_extracted`.
-  5. Gắn BullMQ consumer cho queue `llm` (processor research + script). Đây là bước đầu tiên có thể gọi Gemini thật, nên cần cổng chi phí.
+  5. ~~Consumer queue `llm`~~: Director mở 2026-10-31, triển khai ở `P3-10`. Lần gọi thật đầu tiên vẫn chờ Director.
   6. ~~Cách ghi phương án được chọn~~: đã chốt `variantIndex` 2026-10-31 (mục ở trên).
   7. ~~Route media~~: Director mở 2026-10-31, triển khai ở `P2-09`.
   8. ~~Visual có gọi LLM không~~: Director chốt 2026-10-31 giữ storyboard dựng bằng code ở MVP, không gọi LLM.
-- Hành động kế tiếp chính xác: Director chọn việc mới (chưa có task): UI cổng final + nút hủy/resume, cách chọn template trong workflow, hoặc consumer (quyết định 5). Còn thiếu: UI cổng final, job cho `revise_assets`, và chạy thật backend render (cần consumer, quyết định 5). Quyết định 5 (consumer BullMQ, có chi phí Gemini) và 7 (route media) vẫn mở.
+- Hành động kế tiếp chính xác: Director chọn việc mới: consumer queue `media` và `render`, job cho `revise_assets`, cách chọn template. Lưu ý: P2-10 và P3-10 chưa commit; không chạy test khi `worker:llm` đang chạy trên cùng DB. Còn thiếu: UI cổng final, job cho `revise_assets`, và chạy thật backend render (cần consumer, quyết định 5). Quyết định 5 (consumer BullMQ, có chi phí Gemini) và 7 (route media) vẫn mở.
 - Cần Director: có.

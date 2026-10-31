@@ -1,5 +1,5 @@
 import { type JobPayload, QUEUE_NAMES, type QueueName } from "@studio/contracts";
-import { listUnfinishedJobs, setJobBullmqId, type StudioDb } from "@studio/db";
+import { listUnfinishedJobs, type StudioDb, setJobBullmqId } from "@studio/db";
 import { type ConnectionOptions, Queue } from "bullmq";
 
 export type QueueSet = Record<QueueName, Queue<JobPayload>>;

@@ -46,6 +46,8 @@ File nhận `md`, `txt`, `pdf`, tối đa 10 MB.
 
 `GET /api/artifacts/:artifactId/media` (P2-09) chỉ đọc. `preview` và `export` stream MP4 ở `storage_key`; `render_props` stream WAV ở `audio.storageKey` trong props. Artifact khác (kể cả `audio`, vốn là manifest JSON nhiều WAV) là `not_found`. Chỉ phục vụ `.mp4` (`video/mp4`) và `.wav` (`audio/wav`). Header `Range` một khoảng trả `206`; khoảng ngoài file trả `416`. Key thoát volume hay file thiếu đều là `not_found`.
 
+`POST /api/projects/:projectId/workflow-runs` (P3-10) tạo run `idea_submitted` từ brief mới nhất cùng job research (queue `llm`, key `research:<runId>`) trong một transaction, trả `201 { workflowRun }`. Project chưa có brief, hoặc run mới nhất chưa ở `exported`/`cancelled`/`failed`, trả `409 conflict`.
+
 Body approval:
 
 ```json

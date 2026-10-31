@@ -1,7 +1,9 @@
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
   applyWorkflowCommand,
   approvalBodySchema,
   approvalCreatedResponseSchema,
+  projectIdParamsSchema,
   type ResumeFrom,
   runIdParamsSchema,
   usageListResponseSchema,
@@ -16,12 +18,17 @@ import {
   recordApproval,
   resumeWorkflowRun,
   type StudioDb,
+  startWorkflowRun,
   WorkflowControlError,
   workflowRunExists,
 } from "@studio/db";
-import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { sendConflict, sendInvalidTransition, sendNotFound, sendValidationError } from "../http/errors.js";
+import {
+  sendConflict,
+  sendInvalidTransition,
+  sendNotFound,
+  sendValidationError,
+} from "../http/errors.js";
 import type { EventNotifier } from "./event-stream.js";
 
 export type WorkflowRunRouteDeps = {
@@ -76,10 +83,36 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
       if (error.code === "nothing_to_resume") {
         return sendConflict(reply, "Không còn job nào để chạy lại.");
       }
+      if (error.code === "no_brief") {
+        return sendConflict(reply, "Dự án chưa có brief nên chưa bắt đầu được.");
+      }
+      if (error.code === "run_active") {
+        return sendConflict(reply, "Dự án đang có lượt chạy chưa kết thúc.");
+      }
       return sendInvalidTransition(reply, "Trạng thái workflow không cho phép thao tác này.");
     }
     throw error;
   };
+
+  // Quyết định 5: tạo run từ brief mới nhất cùng job research; worker queue `llm` nhận job qua đối chiếu.
+  typed.post(
+    "/api/projects/:projectId/workflow-runs",
+    {
+      schema: {
+        params: projectIdParamsSchema,
+        response: { 201: workflowRunControlResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const result = await startWorkflowRun(deps.db, request.params.projectId);
+        deps.notifier?.notify(result.workflowRun.id);
+        return reply.status(201).send({ workflowRun: result.workflowRun });
+      } catch (error) {
+        return controlError(reply, error);
+      }
+    },
+  );
 
   typed.post(
     "/api/workflow-runs/:runId/cancel",
@@ -115,9 +148,15 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
         return sendNotFound(reply);
       }
       const resumeFrom = detail.workflowRun.resumeFrom as ResumeFrom | null;
-      const edge = applyWorkflowCommand({ status: detail.workflowRun.status, resumeFrom }, { kind: "resume" });
+      const edge = applyWorkflowCommand(
+        { status: detail.workflowRun.status, resumeFrom },
+        { kind: "resume" },
+      );
       if (!edge.ok || resumeFrom === null) {
-        return sendInvalidTransition(reply, "Chỉ resume được workflow đã lỗi và có bước để chạy lại.");
+        return sendInvalidTransition(
+          reply,
+          "Chỉ resume được workflow đã lỗi và có bước để chạy lại.",
+        );
       }
       try {
         const result = await resumeWorkflowRun(deps.db, {

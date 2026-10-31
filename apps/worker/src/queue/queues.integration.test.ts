@@ -19,8 +19,7 @@ import {
   redisConnectionFromUrl,
 } from "./queues.js";
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
+const DATABASE_URL = process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 /** Prefix riêng: không đụng key `bull:*` của queue thật. */
 const PREFIX = `studio-test-p3-01-${randomUUID()}`;

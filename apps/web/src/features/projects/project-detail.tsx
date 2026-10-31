@@ -1,9 +1,11 @@
+import { lazy, Suspense } from "react";
+import { FinalReviewPanel } from "@/features/final-review/final-review-panel";
 import { ScriptReviewPanel } from "@/features/script-review/script-review-panel";
 import { UsagePanel } from "@/features/usage/usage-panel";
-import { lazy, Suspense } from "react";
 import { vi } from "@/i18n/vi";
 import { BriefForm } from "./brief-form";
 import { ReferenceUpload } from "./reference-upload";
+import { StartRunButton } from "./start-run";
 import { useProjectDetail } from "./use-projects";
 
 // Remotion player nặng (~1,3 MB): tải riêng khi trang project mở, không nằm trong bundle chính.
@@ -29,11 +31,18 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
       {/* key theo project: đổi project thì nạp lại form; lưu brief không remount (giữ thông báo) */}
       <BriefForm key={project.id} projectId={project.id} brief={brief} />
       <ReferenceUpload projectId={project.id} references={references} />
+      <StartRunButton
+        projectId={project.id}
+        hasBrief={brief !== null}
+        latestStatus={workflowRun?.status ?? null}
+      />
       {/* Lượt chạy mới nhất của project (quyết định 2 của Director, 2026-10-31). */}
       <ScriptReviewPanel runId={runId} />
       <Suspense fallback={<p className="text-muted-foreground text-sm">{vi.app.loading}</p>}>
         <PreviewPanel runId={runId} />
       </Suspense>
+      {/* P2-10: cổng final, cùng nút hủy và resume của lượt chạy. */}
+      <FinalReviewPanel runId={runId} />
       <UsagePanel runId={runId} />
     </div>
   );

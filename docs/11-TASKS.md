@@ -410,6 +410,23 @@ Tiêu chí nghiệm thu: key chứa `..`, ký tự null hoặc path tuyệt đ�
 
 Kiểm tra: test tích hợp route media, unit test resolve, test panel preview.
 
+## P2-10 — UI cổng final, hủy và resume
+
+- Trạng thái: done
+- Ưu tiên: medium
+- Phụ thuộc: `P2-09`, `P3-06`, `P3-08`
+- Skill: `implement-task`
+
+Director mở task 2026-10-31.
+
+File được phép: `apps/web/src/features/final-review/**`, `apps/web/src/lib/media.ts`, chỗ gắn panel trong trang project, chuỗi `vi`, panel preview (dùng chung URL media), test, report, task file.
+
+Mục tiêu: Director xem preview mới nhất cùng QA của đúng bản đó và gửi decision ở cổng final; hủy và resume lượt chạy từ giao diện.
+
+Tiêu chí nghiệm thu: mỗi nút gửi đúng một decision tường minh cho đúng preview; nút duyệt khóa khi QA chưa đạt; hủy cần xác nhận và không ghi approval; resume chỉ hiện khi run `failed` có `resume_from`.
+
+Kiểm tra: test component với server giả có trạng thái.
+
 ## P3-01 — Hàng đợi
 
 - Trạng thái: done
@@ -545,6 +562,23 @@ Mục tiêu: mỗi lần gọi LLM một row token. Trần `cost_ceiling` dừng
 Tiêu chí nghiệm thu: repair tính thêm một row; lần thứ ba không gọi provider khi trần đặt là 2 trong test.
 
 Kiểm tra: unit test trần.
+
+## P3-10 — Consumer queue llm và bắt đầu run
+
+- Trạng thái: done
+- Ưu tiên: high
+- Phụ thuộc: `P3-01`, `P3-03`, `P3-04`, `P3-09`, `P2-10`
+- Skill: `build-agent-workflow`
+
+Director mở quyết định 5 ngày 2026-10-31 (consumer BullMQ queue `llm`, có chi phí Gemini).
+
+File được phép: consumer và process worker queue `llm`, `startWorkflowRun`, route `POST /api/projects/:projectId/workflow-runs`, nút bắt đầu run trên web, chuỗi `vi`, test, report, task file.
+
+Mục tiêu: Director bắt đầu run từ brief; worker chạy research, script và visual qua BullMQ; run dừng ở cổng script chờ Director.
+
+Tiêu chí nghiệm thu: test tích hợp với Redis thật và provider giả đi từ bắt đầu run tới `waiting_script_approval` mà không ghi approval; lỗi bất ngờ hết lượt retry làm run `failed` có `resume_from`, không kẹt. Lần gọi Gemini thật đầu tiên chỉ chạy khi Director xác nhận.
+
+Kiểm tra: test tích hợp consumer, test API route, test nút web.
 
 ## P4-01 — Hình studio
 

@@ -1,15 +1,17 @@
 import { Player } from "@remotion/player";
-import { EduVerticalComposition, parseEduVerticalRenderProps, playerDurationInFrames } from "@studio/video/player";
+import {
+  EduVerticalComposition,
+  parseEduVerticalRenderProps,
+  playerDurationInFrames,
+} from "@studio/video/player";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useArtifact, useWorkflowRun } from "@/features/script-review/use-script-review";
 import { vi } from "@/i18n/vi";
+import { artifactMediaUrl } from "@/lib/media";
 import { defaultArtifactId, groupArtifactVersions, isMediaArtifact } from "./artifact-versions";
-
-/** Route media (P2-09): MP4 của preview và export, WAV trong `audio.storageKey` của render props. Chỉ đọc. */
-export const artifactMediaUrl = (artifactId: string) => `/api/artifacts/${encodeURIComponent(artifactId)}/media`;
 
 /** File media có thật không (HEAD). Không có thì player phát không tiếng thay vì báo lỗi tải audio. */
 function useMediaAvailable(artifactId: string) {
@@ -17,7 +19,9 @@ function useMediaAvailable(artifactId: string) {
     queryKey: ["artifact-media", artifactId] as const,
     queryFn: async () => {
       try {
-        return (await fetch(artifactMediaUrl(artifactId), { method: "HEAD", credentials: "same-origin" })).ok;
+        return (
+          await fetch(artifactMediaUrl(artifactId), { method: "HEAD", credentials: "same-origin" })
+        ).ok;
       } catch {
         return false;
       }
@@ -120,7 +124,10 @@ function ArtifactView({ artifactId }: { artifactId: string }) {
     return <RenderPropsPlayer artifactId={meta.id} content={content} />;
   }
   return (
-    <pre className="bg-muted max-h-64 overflow-auto rounded-md p-2 text-xs" data-testid="artifact-json">
+    <pre
+      className="bg-muted max-h-64 overflow-auto rounded-md p-2 text-xs"
+      data-testid="artifact-json"
+    >
       {JSON.stringify(content, null, 2)}
     </pre>
   );
@@ -128,17 +135,24 @@ function ArtifactView({ artifactId }: { artifactId: string }) {
 
 function RenderPropsPlayer({ artifactId, content }: { artifactId: string; content: unknown }) {
   const media = useMediaAvailable(artifactId);
-  let parsed;
+  let parsed: ReturnType<typeof parseEduVerticalRenderProps>;
   try {
     parsed = parseEduVerticalRenderProps(content);
   } catch {
     return <p className="text-destructive text-sm">{vi.preview.invalidProps}</p>;
   }
   // Có WAV thì player phát tiếng qua route media; `src` bắt đầu bằng "/" nên composition dùng nguyên URL.
-  const props = media.data === true ? { ...parsed, audio: { ...parsed.audio, src: artifactMediaUrl(artifactId) } } : parsed;
+  const props =
+    media.data === true
+      ? { ...parsed, audio: { ...parsed.audio, src: artifactMediaUrl(artifactId) } }
+      : parsed;
   return (
     <div className="flex flex-col gap-1">
-      <div aria-label={vi.preview.player} data-testid="preview-player" className="mx-auto w-full max-w-[16rem]">
+      <section
+        aria-label={vi.preview.player}
+        data-testid="preview-player"
+        className="mx-auto w-full max-w-[16rem]"
+      >
         <Player
           component={EduVerticalComposition}
           inputProps={props}
@@ -149,8 +163,10 @@ function RenderPropsPlayer({ artifactId, content }: { artifactId: string; conten
           style={{ width: "100%", aspectRatio: `${props.width} / ${props.height}` }}
           controls
         />
-      </div>
-      {media.data === false ? <p className="text-muted-foreground text-xs">{vi.preview.noAudio}</p> : null}
+      </section>
+      {media.data === false ? (
+        <p className="text-muted-foreground text-xs">{vi.preview.noAudio}</p>
+      ) : null}
     </div>
   );
 }

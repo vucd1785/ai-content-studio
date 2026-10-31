@@ -670,4 +670,47 @@ describe("approval API (P2-04)", () => {
     expect(anonymous.statusCode).toBe(401);
     await app.close();
   });
+
+  it("POST /api/projects/:projectId/workflow-runs: tạo run + job research; chặn khi chưa có brief hoặc run còn chạy", async () => {
+    const { app, cookie } = await createAuthedApp();
+    const empty = await createProject(db, "Quyết định 5: chưa có brief");
+    createdProjectIds.push(empty.id);
+    const noBrief = await app.inject({ method: "POST", url: `/api/projects/${empty.id}/workflow-runs`, headers: { cookie } });
+    expect(noBrief.statusCode).toBe(409);
+    expect((noBrief.json() as { error: { code: string } }).error.code).toBe("conflict");
+
+    const project = await createProject(db, "Quyết định 5: bắt đầu run");
+    createdProjectIds.push(project.id);
+    await insertBrief(db, project.id, {
+      topic: "Redis",
+      audience: "Dev",
+      goal: "Hiểu cache",
+      durationSec: 60,
+      language: "vi",
+      tone: "friendly",
+      visualStyle: "edu",
+    });
+    const created = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs`, headers: { cookie } });
+    expect(created.statusCode).toBe(201);
+    const runId = (created.json() as { workflowRun: { id: string; status: string } }).workflowRun.id;
+    expect((created.json() as { workflowRun: { status: string } }).workflowRun.status).toBe("idea_submitted");
+    const agents = (await db.select().from(agentRuns)).filter((agent) => agent.workflowRunId === runId);
+    expect(agents.map((agent) => [agent.role, agent.status])).toEqual([["research", "queued"]]);
+    const researchJob = (await db.select().from(jobs)).find((job) => job.agentRunId === agents[0]?.id);
+    expect(researchJob).toMatchObject({ queue: "llm", status: "queued", idempotencyKey: `research:${runId}` });
+    expect(await approvalCount(runId)).toBe(0);
+
+    const again = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs`, headers: { cookie } });
+    expect(again.statusCode).toBe(409);
+    // Hủy run cũ thì được bắt đầu run mới.
+    await app.inject({ method: "POST", url: `/api/workflow-runs/${runId}/cancel`, headers: { cookie } });
+    const next = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs`, headers: { cookie } });
+    expect(next.statusCode).toBe(201);
+
+    const unknown = await app.inject({ method: "POST", url: `/api/projects/${randomUUID()}/workflow-runs`, headers: { cookie } });
+    expect(unknown.statusCode).toBe(404);
+    const anonymous = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs` });
+    expect(anonymous.statusCode).toBe(401);
+    await app.close();
+  });
 });
