@@ -95,7 +95,8 @@ export const vi = {
     inspector: "Bảng chi tiết vai trò",
     inspectorHint: "Chọn một vai trò trên canvas hoặc trong danh sách để mở bảng chi tiết.",
     noPanel: "Vai trò này chưa có bảng 2D. Trạng thái vẫn cập nhật trên canvas và danh sách.",
-    canvasUnavailable: "Trình duyệt không hiển thị được canvas 3D. Dùng danh sách vai trò bên dưới.",
+    canvasUnavailable:
+      "Trình duyệt không hiển thị được canvas 3D. Dùng danh sách vai trò bên dưới.",
     roles: {
       producer: "Điều phối",
       research: "Nghiên cứu",
@@ -126,7 +127,10 @@ export const vi = {
     hint: "Chọn một version để xem. Version cũ vẫn giữ nguyên, không bị ghi đè.",
     player: "Trình phát preview",
     invalidProps: "Render props không hợp lệ nên không phát được.",
-    mediaNote: "Artifact media chưa phát được trên web: chưa có route media.",
+    mediaNote:
+      "Artifact âm thanh là danh sách file WAV theo cảnh; nghe ở render props hoặc bản preview.",
+    video: "Video preview",
+    noAudio: "Không tìm thấy file âm thanh của render props này, player phát không tiếng.",
     types: {
       fetch_log: "Nhật ký fetch",
       research: "Nghiên cứu",

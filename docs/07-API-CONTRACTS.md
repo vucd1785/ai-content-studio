@@ -44,6 +44,8 @@ File nhận `md`, `txt`, `pdf`, tối đa 10 MB.
 | `GET` | `/api/artifacts/:artifactId/media` | Stream file sau khi resolve `storage_key` trong volume. |
 | `GET` | `/api/workflow-runs/:runId/usage` | Các `usage_records`. |
 
+`GET /api/artifacts/:artifactId/media` (P2-09) chỉ đọc. `preview` và `export` stream MP4 ở `storage_key`; `render_props` stream WAV ở `audio.storageKey` trong props. Artifact khác (kể cả `audio`, vốn là manifest JSON nhiều WAV) là `not_found`. Chỉ phục vụ `.mp4` (`video/mp4`) và `.wav` (`audio/wav`). Header `Range` một khoảng trả `206`; khoảng ngoài file trả `416`. Key thoát volume hay file thiếu đều là `not_found`.
+
 Body approval:
 
 ```json

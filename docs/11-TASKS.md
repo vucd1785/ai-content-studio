@@ -393,6 +393,23 @@ Tiêu chí nghiệm thu: player không gọi export; artifact cũ còn mở đư
 
 Kiểm tra: test danh sách version với hai artifact.
 
+## P2-09 — Route media
+
+- Trạng thái: done
+- Ưu tiên: medium
+- Phụ thuộc: `P2-08`, `P3-06`
+- Skill: `implement-task`
+
+Director mở task 2026-10-31 (quyết định 7 trong checkpoint của [12-MODEL-HANDOFF.md](12-MODEL-HANDOFF.md)).
+
+File được phép: route `GET /api/artifacts/:artifactId/media`, hàm resolve `storage_key`, panel preview, test, `.gitignore` (thư mục panel preview bị bỏ qua), mục route trong 07-API-CONTRACTS, report, task file.
+
+Mục tiêu: player và màn hình phát được preview, export và tiếng của render props mà không thoát volume `data/`.
+
+Tiêu chí nghiệm thu: key chứa `..`, ký tự null hoặc path tuyệt đối bị từ chối trước khi đọc đĩa; preview stream được và tua được (Range); player của render props có tiếng khi WAV tồn tại.
+
+Kiểm tra: test tích hợp route media, unit test resolve, test panel preview.
+
 ## P3-01 — Hàng đợi
 
 - Trạng thái: done

@@ -18,3 +18,5 @@ __pycache__/
 *.webm
 preview/
 export/
+# Mẫu preview/ ở trên dành cho output render; panel preview của web là mã nguồn (P2-08).
+!apps/web/src/features/preview/

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { artifactDetailResponseSchema } from "@studio/contracts";
 import {
   artifacts,
@@ -25,6 +25,8 @@ let db: Db;
 let closeDb: () => Promise<void>;
 let dataDir = "";
 const createdProjectIds: string[] = [];
+/** File test ghi ngoài `dataDir` (ca thoát volume); xóa trong `afterAll` kể cả khi test fail. */
+const outsideFiles: string[] = [];
 
 async function seedArtifact(type: ArtifactType, content: string | null) {
   const project = await createProject(db, "P3-04 artifact route test");
@@ -74,7 +76,11 @@ async function authedApp() {
     enableLogger: false,
     projects: { db, dataDir },
   });
-  const login = await app.inject({ method: "POST", url: "/api/session/login", payload: { password: TEST_PASSWORD } });
+  const login = await app.inject({
+    method: "POST",
+    url: "/api/session/login",
+    payload: { password: TEST_PASSWORD },
+  });
   const setCookie = login.headers["set-cookie"];
   const line = Array.isArray(setCookie) ? setCookie[0] : setCookie;
   return { app, cookie: line?.split(";")[0] ?? "" };
@@ -92,6 +98,9 @@ afterAll(async () => {
     await deleteProjectCascadeForTests(db, id);
   }
   await closeDb();
+  for (const file of outsideFiles) {
+    await rm(file, { force: true });
+  }
   await rm(dataDir, { recursive: true, force: true });
 });
 
@@ -100,7 +109,11 @@ describe("GET /api/artifacts/:artifactId", () => {
     const stored = { variants: [{ title: "A" }, { title: "B" }] };
     const row = await seedArtifact("script", JSON.stringify(stored));
     const { app, cookie } = await authedApp();
-    const response = await app.inject({ method: "GET", url: `/api/artifacts/${row.id}`, headers: { cookie } });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${row.id}`,
+      headers: { cookie },
+    });
     expect(response.statusCode).toBe(200);
     const body = artifactDetailResponseSchema.parse(response.json());
     expect(body.content).toEqual(stored);
@@ -120,7 +133,11 @@ describe("GET /api/artifacts/:artifactId", () => {
   it("artifact media chỉ trả metadata, content null, không đọc file", async () => {
     const row = await seedArtifact("preview", null);
     const { app, cookie } = await authedApp();
-    const response = await app.inject({ method: "GET", url: `/api/artifacts/${row.id}`, headers: { cookie } });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${row.id}`,
+      headers: { cookie },
+    });
     expect(response.statusCode).toBe(200);
     expect(artifactDetailResponseSchema.parse(response.json()).content).toBeNull();
     await app.close();
@@ -131,13 +148,152 @@ describe("GET /api/artifacts/:artifactId", () => {
     const broken = await seedArtifact("research", "{ hỏng");
     const { app, cookie } = await authedApp();
     for (const id of [missing.id, broken.id, randomUUID()]) {
-      const response = await app.inject({ method: "GET", url: `/api/artifacts/${id}`, headers: { cookie } });
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/artifacts/${id}`,
+        headers: { cookie },
+      });
       expect(response.statusCode, id).toBe(404);
       expect(response.json().error.code).toBe("not_found");
     }
-    const bad = await app.inject({ method: "GET", url: "/api/artifacts/not-a-uuid", headers: { cookie } });
+    const bad = await app.inject({
+      method: "GET",
+      url: "/api/artifacts/not-a-uuid",
+      headers: { cookie },
+    });
     expect(bad.statusCode).toBe(400);
     const noSession = await app.inject({ method: "GET", url: `/api/artifacts/${missing.id}` });
+    expect(noSession.statusCode).toBe(401);
+    await app.close();
+  });
+});
+
+/** Hàng artifact trỏ tới `storageKey` cho trước; file (nếu có) ghi tương đối với `dataDir`. */
+async function seedMedia(
+  type: ArtifactType,
+  storageKey: string,
+  files: Record<string, Buffer | string> = {},
+) {
+  for (const [key, bytes] of Object.entries(files)) {
+    await mkdir(dirname(join(dataDir, key)), { recursive: true });
+    await writeFile(join(dataDir, key), bytes);
+  }
+  const row = await seedArtifact("script", null);
+  const [media] = await db
+    .insert(artifacts)
+    .values({
+      projectId: row.projectId,
+      workflowRunId: row.workflowRunId,
+      type,
+      version: 1,
+      schemaVersion: "1",
+      contentHash: "d".repeat(64),
+      storageKey,
+    })
+    .returning();
+  return media?.id ?? "";
+}
+
+describe("GET /api/artifacts/:artifactId/media", () => {
+  const MP4 = Buffer.from("0123456789abcdef");
+
+  it("preview: stream MP4 cả file, Range một khoảng trả 206, khoảng ngoài file trả 416", async () => {
+    const key = `render/cache/EduVertical/p2-09-${randomUUID()}.mp4`;
+    const id = await seedMedia("preview", key, { [key]: MP4 });
+    const { app, cookie } = await authedApp();
+    const full = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${id}/media`,
+      headers: { cookie },
+    });
+    expect(full.statusCode).toBe(200);
+    expect(full.headers["content-type"]).toBe("video/mp4");
+    expect(full.headers["accept-ranges"]).toBe("bytes");
+    expect(full.headers["content-length"]).toBe(String(MP4.length));
+    expect(full.rawPayload.equals(MP4)).toBe(true);
+
+    const part = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${id}/media`,
+      headers: { cookie, range: "bytes=2-5" },
+    });
+    expect(part.statusCode).toBe(206);
+    expect(part.headers["content-range"]).toBe(`bytes 2-5/${MP4.length}`);
+    expect(part.body).toBe("2345");
+    const tail = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${id}/media`,
+      headers: { cookie, range: "bytes=-3" },
+    });
+    expect(tail.body).toBe("def");
+
+    const outside = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${id}/media`,
+      headers: { cookie, range: "bytes=99-" },
+    });
+    expect(outside.statusCode).toBe(416);
+    expect(outside.headers["content-range"]).toBe(`bytes */${MP4.length}`);
+
+    const head = await app.inject({
+      method: "HEAD",
+      url: `/api/artifacts/${id}/media`,
+      headers: { cookie },
+    });
+    expect(head.statusCode).toBe(200);
+    expect(head.headers["content-type"]).toBe("video/mp4");
+    await app.close();
+  });
+
+  it("render_props: stream WAV ở audio.storageKey của props", async () => {
+    const wavKey = `render/public/p2-09-${randomUUID()}.wav`;
+    const propsKey = `artifacts/p2-09/${randomUUID()}.json`;
+    const id = await seedMedia("render_props", propsKey, {
+      [wavKey]: "RIFFwav",
+      [propsKey]: JSON.stringify({ audio: { storageKey: wavKey, durationMs: 1000 } }),
+    });
+    const { app, cookie } = await authedApp();
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${id}/media`,
+      headers: { cookie },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toBe("audio/wav");
+    expect(response.body).toBe("RIFFwav");
+    await app.close();
+  });
+
+  it("key thoát volume, đuôi không phải media, artifact không có file media, file thiếu: đều 404", async () => {
+    // File thật nằm ngoài dataDir. Hàng artifact không thể có `storage_key` chứa `..` (CHECK
+    // `artifacts_storage_key_safe`), nhưng `audio.storageKey` bên trong props thì DB không kiểm: route phải chặn.
+    const outsideName = `p2-09-outside-${randomUUID()}.wav`;
+    outsideFiles.push(join(dataDir, "..", outsideName));
+    await writeFile(join(dataDir, "..", outsideName), "RIFFoutside");
+    const jsonKey = `artifacts/p2-09/${randomUUID()}.json`;
+    const notMedia = await seedMedia("preview", jsonKey, { [jsonKey]: "{}" });
+    const manifestKey = `artifacts/p2-09/${randomUUID()}.json`;
+    const manifest = await seedMedia("audio", manifestKey, { [manifestKey]: "{}" });
+    const propsKey = `artifacts/p2-09/${randomUUID()}.json`;
+    const propsEscape = await seedMedia("render_props", propsKey, {
+      [propsKey]: JSON.stringify({ audio: { storageKey: `../${outsideName}` } }),
+    });
+    const script = await seedMedia("script", jsonKey);
+    const missing = await seedMedia(
+      "export",
+      `render/cache/EduVertical/missing-${randomUUID()}.mp4`,
+    );
+    const { app, cookie } = await authedApp();
+    for (const id of [notMedia, manifest, propsEscape, script, missing, randomUUID()]) {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/artifacts/${id}/media`,
+        headers: { cookie },
+      });
+      expect(response.statusCode, id).toBe(404);
+      expect(response.body).not.toContain("outside");
+    }
+    const noSession = await app.inject({ method: "GET", url: `/api/artifacts/${notMedia}/media` });
     expect(noSession.statusCode).toBe(401);
     await app.close();
   });
