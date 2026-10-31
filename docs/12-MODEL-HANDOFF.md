@@ -248,15 +248,24 @@ Quyết định 5 đã mở:
 
 Test dùng client giả (worker 109 + 1 skip, api 111, web 69). Lần chạy Gemini thật đầu tiên (Director nhờ, 2026-10-31): run `6ecffe78…` tới `waiting_script_approval`, 2 lời gọi `gemini-3.6-flash`, không repair, 0 approval. Chi tiết: [reports/P3-10.md](../reports/P3-10.md).
 
+### P3-11 — Consumer queue media và render (done 2026-10-31, Director PASS)
+
+`apps/worker/src/queue/consumer.ts` thay `llm-consumer.ts`:
+- `processJob` dispatch mọi role: voice/qa ở `media`, render/export ở `render`;
+- `createConsumer({ queues })` mỗi queue một Worker, concurrency 1;
+- `failStuckJob` có `resume_from` đúng bước cho mọi role.
+
+`run-worker.ts --queues=…` với các script `worker`, `worker:llm`, `worker:media`, `worker:render`. Test BullMQ thật với TTS và backend giả đi từ duyệt kịch bản tới `exported`. Worker 111 + 1 skip. **Chưa chạy TTS hay render thật qua worker** (ghi `data/`, chờ Director). Chi tiết: [reports/P3-11.md](../reports/P3-11.md).
+
 ## Checkpoint agent
 
 Cập nhật bởi phiên tự hành ([13-AUTONOMOUS-AGENT-WORKFLOW.md](13-AUTONOMOUS-AGENT-WORKFLOW.md)). Mục này luôn là trạng thái mới nhất.
 
 - Thời điểm: 2026-10-31, phiên tự hành thứ năm.
-- Đã closeout (Director PASS): `P4-02`, `P5-02`, `P5-01`, `P4-03`, `P3-04`, `P2-07`, `P4-04`, `P2-08`, `P3-05`, `P3-06`, `P3-08`, `P5-03`, `P2-09`, `P2-10`, `P3-10` (cùng các task trước).
-- Task chờ Director verify: không. Project thử `[Thử Gemini] Redis TTL` còn trong DB.
+- Đã closeout (Director PASS): `P4-02`, `P5-02`, `P5-01`, `P4-03`, `P3-04`, `P2-07`, `P4-04`, `P2-08`, `P3-05`, `P3-06`, `P3-08`, `P5-03`, `P2-09`, `P2-10`, `P3-10`, `P3-11` (cùng các task trước).
+- Task chờ Director verify: không. Project thử `[Thử Gemini] Redis TTL` còn trong DB, chờ duyệt kịch bản.
 - Task đang làm: không. Không còn lỗi mở.
-- Lệnh cuối đã chạy (exit 0, P3-10): worker 109 + 1 skip, api 111/111, web 69/69, db 7/7, typecheck db/api/worker/web. Redis không còn key test. Trước đó (P2-10): build web. Trước nữa (P5-03): video 25/25, `render:p5-03`. Trước nữa (P3-08): worker 106 + 1 skip, api 105/105, contracts 84/84, db 7/7. DB `studio` còn 0 hàng test. Migration và `data/` không đổi.
+- Lệnh cuối đã chạy (exit 0, P3-11): worker 111 + 1 skip, typecheck worker; khởi động thử worker media/render. Trước đó (P3-10): api 111/111, web 69/69, db 7/7. Redis không còn key test. Trước đó (P2-10): build web. Trước nữa (P5-03): video 25/25, `render:p5-03`. Trước nữa (P3-08): worker 106 + 1 skip, api 105/105, contracts 84/84, db 7/7. DB `studio` còn 0 hàng test. Migration và `data/` không đổi.
 - Đủ điều kiện kế tiếp: không còn task `pending` trong `11-TASKS`.
 - Quyết định chờ Director:
   1. ~~Định dạng artifact script và route đọc artifact~~: đã chốt 2026-10-31.
@@ -267,5 +276,6 @@ Cập nhật bởi phiên tự hành ([13-AUTONOMOUS-AGENT-WORKFLOW.md](13-AUTON
   6. ~~Cách ghi phương án được chọn~~: đã chốt `variantIndex` 2026-10-31 (mục ở trên).
   7. ~~Route media~~: Director mở 2026-10-31, triển khai ở `P2-09`.
   8. ~~Visual có gọi LLM không~~: Director chốt 2026-10-31 giữ storyboard dựng bằng code ở MVP, không gọi LLM.
-- Hành động kế tiếp chính xác: Director chọn việc mới: consumer queue `media` và `render`, job cho `revise_assets`, cách chọn template. Lưu ý: P2-10 và P3-10 chưa commit; không chạy test khi `worker:llm` đang chạy trên cùng DB. Còn thiếu: UI cổng final, job cho `revise_assets`, và chạy thật backend render (cần consumer, quyết định 5). Quyết định 5 (consumer BullMQ, có chi phí Gemini) và 7 (route media) vẫn mở.
+- Sau lần chạy thật (2026-10-31): sửa resume qua BullMQ (đối chiếu đẩy lại bản Redis đã kết thúc) và timeout TTS 30 phút (`TTS_TIMEOUT_MS`); chi tiết mục 6 của [reports/P3-11.md](../reports/P3-11.md). Máy không có GPU NVIDIA, TTS chạy CPU (RTF khoảng 9). Chưa commit.
+- Hành động kế tiếp chính xác: Director bật lại worker với code mới và chạy lại run thật. Sau đó: DB test riêng (đề xuất), giao diện (ước tính thời gian, chọn model cần danh sách model và migration, thiết kế lại), job cho `revise_assets`, cách chọn template, bảng giá. Lưu ý: không chạy test khi worker đang chạy trên cùng DB. Quyết định còn mở: bảng giá (3), parse PDF (4).
 - Cần Director: có.

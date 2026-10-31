@@ -14,17 +14,20 @@ export async function listUnfinishedJobs(db: StudioDb, scope?: { jobIds: string[
     return [];
   }
   return db
-    .select({ id: jobs.id, queue: jobs.queue, status: jobs.status, maxAttempts: jobs.maxAttempts })
+    .select({
+      id: jobs.id,
+      queue: jobs.queue,
+      status: jobs.status,
+      maxAttempts: jobs.maxAttempts,
+      updatedAt: jobs.updatedAt,
+    })
     .from(jobs)
     .where(scope === undefined ? unfinished : and(unfinished, inArray(jobs.id, scope.jobIds)))
     .orderBy(asc(jobs.createdAt));
 }
 
 export async function setJobBullmqId(db: StudioDb, jobId: string, bullmqJobId: string) {
-  await db
-    .update(jobs)
-    .set({ bullmqJobId, updatedAt: new Date() })
-    .where(eq(jobs.id, jobId));
+  await db.update(jobs).set({ bullmqJobId, updatedAt: new Date() }).where(eq(jobs.id, jobId));
 }
 
 export async function getJobById(db: StudioDb, jobId: string) {

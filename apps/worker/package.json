@@ -9,7 +9,10 @@
     "pipeline:fixture": "node --import tsx src/cli/run-fixture.ts",
     "llm:external": "node --import tsx src/llm/run-external-script-cli.ts",
     "queue:reconcile": "node --import tsx src/queue/start-worker.ts",
-    "worker:llm": "node --env-file-if-exists=../../.env --import tsx src/queue/run-llm-worker.ts",
+    "worker": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts",
+    "worker:llm": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=llm",
+    "worker:media": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=media",
+    "worker:render": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=render",
     "demo:seed": "node --import tsx src/cli/seed-demo.ts seed",
     "demo:delete": "node --import tsx src/cli/seed-demo.ts delete"
   },

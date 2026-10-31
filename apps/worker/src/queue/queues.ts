@@ -56,11 +56,17 @@ export type ReconcileResult = {
   checked: number;
   enqueued: string[];
   alreadyPresent: string[];
+  /** Job Redis đã kết thúc nhưng PostgreSQL đưa về hàng đợi sau đó (resume): xóa bản cũ và đẩy lại. */
+  requeued: string[];
 };
 
 /**
- * Lúc worker khởi động: mọi hàng `jobs` còn `queued`/`running` mà Redis không có job cùng id
+ * Lúc worker khởi động và theo chu kỳ: mọi hàng `jobs` còn `queued`/`running` mà Redis không có job cùng id
  * thì enqueue lại đúng một lần (ADR-003). Không đổi `jobs.status`.
+ *
+ * Resume (P3-08) đưa job đã kết thúc về `queued` mà giữ id, trong khi BullMQ vẫn giữ bản completed/failed cùng id
+ * và không nhận thêm job trùng id. Nên: bản Redis đã kết thúc trước lần cập nhật cuối của hàng PostgreSQL thì
+ * xóa và đẩy lại. Job bị bỏ qua (không đổi hàng DB) không bị đẩy lại lặp vô hạn.
  */
 export async function reconcileQueues(
   db: StudioDb,
@@ -69,12 +75,26 @@ export async function reconcileQueues(
   scope?: { jobIds: string[] },
 ): Promise<ReconcileResult> {
   const rows = await listUnfinishedJobs(db, scope);
-  const result: ReconcileResult = { checked: rows.length, enqueued: [], alreadyPresent: [] };
+  const result: ReconcileResult = {
+    checked: rows.length,
+    enqueued: [],
+    alreadyPresent: [],
+    requeued: [],
+  };
   for (const row of rows) {
     const existing = await queues[row.queue].getJob(row.id);
     if (existing !== undefined) {
-      result.alreadyPresent.push(row.id);
-      continue;
+      const finishedOn = existing.finishedOn;
+      const stale =
+        finishedOn !== undefined &&
+        row.updatedAt.getTime() > finishedOn &&
+        ((await existing.isCompleted()) || (await existing.isFailed()));
+      if (!stale) {
+        result.alreadyPresent.push(row.id);
+        continue;
+      }
+      await existing.remove();
+      result.requeued.push(row.id);
     }
     const bullmqJobId = await enqueueJob(queues, row);
     await setJobBullmqId(db, row.id, bullmqJobId);

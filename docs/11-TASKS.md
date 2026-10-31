@@ -580,6 +580,23 @@ Tiêu chí nghiệm thu: test tích hợp với Redis thật và provider giả 
 
 Kiểm tra: test tích hợp consumer, test API route, test nút web.
 
+## P3-11 — Consumer queue media và render
+
+- Trạng thái: done
+- Ưu tiên: high
+- Phụ thuộc: `P3-05`, `P3-06`, `P3-10`
+- Skill: `build-agent-workflow`
+
+Director mở task 2026-10-31.
+
+File được phép: consumer và process worker (`apps/worker/src/queue/**`), script worker trong `apps/worker/package.json`, test, report, task file.
+
+Mục tiêu: worker chạy voice và QA (queue `media`), render preview và export (queue `render`), để run đi từ duyệt kịch bản tới `exported`.
+
+Tiêu chí nghiệm thu: test tích hợp với Redis thật, TTS và backend render giả đi từ duyệt kịch bản qua preview, QA, duyệt final tới `exported`; render lỗi bất ngờ hết retry làm run `failed` với `resume_from = preview_rendering` mà không làm lại audio. Lần chạy TTS và render thật đầu tiên (ghi vào `data/`) chỉ chạy khi Director cho phép.
+
+Kiểm tra: test tích hợp consumer.
+
 ## P4-01 — Hình studio
 
 - Trạng thái: done
