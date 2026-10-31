@@ -471,7 +471,7 @@ Kiểm tra: test hàng đợi.
 
 ## P3-06 — Preview, QA, export
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P3-05`, `P1-05`, `P1-08`
 - Skill: `build-agent-workflow`
@@ -501,7 +501,7 @@ Kiểm tra: test stream Fastify.
 
 ## P3-08 — Hủy và resume
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P3-06`, `P3-07`
 - Skill: `build-agent-workflow`

@@ -93,6 +93,11 @@ export const approvalCreatedResponseSchema = z.object({
   workflowRun: workflowRunSchema,
 });
 
+/** `POST /api/workflow-runs/:runId/cancel` và `/resume` (P3-08). Không có approval trong response. */
+export const workflowRunControlResponseSchema = z.object({
+  workflowRun: workflowRunSchema,
+});
+
 export const workflowRunDetailResponseSchema = z.object({
   workflowRun: workflowRunSchema,
   agentRuns: z.array(

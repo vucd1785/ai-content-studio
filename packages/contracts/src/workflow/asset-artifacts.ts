@@ -56,3 +56,40 @@ export const alignmentArtifactSchema = z
   .strict();
 
 export type AlignmentArtifact = z.infer<typeof alignmentArtifactSchema>;
+
+/** Mã QA trước cổng final (05-VIDEO-PIPELINE mục QA). */
+export const qaCheckCodeSchema = z.enum([
+  "schema_invalid",
+  "audio_missing",
+  "duration_out_of_range",
+  "caption_gap",
+  "frame_size_mismatch",
+  "low_alignment_confidence",
+  "research_stale",
+  "long_silence",
+]);
+
+/** `qa_report` của một preview. `passed` là true khi không có check `error`. QA không ghi approval. */
+export const qaReportArtifactSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    previewArtifactId: z.uuid(),
+    passed: z.boolean(),
+    checks: z.array(
+      z
+        .object({
+          code: qaCheckCodeSchema,
+          severity: z.enum(["error", "warning"]),
+          message: z.string().min(1).max(500),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+  .refine((report) => report.passed === !report.checks.some((check) => check.severity === "error"), {
+    message: "passed phải bằng việc không có check error",
+    path: ["passed"],
+  });
+
+export type QaReportArtifact = z.infer<typeof qaReportArtifactSchema>;
+export type QaCheckCode = z.infer<typeof qaCheckCodeSchema>;

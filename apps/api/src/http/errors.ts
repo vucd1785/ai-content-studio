@@ -34,14 +34,22 @@ export function sendValidationError(reply: FastifyReply, message = "Dữ liệu 
   return reply.status(400).send(body);
 }
 
-export function sendInvalidTransition(reply: FastifyReply): FastifyReply {
+export function sendInvalidTransition(
+  reply: FastifyReply,
+  message = "Cổng duyệt không khớp trạng thái workflow.",
+): FastifyReply {
   const body: ApiErrorBody = {
     error: {
       code: "invalid_transition",
-      message: "Cổng duyệt không khớp trạng thái workflow.",
+      message,
       details: {},
     },
   };
+  return reply.status(409).send(body);
+}
+
+export function sendConflict(reply: FastifyReply, message: string): FastifyReply {
+  const body: ApiErrorBody = { error: { code: "conflict", message, details: {} } };
   return reply.status(409).send(body);
 }
 

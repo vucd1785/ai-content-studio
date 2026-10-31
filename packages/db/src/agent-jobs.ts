@@ -170,6 +170,22 @@ export function renderJobKeyAfterAssets(workflowRunId: string, approvalId: strin
   return `render:${workflowRunId}:approval:${approvalId}`;
 }
 
+/** Key job QA sau một job render (P3-06). */
+export function qaJobKeyAfterRender(workflowRunId: string, renderJobId: string): string {
+  return `qa:${workflowRunId}:render:${renderJobId}`;
+}
+
+/** Key job export do một approval `final` + `approved` tạo; approval id nằm trong key (P3-06). */
+export function exportJobKeyAfterApproval(workflowRunId: string, approvalId: string): string {
+  return `export:${workflowRunId}:approval:${approvalId}`;
+}
+
+const EXPORT_KEY_PATTERN = /^export:[0-9a-f-]{36}:approval:([0-9a-f-]{36})$/;
+
+export function approvalIdFromExportJobKey(idempotencyKey: string): string | null {
+  return EXPORT_KEY_PATTERN.exec(idempotencyKey)?.[1] ?? null;
+}
+
 const ASSET_KEY_PATTERN = /^(visual|voice):[0-9a-f-]{36}:approval:([0-9a-f-]{36})$/;
 
 export function approvalIdFromAssetJobKey(idempotencyKey: string): string | null {
@@ -356,6 +372,10 @@ export async function failJob(
   await db.transaction(async (tx) => {
     const { job, agentRun } = await lockJob(tx, input.jobId);
     const run = await lockRun(tx, agentRun.workflowRunId);
+    // P3-08: job đã bị hủy cùng run giữ `cancelled`; lỗi đến muộn của worker không ghi đè.
+    if (job.status === "cancelled") {
+      return;
+    }
     const now = new Date();
     await tx.update(jobs).set({ status: "failed", updatedAt: now }).where(eq(jobs.id, job.id));
     await tx
@@ -450,3 +470,16 @@ export async function findRunApproval(db: StudioDb, workflowRunId: string, appro
     .limit(1);
   return row ?? null;
 }
+
+/** Artifact cha (qua `artifact_dependencies`) của `childId` theo loại; ví dụ render props của một preview. */
+export async function findParentArtifact(db: StudioDb, childId: string, type: ArtifactType) {
+  const [row] = await db
+    .select({ artifact: artifacts })
+    .from(artifactDependencies)
+    .innerJoin(artifacts, eq(artifacts.id, artifactDependencies.parentArtifactId))
+    .where(and(eq(artifactDependencies.artifactId, childId), eq(artifacts.type, type)))
+    .orderBy(desc(artifacts.version))
+    .limit(1);
+  return row?.artifact ?? null;
+}
+

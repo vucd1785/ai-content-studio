@@ -63,6 +63,7 @@ export {
   runIdParamsSchema,
   usageListResponseSchema,
   usageRecordSchema,
+  workflowRunControlResponseSchema,
   workflowRunDetailResponseSchema,
   workflowRunSchema,
   workflowRunStatusSchema,
@@ -167,8 +168,12 @@ export {
 export {
   type AlignmentArtifact,
   type AudioManifestArtifact,
+  type QaCheckCode,
+  type QaReportArtifact,
   type StoryboardArtifact,
   alignmentArtifactSchema,
   audioManifestArtifactSchema,
+  qaCheckCodeSchema,
+  qaReportArtifactSchema,
   storyboardArtifactSchema,
 } from "./workflow/asset-artifacts.js";

@@ -1,6 +1,11 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { StudioDb } from "./db.js";
-import { assetJobKeyAfterScriptApproval, insertQueuedJob, scriptJobKeyAfterChangesRequested } from "./agent-jobs.js";
+import {
+  assetJobKeyAfterScriptApproval,
+  exportJobKeyAfterApproval,
+  insertQueuedJob,
+  scriptJobKeyAfterChangesRequested,
+} from "./agent-jobs.js";
 import { publishEvents } from "./events.js";
 import {
   agentRuns,
@@ -53,7 +58,7 @@ export function nextStatusAfterApproval(
 }
 
 export class ApprovalError extends Error {
-  readonly code: "not_found" | "invalid_transition" | "artifact_mismatch" | "invalid_variant";
+  readonly code: "not_found" | "invalid_transition" | "artifact_mismatch" | "invalid_variant" | "qa_not_passed";
 
   constructor(code: ApprovalError["code"], message: string) {
     super(message);
@@ -156,6 +161,24 @@ export async function recordApproval(
     if (artifact.type !== APPROVAL_GATE_ARTIFACT_TYPE[input.gate]) {
       throw new ApprovalError("artifact_mismatch", "artifact type does not match gate");
     }
+    // P3-06 (05-VIDEO-PIPELINE mục QA): error trong QA chặn duyệt final của đúng preview đó.
+    if (input.gate === "final" && input.decision === "approved") {
+      const [qa] = await tx
+        .select({ metadata: artifacts.metadata })
+        .from(artifacts)
+        .where(
+          and(
+            eq(artifacts.workflowRunId, run.id),
+            eq(artifacts.type, "qa_report"),
+            sql`${artifacts.metadata} ->> 'previewArtifactId' = ${artifact.id}`,
+          ),
+        )
+        .orderBy(desc(artifacts.version))
+        .limit(1);
+      if ((qa?.metadata as { passed?: unknown } | undefined)?.passed !== true) {
+        throw new ApprovalError("qa_not_passed", "preview has no passing qa_report");
+      }
+    }
 
     const [approval] = await tx
       .insert(approvals)
@@ -249,10 +272,45 @@ export async function recordApproval(
         }
       }
     }
+    // P3-06: duyệt final tạo job export; job chỉ export đúng preview mà approval này trỏ tới.
+    if (input.gate === "final" && input.decision === "approved") {
+      const created = await insertQueuedJob(tx, run.id, {
+        role: "video",
+        queue: "render",
+        idempotencyKey: exportJobKeyAfterApproval(run.id, approval.id),
+      });
+      eventRows.push(created.event);
+    }
     await deps.insertEvents(tx, eventRows);
 
     return { approval: mapApprovalRow(approval), workflowRun: mapWorkflowRunRow(updated) };
   });
+}
+
+export class ExportNotAllowedError extends Error {
+  readonly code = "approval_required" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "ExportNotAllowedError";
+  }
+}
+
+/**
+ * Export chỉ được với preview mà decision `final` mới nhất của run đã `approved` (ADR-004,
+ * 04-AGENT-ORCHESTRATION mục Approval). Preview khác, hay approval đã bị decision sau thay thế, là `approval_required`.
+ */
+export async function assertExportAllowed(db: StudioDb, workflowRunId: string, previewArtifactId: string) {
+  const [latest] = await db
+    .select()
+    .from(approvals)
+    .where(and(eq(approvals.workflowRunId, workflowRunId), eq(approvals.gate, "final")))
+    .orderBy(desc(approvals.createdAt), desc(approvals.id))
+    .limit(1);
+  if (latest === undefined || latest.decision !== "approved" || latest.artifactId !== previewArtifactId) {
+    throw new ExportNotAllowedError("preview is not the approved final preview");
+  }
+  return mapApprovalRow(latest);
 }
 
 /** Chỉ đọc. Không tạo run, agent, approval. */

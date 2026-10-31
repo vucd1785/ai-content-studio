@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  agentRuns,
   ApprovalError,
   approvals,
   artifacts,
@@ -8,6 +9,7 @@ import {
   deleteProjectCascadeForTests,
   getWorkflowRunDetail,
   insertBrief,
+  jobs,
   listEventsForRun,
   nextStatusAfterApproval,
   recordApproval,
@@ -31,7 +33,11 @@ let db: Db;
 let closeDb: () => Promise<void>;
 let dataDir = "";
 
-async function seedRun(status: RunStatus, artifactTypes: ArtifactType[] = ["script"]) {
+async function seedRun(
+  status: RunStatus,
+  artifactTypes: ArtifactType[] = ["script"],
+  failure: Partial<Pick<typeof workflowRuns.$inferInsert, "resumeFrom" | "failureCode" | "failureMessage">> = {},
+) {
   const project = await createProject(db, "P2-04 test run");
   createdProjectIds.push(project.id);
   const brief = await insertBrief(db, project.id, {
@@ -45,7 +51,7 @@ async function seedRun(status: RunStatus, artifactTypes: ArtifactType[] = ["scri
   });
   const [run] = await db
     .insert(workflowRuns)
-    .values({ projectId: project.id, briefId: brief.id, status })
+    .values({ projectId: project.id, briefId: brief.id, status, ...failure })
     .returning();
   if (run === undefined) {
     throw new Error("seed run failed");
@@ -334,9 +340,24 @@ describe("approval API (P2-04)", () => {
     await app.close();
   });
 
-  it("final gate: approved → exporting, changes_requested → producing_assets", async () => {
+  /** QA của preview (P3-06): duyệt final chỉ được khi report mới nhất của đúng preview đạt. */
+  async function seedQaReport(seed: Awaited<ReturnType<typeof seedRun>>, passed: boolean) {
+    await db.insert(artifacts).values({
+      projectId: seed.projectId,
+      workflowRunId: seed.runId,
+      type: "qa_report",
+      version: 1,
+      schemaVersion: "1",
+      contentHash: "test-qa",
+      storageKey: `test/p3-06/${seed.runId}/qa.json`,
+      metadata: { previewArtifactId: seed.artifactIds.preview, passed },
+    });
+  }
+
+  it("final gate: approved → exporting (kèm job export), changes_requested → producing_assets", async () => {
     const a = await seedRun("waiting_final_approval", ["preview"]);
     const b = await seedRun("waiting_final_approval", ["preview"]);
+    await seedQaReport(a, true);
     const { app, cookie } = await createAuthedApp();
     const approved = await app.inject({
       method: "POST",
@@ -358,6 +379,28 @@ describe("approval API (P2-04)", () => {
     expect([approved.statusCode, revise.statusCode]).toEqual([201, 201]);
     expect(await runStatus(a.runId)).toBe("exporting");
     expect(await runStatus(b.runId)).toBe("producing_assets");
+    const events = await listEventsForRun(db, a.runId);
+    expect(events.at(-1)?.payload).toEqual({ role: "video", status: "queued" });
+    await app.close();
+  });
+
+  it("final approved khi QA chưa có hoặc có error: 409 conflict, không ghi gì", async () => {
+    const none = await seedRun("waiting_final_approval", ["preview"]);
+    const failing = await seedRun("waiting_final_approval", ["preview"]);
+    await seedQaReport(failing, false);
+    const { app, cookie } = await createAuthedApp();
+    for (const seed of [none, failing]) {
+      const response = await app.inject({
+        method: "POST",
+        url: `/api/workflow-runs/${seed.runId}/approvals`,
+        headers: { cookie },
+        payload: { gate: "final", decision: "approved", artifactId: seed.artifactIds.preview },
+      });
+      expect(response.statusCode).toBe(409);
+      expect((response.json() as { error: { code: string } }).error.code).toBe("conflict");
+      expect(await approvalCount(seed.runId)).toBe(0);
+      expect(await runStatus(seed.runId)).toBe("waiting_final_approval");
+    }
     await app.close();
   });
 
@@ -518,6 +561,113 @@ describe("approval API (P2-04)", () => {
     expect(unknownPost.statusCode).toBe(404);
     expect(await approvalCount(seed.runId)).toBe(0);
     expect(await runStatus(seed.runId)).toBe("waiting_script_approval");
+    await app.close();
+  });
+
+  /** Agent + job của run; trả id để kiểm trạng thái sau hủy/resume (P3-08). */
+  async function seedJob(
+    runId: string,
+    role: (typeof agentRuns.$inferSelect)["role"],
+    agentStatus: (typeof agentRuns.$inferSelect)["status"],
+    jobStatus: (typeof jobs.$inferSelect)["status"] | null,
+    key = `test-p3-08-${randomUUID()}`,
+  ) {
+    const [agent] = await db.insert(agentRuns).values({ workflowRunId: runId, role, status: agentStatus }).returning();
+    if (jobStatus === null) {
+      return { agentId: agent?.id ?? "", jobId: "" };
+    }
+    const [job] = await db
+      .insert(jobs)
+      .values({ agentRunId: agent?.id ?? "", queue: "render", idempotencyKey: key, status: jobStatus })
+      .returning();
+    return { agentId: agent?.id ?? "", jobId: job?.id ?? "" };
+  }
+
+  const agentStatus = async (id: string) =>
+    (await db.select().from(agentRuns)).find((row) => row.id === id)?.status;
+  const jobStatus = async (id: string) => (await db.select().from(jobs)).find((row) => row.id === id)?.status;
+
+  it("cancel: run, job và agent chưa xong → cancelled, không ghi approval; hủy lại hoặc hủy run exported là 409", async () => {
+    const seed = await seedRun("waiting_script_approval");
+    const script = await seedJob(seed.runId, "script", "waiting_approval", null);
+    const research = await seedJob(seed.runId, "research", "completed", "completed");
+    const queued = await seedJob(seed.runId, "visual", "queued", "queued");
+    const { app, cookie } = await createAuthedApp();
+    const response = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/cancel`, headers: { cookie } });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ workflowRun: { id: seed.runId, status: "cancelled", resumeFrom: null } });
+    expect(await approvalCount(seed.runId)).toBe(0);
+    expect(await agentStatus(script.agentId)).toBe("cancelled");
+    expect(await agentStatus(queued.agentId)).toBe("cancelled");
+    expect(await jobStatus(queued.jobId)).toBe("cancelled");
+    // Việc đã xong giữ nguyên.
+    expect(await agentStatus(research.agentId)).toBe("completed");
+    expect(await jobStatus(research.jobId)).toBe("completed");
+    const events = await listEventsForRun(db, seed.runId);
+    expect(events.map((event) => event.type)).not.toContain("approval.recorded");
+    expect(events.find((event) => event.type === "workflow.transition")?.payload).toEqual({
+      from: "waiting_script_approval",
+      to: "cancelled",
+      cause: "cancel",
+    });
+    expect(events.filter((event) => event.type === "agent.status").map((event) => event.payload)).toEqual(
+      expect.arrayContaining([
+        { role: "script", status: "cancelled" },
+        { role: "visual", status: "cancelled" },
+      ]),
+    );
+
+    const again = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/cancel`, headers: { cookie } });
+    expect(again.statusCode).toBe(409);
+    expect((again.json() as { error: { code: string } }).error.code).toBe("invalid_transition");
+    const exported = await seedRun("exported", []);
+    const blocked = await app.inject({ method: "POST", url: `/api/workflow-runs/${exported.runId}/cancel`, headers: { cookie } });
+    expect(blocked.statusCode).toBe(409);
+    expect(await runStatus(exported.runId)).toBe("exported");
+    await app.close();
+  });
+
+  it("resume: chỉ từ failed có resume_from; đưa job lỗi của bước đó về queued và xóa lỗi run", async () => {
+    const { app, cookie } = await createAuthedApp();
+    const notFailed = await seedRun("preview_rendering", []);
+    const refused = await app.inject({ method: "POST", url: `/api/workflow-runs/${notFailed.runId}/resume`, headers: { cookie } });
+    expect(refused.statusCode).toBe(409);
+    expect((refused.json() as { error: { code: string } }).error.code).toBe("invalid_transition");
+
+    const seed = await seedRun("failed", [], {
+      resumeFrom: "preview_rendering",
+      failureCode: "render_interrupted",
+      failureMessage: "killed",
+    });
+    const voice = await seedJob(seed.runId, "voice", "completed", "completed");
+    const render = await seedJob(seed.runId, "video", "failed", "failed", `render:${seed.runId}:approval:${randomUUID()}`);
+    const response = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/resume`, headers: { cookie } });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      workflowRun: { status: "preview_rendering", resumeFrom: null, failureCode: null },
+    });
+    expect(await jobStatus(render.jobId)).toBe("queued");
+    expect(await agentStatus(render.agentId)).toBe("queued");
+    expect(await jobStatus(voice.jobId)).toBe("completed");
+    expect(await approvalCount(seed.runId)).toBe(0);
+    const events = await listEventsForRun(db, seed.runId);
+    expect(events.find((event) => event.type === "workflow.transition")?.payload).toEqual({
+      from: "failed",
+      to: "preview_rendering",
+      cause: "resume",
+    });
+
+    // Không còn job lỗi của bước cần chạy lại: từ chối, run đứng ở failed.
+    const empty = await seedRun("failed", [], { resumeFrom: "qa" });
+    const conflict = await app.inject({ method: "POST", url: `/api/workflow-runs/${empty.runId}/resume`, headers: { cookie } });
+    expect(conflict.statusCode).toBe(409);
+    expect((conflict.json() as { error: { code: string } }).error.code).toBe("conflict");
+    expect(await runStatus(empty.runId)).toBe("failed");
+
+    const unknown = await app.inject({ method: "POST", url: `/api/workflow-runs/${randomUUID()}/cancel`, headers: { cookie } });
+    expect(unknown.statusCode).toBe(404);
+    const anonymous = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/cancel` });
+    expect(anonymous.statusCode).toBe(401);
     await app.close();
   });
 });

@@ -1,21 +1,27 @@
 import {
+  applyWorkflowCommand,
   approvalBodySchema,
   approvalCreatedResponseSchema,
+  type ResumeFrom,
   runIdParamsSchema,
   usageListResponseSchema,
+  workflowRunControlResponseSchema,
   workflowRunDetailResponseSchema,
 } from "@studio/contracts";
 import {
   ApprovalError,
+  cancelWorkflowRun,
   getWorkflowRunDetail,
   listUsageRecordsForRun,
   recordApproval,
+  resumeWorkflowRun,
   type StudioDb,
+  WorkflowControlError,
   workflowRunExists,
 } from "@studio/db";
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
-import type { FastifyInstance } from "fastify";
-import { sendInvalidTransition, sendNotFound, sendValidationError } from "../http/errors.js";
+import type { FastifyInstance, FastifyReply } from "fastify";
+import { sendConflict, sendInvalidTransition, sendNotFound, sendValidationError } from "../http/errors.js";
 import type { EventNotifier } from "./event-stream.js";
 
 export type WorkflowRunRouteDeps = {
@@ -61,6 +67,71 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
     },
   );
 
+  // P3-08: cạnh tính bằng state machine; DB đổi chỉ khi run vẫn ở đúng trạng thái đã đọc. Không ghi approval.
+  const controlError = (reply: FastifyReply, error: unknown) => {
+    if (error instanceof WorkflowControlError) {
+      if (error.code === "not_found") {
+        return sendNotFound(reply);
+      }
+      if (error.code === "nothing_to_resume") {
+        return sendConflict(reply, "Không còn job nào để chạy lại.");
+      }
+      return sendInvalidTransition(reply, "Trạng thái workflow không cho phép thao tác này.");
+    }
+    throw error;
+  };
+
+  typed.post(
+    "/api/workflow-runs/:runId/cancel",
+    { schema: { params: runIdParamsSchema, response: { 200: workflowRunControlResponseSchema } } },
+    async (request, reply) => {
+      const detail = await getWorkflowRunDetail(deps.db, request.params.runId);
+      if (detail === null) {
+        return sendNotFound(reply);
+      }
+      const from = detail.workflowRun.status;
+      if (!applyWorkflowCommand({ status: from, resumeFrom: null }, { kind: "cancel" }).ok) {
+        return sendInvalidTransition(reply, "Workflow đã kết thúc nên không hủy được.");
+      }
+      try {
+        const result = await cancelWorkflowRun(deps.db, {
+          workflowRunId: request.params.runId,
+          transition: { from, to: "cancelled" },
+        });
+        deps.notifier?.notify(request.params.runId);
+        return result;
+      } catch (error) {
+        return controlError(reply, error);
+      }
+    },
+  );
+
+  typed.post(
+    "/api/workflow-runs/:runId/resume",
+    { schema: { params: runIdParamsSchema, response: { 200: workflowRunControlResponseSchema } } },
+    async (request, reply) => {
+      const detail = await getWorkflowRunDetail(deps.db, request.params.runId);
+      if (detail === null) {
+        return sendNotFound(reply);
+      }
+      const resumeFrom = detail.workflowRun.resumeFrom as ResumeFrom | null;
+      const edge = applyWorkflowCommand({ status: detail.workflowRun.status, resumeFrom }, { kind: "resume" });
+      if (!edge.ok || resumeFrom === null) {
+        return sendInvalidTransition(reply, "Chỉ resume được workflow đã lỗi và có bước để chạy lại.");
+      }
+      try {
+        const result = await resumeWorkflowRun(deps.db, {
+          workflowRunId: request.params.runId,
+          transition: { from: "failed", to: resumeFrom },
+        });
+        deps.notifier?.notify(request.params.runId);
+        return { workflowRun: result.workflowRun };
+      } catch (error) {
+        return controlError(reply, error);
+      }
+    },
+  );
+
   typed.post(
     "/api/workflow-runs/:runId/approvals",
     {
@@ -90,6 +161,9 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
           }
           if (error.code === "invalid_transition") {
             return sendInvalidTransition(reply);
+          }
+          if (error.code === "qa_not_passed") {
+            return sendConflict(reply, "Preview chưa qua QA nên chưa duyệt được.");
           }
           if (error.code === "invalid_variant") {
             return sendValidationError(reply, "Cần chọn đúng một phương án khi duyệt kịch bản.");
