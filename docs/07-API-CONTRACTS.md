@@ -51,13 +51,16 @@ Body approval:
   "gate": "script",
   "decision": "approved",
   "artifactId": "uuid",
-  "note": "Dùng phương án 1, rút ngắn cảnh 2"
+  "variantIndex": 1,
+  "note": "Rút ngắn cảnh 2"
 }
 ```
 
 `gate` là `script` hoặc `final`. `decision` là `approved`, `rejected`, hoặc `changes_requested`. Thiếu field là `validation_error`.
 
 `changes_requested` và `rejected` bắt buộc `note` dài 1–2000 ký tự. `approved` được để `note` rỗng.
+
+`variantIndex` (`1` hoặc `2`) là phương án được dựng. Bắt buộc khi `gate = script` và `decision = approved`; có ở trường hợp khác là `validation_error`. Response và `GET /api/workflow-runs/:runId` trả `variantIndex` (null khi không có).
 
 ## SSE
 

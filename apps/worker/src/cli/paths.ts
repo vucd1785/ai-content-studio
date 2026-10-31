@@ -13,7 +13,8 @@ export type PipelineErrorCode =
   | "audio_missing"
   | "audio_build_failed"
   | "render_failed"
-  | "render_props_invalid";
+  | "render_props_invalid"
+  | "caption_override_invalid";
 
 export class PipelineError extends Error {
   readonly code: PipelineErrorCode;

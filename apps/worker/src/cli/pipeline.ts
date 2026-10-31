@@ -1,16 +1,17 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import type { Script } from "@studio/contracts";
-import { parseScript } from "@studio/contracts";
+import { CaptionOverrideError, parseCaptionTimingOverride, parseScript } from "@studio/contracts";
 import type {
   RenderEduVerticalWithCacheResult,
   RenderMediaInvokeOptions,
 } from "@studio/video/render";
 import { renderEduVerticalWithCache } from "@studio/video/render";
 import { hashEduVerticalRenderProps } from "@studio/video/render-props/content-hash";
+import type { EduVerticalRenderProps } from "@studio/video/render-props/schema";
 import { EDU_VERTICAL_COMPOSITION_ID } from "@studio/video/render-props/schema";
 import { TtsMediaClient } from "../media-client.js";
 import {
@@ -18,9 +19,13 @@ import {
   resolvePublicAudioStorageKey,
   type SceneWavInput,
 } from "./audio-timeline.js";
-import { buildEduVerticalRenderProps } from "./build-render-props.js";
+import { buildEduVerticalRenderProps, type SceneMediaArtifacts } from "./build-render-props.js";
 import { probeMaxVolumeDb, probeMp4, probeWavDurationMs } from "./ffprobe.js";
-import { collectSceneMediaArtifacts, preparePublicAudioAsset } from "./media-stage.js";
+import {
+  collectSceneMediaArtifacts,
+  type MediaStageTimings,
+  preparePublicAudioAsset,
+} from "./media-stage.js";
 import { PipelineError, resolveDataDir, resolveRepoRoot, sha256FileHex } from "./paths.js";
 import { writePipelineReport } from "./qa.js";
 
@@ -31,26 +36,63 @@ export type PipelineRunResult = {
   qaPassed: boolean;
 };
 
+export type PipelinePropsRunResult = {
+  props: EduVerticalRenderProps;
+  contentHash: string;
+  sceneArtifacts: SceneMediaArtifacts[];
+  mediaTimings: MediaStageTimings;
+  audioContentSha256: string;
+  scriptPath: string;
+  stageLog: Record<string, unknown>;
+};
+
 export type PipelineOptions = {
   scriptPath?: string;
   purpose?: "preview" | "export";
   ttsBaseUrl?: string;
+  captionOverridePath?: string;
+  propsOnly?: boolean;
 };
 
-export async function runScriptToMp4(options: PipelineOptions = {}): Promise<PipelineRunResult> {
+function loadCaptionOverride(path: string): ReturnType<typeof parseCaptionTimingOverride> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8")) as unknown;
+  } catch (cause) {
+    throw new PipelineError(
+      "caption_override_invalid",
+      `Cannot read caption override: ${cause instanceof Error ? cause.message : String(cause)}`,
+    );
+  }
+  try {
+    return parseCaptionTimingOverride(raw);
+  } catch (cause) {
+    if (cause instanceof CaptionOverrideError) {
+      throw new PipelineError("caption_override_invalid", cause.message);
+    }
+    throw new PipelineError(
+      "caption_override_invalid",
+      cause instanceof Error ? cause.message : "Invalid caption override JSON",
+    );
+  }
+}
+
+export async function runScriptToRenderProps(
+  options: PipelineOptions = {},
+): Promise<PipelinePropsRunResult> {
   const repoRoot = resolveRepoRoot(import.meta.url);
   const dataDir = resolveDataDir(repoRoot);
   mkdirSync(join(dataDir, "pipeline"), { recursive: true });
   const scriptPath = options.scriptPath ?? join(repoRoot, "fixtures", "script.edu.json");
-  const purpose = options.purpose ?? "preview";
   const ttsBaseUrl = options.ttsBaseUrl ?? process.env.TTS_BASE_URL ?? "http://127.0.0.1:8000";
+  const captionOverride = options.captionOverridePath
+    ? loadCaptionOverride(options.captionOverridePath)
+    : undefined;
 
-  const totalStart = performance.now();
   const stageLog: Record<string, unknown> = {};
 
   let scriptRaw: unknown;
   try {
-    const { readFileSync } = await import("node:fs");
     scriptRaw = JSON.parse(readFileSync(scriptPath, "utf8")) as unknown;
   } catch (cause) {
     throw new PipelineError(
@@ -112,16 +154,26 @@ export async function runScriptToMp4(options: PipelineOptions = {}): Promise<Pip
 
   const measuredCombinedMs = probeWavDurationMs(combinedFinal);
 
-  const props = buildEduVerticalRenderProps({
-    script,
-    sceneArtifacts,
-    audioStorageKey: storageKey,
-    totalDurationMs: measuredCombinedMs,
-    audioSrc: storageKey,
-  });
+  let props: EduVerticalRenderProps;
+  try {
+    props = buildEduVerticalRenderProps({
+      script,
+      sceneArtifacts,
+      audioStorageKey: storageKey,
+      totalDurationMs: measuredCombinedMs,
+      audioSrc: storageKey,
+      ...(captionOverride ? { captionOverride } : {}),
+    });
+  } catch (cause) {
+    if (cause instanceof CaptionOverrideError) {
+      throw new PipelineError("caption_override_invalid", cause.message);
+    }
+    throw cause;
+  }
 
   const contentHash = hashEduVerticalRenderProps(props, { audioContentSha256 });
   stageLog.contentHash = contentHash;
+  stageLog.captionOverridePath = options.captionOverridePath ?? null;
   stageLog.wavArtifacts = sceneArtifacts.map((s) => s.wavArtifactId);
   stageLog.alignmentArtifacts = sceneArtifacts.map((s) => s.wavArtifactId);
   stageLog.gates = sceneArtifacts.map((s) => ({
@@ -129,6 +181,46 @@ export async function runScriptToMp4(options: PipelineOptions = {}): Promise<Pip
     passesGate: s.alignment.gate.passesGate,
     validationOk: s.alignment.validation.ok,
   }));
+
+  return {
+    props,
+    contentHash,
+    sceneArtifacts,
+    mediaTimings,
+    audioContentSha256,
+    scriptPath,
+    stageLog,
+  };
+}
+
+export async function runScriptToMp4(options: PipelineOptions = {}): Promise<PipelineRunResult> {
+  const repoRoot = resolveRepoRoot(import.meta.url);
+  const dataDir = resolveDataDir(repoRoot);
+  const purpose = options.purpose ?? "preview";
+  const totalStart = performance.now();
+
+  const built = await runScriptToRenderProps(options);
+  const { props, contentHash, sceneArtifacts, scriptPath, stageLog, audioContentSha256 } = built;
+  const combinedFinal = join(dataDir, "pipeline", "audio", `${audioContentSha256}.wav`);
+
+  if (options.propsOnly) {
+    stageLog.totalMs = Math.round(performance.now() - totalStart);
+    const reportPath = join(dataDir, "pipeline", "P1-08-props-only.json");
+    writePipelineReport(reportPath, {
+      task: "P1-08",
+      mode: "props_only",
+      scriptPath,
+      contentHash,
+      captionCount: props.captions.length,
+      stageLog,
+    });
+    return {
+      mp4Path: "",
+      contentHash,
+      reportPath,
+      qaPassed: true,
+    };
+  }
 
   const publicRoot = join(dataDir, "render", "public");
   const entryPoint = join(repoRoot, "apps", "video", "src", "index.ts");
@@ -260,19 +352,25 @@ export async function runFixtureCli(argv: string[]): Promise<number> {
   const purposeFlag = argv.indexOf("--purpose");
   const purposeRaw = purposeFlag >= 0 ? argv[purposeFlag + 1] : "preview";
   const purpose = purposeRaw === "export" ? "export" : "preview";
+  const overrideFlag = argv.indexOf("--caption-override");
+  const captionOverridePath = overrideFlag >= 0 ? argv[overrideFlag + 1] : undefined;
+  const propsOnly = argv.includes("--props-only");
 
   try {
     const result = await runScriptToMp4({
       ...(scriptPath ? { scriptPath } : {}),
       purpose,
+      ...(captionOverridePath ? { captionOverridePath } : {}),
+      ...(propsOnly ? { propsOnly: true } : {}),
     });
     console.log(
       JSON.stringify(
         {
           status: result.qaPassed ? "pass" : "qa_warning",
-          mp4Path: result.mp4Path,
+          mp4Path: result.mp4Path || null,
           contentHash: result.contentHash,
           reportPath: result.reportPath,
+          propsOnly,
         },
         null,
         2,

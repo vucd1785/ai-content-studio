@@ -17,6 +17,12 @@ def test_health_degraded_without_model() -> None:
     assert body["status"] in ("ok", "degraded")
 
 
+def test_main_does_not_bind_align_pipeline_at_import() -> None:
+    import app.main as main
+
+    assert "align_transcript_to_wav" not in main.__dict__
+
+
 @pytest.mark.integration
 def test_synthesize_redis_sentence() -> None:
     if os.environ.get("TTS_INTEGRATION") != "1":

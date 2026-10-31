@@ -1,4 +1,4 @@
-# VieNeu-TTS v3 Turbo — CPU/ONNX (torch-free), Apache 2.0 SDK
+# VieNeu-TTS v3 Turbo — CPU/ONNX synthesis; Whisper alignment via optional deps
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
@@ -20,7 +20,9 @@ COPY pyproject.toml README.md ./
 COPY app ./app
 
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
+    && pip install --no-cache-dir \
+         --extra-index-url https://download.pytorch.org/whl/cpu \
+         ".[align,align-whisper]"
 
 EXPOSE 8000
 

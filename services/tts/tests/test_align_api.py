@@ -108,7 +108,7 @@ def test_align_success_persists_json(tmp_path, monkeypatch) -> None:
     )
 
     artifact = _sample_artifact(P0_03_ID)
-    with patch("app.main.align_transcript_to_wav", return_value=artifact):
+    with patch("app.alignment.pipeline.align_transcript_to_wav", return_value=artifact):
         response = client.post(
             "/align",
             json={"audioArtifactId": P0_03_ID, "transcript": TRANSCRIPT},
@@ -140,7 +140,7 @@ def test_align_default_engine_whisper(tmp_path, monkeypatch) -> None:
     )
 
     artifact = _sample_artifact(P0_03_ID)
-    with patch("app.main.align_transcript_to_wav", return_value=artifact) as mocked:
+    with patch("app.alignment.pipeline.align_transcript_to_wav", return_value=artifact) as mocked:
         client.post(
             "/align",
             json={"audioArtifactId": P0_03_ID, "transcript": TRANSCRIPT},

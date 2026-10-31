@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { scriptSchema } from "./schema.js";
+import { scriptArtifactSchema, scriptSchema } from "./schema.js";
 
 const fixturePath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -105,5 +105,16 @@ describe("scriptSchema", () => {
     const scenes = (fixture.scenes as object[]).slice(0, 2);
     const result = scriptSchema.safeParse({ ...fixture, scenes });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("scriptArtifactSchema (P3-04)", () => {
+  it("nhận đúng hai phương án; từ chối một, ba phương án hoặc key lạ", () => {
+    const script = loadFixture();
+    expect(scriptArtifactSchema.safeParse({ variants: [script, script] }).success).toBe(true);
+    expect(scriptArtifactSchema.safeParse({ variants: [script] }).success).toBe(false);
+    expect(scriptArtifactSchema.safeParse({ variants: [script, script, script] }).success).toBe(false);
+    expect(scriptArtifactSchema.safeParse({ variants: [script, script], extra: 1 }).success).toBe(false);
+    expect(scriptArtifactSchema.safeParse({ variants: [script, { ...script, scenes: [] }] }).success).toBe(false);
   });
 });

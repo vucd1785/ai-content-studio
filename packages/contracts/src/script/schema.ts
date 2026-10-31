@@ -136,6 +136,17 @@ export const scriptSchema = z
     }
   });
 
+/**
+ * Nội dung file artifact `script` (P3-04, Director chốt 2026-10-31): đúng hai phương án như response P1-07.
+ * `artifacts.schema_version` = "1". UI so sánh (P2-07) đọc cùng schema này.
+ */
+export const scriptArtifactSchema = z
+  .object({
+    variants: z.tuple([scriptSchema, scriptSchema]),
+  })
+  .strict();
+
+export type ScriptArtifact = z.infer<typeof scriptArtifactSchema>;
 export type Script = z.infer<typeof scriptSchema>;
 export type Scene = z.infer<typeof sceneSchema>;
 export type ScriptSource = z.infer<typeof scriptSourceSchema>;

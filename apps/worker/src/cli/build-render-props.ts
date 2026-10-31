@@ -1,7 +1,9 @@
 import type { AlignResponse } from "@studio/contracts";
 import {
+  applyCaptionOverride,
   buildCaptionsFromSceneAlignments,
   computeSceneTimingPlan,
+  type CaptionTimingOverride,
   type SceneAlignmentForCaptions,
   type SceneTimingPlan,
   type Script,
@@ -56,6 +58,7 @@ export function buildEduVerticalRenderProps(input: {
   audioStorageKey: string;
   totalDurationMs: number;
   audioSrc?: string;
+  captionOverride?: CaptionTimingOverride;
 }): EduVerticalRenderProps {
   for (const scene of input.sceneArtifacts) {
     assertAlignmentAccepted(scene.alignment, scene.sceneId);
@@ -77,7 +80,19 @@ export function buildEduVerticalRenderProps(input: {
     };
   });
 
-  const captions = buildCaptionsFromSceneAlignments(alignmentInputs);
+  let captions = buildCaptionsFromSceneAlignments(alignmentInputs);
+
+  if (input.captionOverride) {
+    captions = applyCaptionOverride(captions, input.captionOverride, {
+      scenes: alignmentInputs.map((sceneInput) => ({
+        sceneId: sceneInput.timing.sceneId,
+        fromMs: sceneInput.timing.fromMs,
+        durationMs: sceneInput.timing.durationMs,
+        measuredDurationMs: sceneInput.measuredDurationMs,
+        wordCount: sceneInput.words.length,
+      })),
+    });
+  }
 
   const scenes: EduVerticalRenderProps["scenes"] = input.script.scenes.map((scene, index) => {
     const timing = plan.scenes[index];

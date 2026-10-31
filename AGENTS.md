@@ -18,6 +18,8 @@ Repository đang ở giai đoạn tài liệu. Chưa có mã ứng dụng. Task 
 
 Định nghĩa xong là toàn bộ tiêu chí nghiệm thu của task đó đã có bằng chứng trong report.
 
+Phiên agent tự hành làm nhiều task liên tiếp theo [docs/13-AUTONOMOUS-AGENT-WORKFLOW.md](docs/13-AUTONOMOUS-AGENT-WORKFLOW.md) (chọn task, cổng Director, checkpoint). File đó không nới ràng buộc nào ở đây.
+
 ## Tài liệu
 
 | Việc | File |

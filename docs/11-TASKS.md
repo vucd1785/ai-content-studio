@@ -246,11 +246,11 @@ Tiêu chí nghiệm thu: test schema sai đi vào một lần repair rồi fail;
 
 Kiểm tra: unit test adapter; external chỉ khi `GEMINI_API_KEY` có trong environment của phiên đó.
 
-Ghi chú: không thêm OpenAI ở task này.
+Ghi chú: không thêm OpenAI ở task này. Live `llm:external` **PASS** 2026-10-30 trên **gemini-3.8-flash** (`repairCount` 0). Workaround `diagramJson` ghi trong [ADR-007](decisions/ADR-007-llm-adapter.md). Chưa live-test workaround trên gemini-3.6-flash. Mặc định model không đổi.
 
 ## P1-08 — Override phụ đề
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: medium
 - Phụ thuộc: `P1-03`, `P1-06`
 - Skill: `implement-task`
@@ -263,9 +263,11 @@ Tiêu chí nghiệm thu: test đếm lời gọi synthesize vẫn là số WAV c
 
 Kiểm tra: unit test và một lần chạy CLI với override.
 
+Ghi chú: Director verify props-only PASS — `reports/P1-08.md`; override mẫu `what-is-redis` wordIndex 2 (`6540`–`6960` ms); `contentHash` đổi; `synthesizeReused`/`alignReused` = 5.
+
 ## P2-01 — Schema Drizzle
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P0-01`, `P1-06`
 - Skill: `implement-task`
@@ -279,9 +281,11 @@ Tiêu chí nghiệm thu: migration lên được trên Postgres của Compose; u
 
 Kiểm tra: migration trên database trống rồi chạy lại lần hai không lỗi.
 
+Ghi chú: Director verify PASS 2026-10-30 — migrate ×2, test constraint, volume/media giữ — [reports/P2-01.md](../reports/P2-01.md).
+
 ## P2-02 — Session
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-01`
 - Skill: `implement-task`
@@ -294,9 +298,11 @@ Tiêu chí nghiệm thu: test sai mật khẩu không nhận cookie; response v�
 
 Kiểm tra: Vitest với Fastify inject.
 
+Ghi chú: Director verify PASS 2026-10-30 — `@studio/api` test 35/35, typecheck api/contracts/config — [reports/P2-02.md](../reports/P2-02.md). Session stateless; logout không revoke cookie đã copy; Origin loopback + SameSite=Lax (mục 7 report). Volume/media không đổi.
+
 ## P2-03 — API project
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-02`
 - Skill: `implement-task`
@@ -311,7 +317,7 @@ Kiểm tra: test API với Postgres.
 
 ## P2-04 — API approval
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-03`
 - Skill: `implement-task`
@@ -327,7 +333,7 @@ Kiểm tra: test transaction rollback khi insert event lỗi.
 
 ## P2-05 — Vỏ web
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-02`
 - Skill: `implement-task`
@@ -344,7 +350,7 @@ Ghi chú: Playwright đầy đủ có thể gắn ở `P2-07` khi luồng duyệ
 
 ## P2-06 — Form brief
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-03`, `P2-05`
 - Skill: `implement-task`
@@ -359,7 +365,7 @@ Kiểm tra: test component hoặc Playwright của form.
 
 ## P2-07 — So sánh kịch bản
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-04`, `P2-06`
 - Skill: `implement-task`
@@ -374,7 +380,7 @@ Kiểm tra: Playwright hoặc test API kèm component. Ghi rõ loại đã chạ
 
 ## P2-08 — Preview và version
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: medium
 - Phụ thuộc: `P2-07`, `P1-05`
 - Skill: `implement-task`
@@ -389,7 +395,7 @@ Kiểm tra: test danh sách version với hai artifact.
 
 ## P3-01 — Hàng đợi
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-01`
 - Skill: `build-agent-workflow`
@@ -405,7 +411,7 @@ Kiểm tra: test với Redis Compose.
 
 ## P3-02 — State machine
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P3-01`
 - Skill: `build-agent-workflow`
@@ -420,7 +426,7 @@ Kiểm tra: unit test.
 
 ## P3-03 — Job research
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P3-02`, `P1-07`
 - Skill: `build-agent-workflow`
@@ -435,7 +441,7 @@ Kiểm tra: unit test fetch và một job với LLM giả.
 
 ## P3-04 — Job script và cổng
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P3-03`, `P2-04`
 - Skill: `build-agent-workflow`
@@ -450,7 +456,7 @@ Kiểm tra: test worker với LLM giả và Postgres.
 
 ## P3-05 — Visual và voice
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P3-04`, `P1-02`, `P1-04`
 - Skill: `build-agent-workflow`
@@ -480,7 +486,7 @@ Kiểm tra: test tích hợp worker.
 
 ## P3-07 — SSE
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P3-02`, `P2-02`
 - Skill: `build-agent-workflow`
@@ -510,7 +516,7 @@ Kiểm tra: test tích hợp.
 
 ## P3-09 — Usage
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: medium
 - Phụ thuộc: `P1-07`, `P3-02`
 - Skill: `implement-task`
@@ -525,7 +531,7 @@ Kiểm tra: unit test trần.
 
 ## P4-01 — Hình studio
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P2-05`
 - Skill: `build-3d-scene`
@@ -541,7 +547,7 @@ Kiểm tra: typecheck và test props nếu có renderer test; không cần scree
 
 ## P4-02 — Nối trạng thái thật
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: high
 - Phụ thuộc: `P4-01`, `P3-07`
 - Skill: `build-3d-scene`
@@ -556,7 +562,7 @@ Kiểm tra: unit test reducer của store.
 
 ## P4-03 — Reduced motion
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: medium
 - Phụ thuộc: `P4-02`
 - Skill: `build-3d-scene`
@@ -571,7 +577,7 @@ Kiểm tra: unit test.
 
 ## P4-04 — Inspector
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: medium
 - Phụ thuộc: `P4-02`, `P2-07`
 - Skill: `build-3d-scene`
@@ -586,7 +592,7 @@ Kiểm tra: test điều hướng panel.
 
 ## P5-01 — Cache research
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: medium
 - Phụ thuộc: `P3-03`
 - Skill: `implement-task`
@@ -601,7 +607,7 @@ Kiểm tra: unit test idempotency.
 
 ## P5-02 — Màn usage
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: low
 - Phụ thuộc: `P3-09`, `P2-05`
 - Skill: `implement-task`

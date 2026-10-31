@@ -11,6 +11,8 @@ docker compose --profile cpu up -d --build tts
 curl http://localhost:8000/health
 ```
 
+Image Docker cài `.[align,align-whisper]` (PyTorch CPU + Whisper). Synthesis vẫn ONNX; alignment import lazy — `/health` và `/synthesize` không cần `torch` lúc import module.
+
 Tổng hợp một câu mẫu:
 
 ```bash

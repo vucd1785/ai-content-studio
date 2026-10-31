@@ -54,9 +54,11 @@ Khóa `(artifact_id, parent_artifact_id)`. Dùng để tính tập bị làm b�
 
 ### `approvals`
 
-`id`, `workflow_run_id`, `gate` (`script`, `final`), `decision` (`approved`, `rejected`, `changes_requested`), `artifact_id`, `note`, `created_at`.
+`id`, `workflow_run_id`, `gate` (`script`, `final`), `decision` (`approved`, `rejected`, `changes_requested`), `artifact_id`, `variant_index`, `note`, `created_at`.
 
 Không có default cho `decision`. Approval gắn với một artifact. Preview mới cần approval mới.
+
+`variant_index` (integer, nullable) là phương án được duyệt trong artifact script hai phương án: `1` hoặc `2`, chỉ có khi `gate = script` và `decision = approved`. CHECK `approvals_variant_index_valid` chặn mọi trường hợp khác. Migration `0001`, Director chốt 2026-10-31 (quyết định 6).
 
 ### `events`
 

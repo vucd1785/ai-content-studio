@@ -7,6 +7,7 @@ import { z } from "zod/v4";
 import { resolveRepoRoot } from "../cli/paths.js";
 import { LlmError } from "./errors.js";
 import { createGeminiAdapter } from "./gemini-adapter.js";
+import { encodeScriptVariantsForGeminiResponse } from "./gemini-diagram-transform.js";
 import { createGeminiStructuredClient } from "./gemini-client.js";
 import { scriptVariantsPayloadSchema } from "./script-schema.js";
 import type { StructuredGenerateClient, StructuredGenerateResponse } from "./structured-output.js";
@@ -73,7 +74,7 @@ describe("generateWithSchemaRepair", () => {
       systemInstruction: "sys",
       userPrompt: "user",
       model: "fake",
-      thinkingBudget: 0,
+      thinkingLevel: "low",
     });
     expect(result.data.value).toBe(1);
     expect(result.repairCount).toBe(0);
@@ -86,7 +87,7 @@ describe("generateWithSchemaRepair", () => {
       systemInstruction: "sys",
       userPrompt: "user",
       model: "fake",
-      thinkingBudget: 0,
+      thinkingLevel: "low",
     });
     expect(result.data.value).toBe(2);
     expect(result.repairCount).toBe(1);
@@ -100,7 +101,7 @@ describe("generateWithSchemaRepair", () => {
         systemInstruction: "sys",
         userPrompt: "user",
         model: "fake",
-        thinkingBudget: 0,
+        thinkingLevel: "low",
       }),
     ).rejects.toMatchObject({ code: "schema_invalid" });
   });
@@ -111,8 +112,8 @@ describe("createGeminiStructuredClient", () => {
     expect(() =>
       createGeminiStructuredClient({
         apiKey: undefined,
-        modelScript: "gemini-2.0-flash",
-        thinkingBudgetScript: 0,
+        modelScript: "gemini-3.6-flash",
+        thinkingLevelScript: "low",
       }),
     ).toThrow(LlmError);
   });
@@ -121,14 +122,14 @@ describe("createGeminiStructuredClient", () => {
 describe("createGeminiAdapter script task", () => {
   it("trả đúng hai phương án đã validate", async () => {
     const script = loadEduScript();
-    const payload = JSON.stringify({
-      variants: [script, { ...script, title: `${script.title} B` }],
-    });
+    const payload = JSON.stringify(
+      encodeScriptVariantsForGeminiResponse([script, { ...script, title: `${script.title} B` }]),
+    );
     const adapter = createGeminiAdapter({
       config: {
         apiKey: "test-key",
-        modelScript: "gemini-2.0-flash",
-        thinkingBudgetScript: 0,
+        modelScript: "gemini-3.6-flash",
+        thinkingLevelScript: "low",
       },
       client: fakeClient([payload]),
     });
@@ -143,13 +144,13 @@ describe("createGeminiAdapter script task", () => {
 
   it("schema sai → một repair → fail nếu vẫn sai", async () => {
     const script = loadEduScript();
-    const valid = JSON.stringify({ variants: [script, script] });
+    const valid = JSON.stringify(encodeScriptVariantsForGeminiResponse([script, script]));
     const invalid = JSON.stringify({ variants: [script] });
     const adapter = createGeminiAdapter({
       config: {
         apiKey: "test-key",
-        modelScript: "gemini-2.0-flash",
-        thinkingBudgetScript: 0,
+        modelScript: "gemini-3.6-flash",
+        thinkingLevelScript: "low",
       },
       client: fakeClient([invalid, invalid, valid]),
     });
@@ -161,13 +162,13 @@ describe("createGeminiAdapter script task", () => {
 
   it("schema sai → repair thành công", async () => {
     const script = loadEduScript();
-    const valid = JSON.stringify({ variants: [script, script] });
+    const valid = JSON.stringify(encodeScriptVariantsForGeminiResponse([script, script]));
     const invalid = JSON.stringify({ notVariants: true });
     const adapter = createGeminiAdapter({
       config: {
         apiKey: "test-key",
-        modelScript: "gemini-2.0-flash",
-        thinkingBudgetScript: 0,
+        modelScript: "gemini-3.6-flash",
+        thinkingLevelScript: "low",
       },
       client: fakeClient([invalid, valid]),
     });
@@ -181,8 +182,8 @@ describe("createGeminiAdapter script task", () => {
     const adapter = createGeminiAdapter({
       config: {
         apiKey: "test-key",
-        modelScript: "gemini-2.0-flash",
-        thinkingBudgetScript: 0,
+        modelScript: "gemini-3.6-flash",
+        thinkingLevelScript: "low",
       },
       client: {
         async generateStructured() {
@@ -202,12 +203,12 @@ describe("createGeminiAdapter script task", () => {
       readFileSync(join(repoRoot, "fixtures", "script.edu.json"), "utf8"),
     ) as Record<string, unknown>;
     const noSources = parseScript(raw);
-    const payload = JSON.stringify({ variants: [noSources, noSources] });
+    const payload = JSON.stringify(encodeScriptVariantsForGeminiResponse([noSources, noSources]));
     const adapter = createGeminiAdapter({
       config: {
         apiKey: "test-key",
-        modelScript: "gemini-2.0-flash",
-        thinkingBudgetScript: 0,
+        modelScript: "gemini-3.6-flash",
+        thinkingLevelScript: "low",
       },
       client: fakeClient([payload, payload]),
     });

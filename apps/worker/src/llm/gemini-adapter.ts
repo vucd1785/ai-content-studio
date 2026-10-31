@@ -1,9 +1,10 @@
 import { type GeminiEnvConfig, readGeminiEnv } from "@studio/config/gemini";
 import { createGeminiStructuredClient } from "./gemini-client.js";
+import { mapGeminiScriptVariantsResponse } from "./gemini-diagram-transform.js";
 import {
   buildScriptGenerationPrompt,
   scriptTaskSystemInstruction,
-  scriptVariantsJsonSchema,
+  scriptVariantsGeminiGenerationSchema,
 } from "./script-prompt.js";
 import { scriptVariantsPayloadSchema } from "./script-schema.js";
 import type { StructuredGenerateClient } from "./structured-output.js";
@@ -29,9 +30,13 @@ export function createGeminiAdapter(options: GeminiAdapterOptions = {}): Structu
       const result = await generateWithSchemaRepair(scriptVariantsPayloadSchema, client, {
         systemInstruction: scriptTaskSystemInstruction(),
         userPrompt,
-        responseJsonSchema: scriptVariantsJsonSchema(),
+        responseJsonSchema: scriptVariantsGeminiGenerationSchema(),
         model: config.modelScript,
-        thinkingBudget: config.thinkingBudgetScript,
+        thinkingLevel: config.thinkingLevelScript,
+      }, {
+        mapParsedJson: mapGeminiScriptVariantsResponse,
+        repairNotes:
+          "Diagram scenes use diagramJson: a JSON string (no markdown fences) encoding { nodes: [{id,label}], edges: [{from,to,label?}] }. Do not emit nested diagram objects.",
       });
 
       return {

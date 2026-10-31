@@ -1,6 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import type { GeminiEnvConfig } from "@studio/config/gemini";
 import { LlmError } from "./errors.js";
+import { summarizeGenerationConfigForDebug } from "./gemini-json-schema.js";
+import { buildGeminiGenerateContentConfig } from "./gemini-request-config.js";
 import type {
   StructuredGenerateClient,
   StructuredGenerateRequest,
@@ -35,20 +37,27 @@ export function createGeminiStructuredClient(config: GeminiEnvConfig): Structure
       request: StructuredGenerateRequest,
     ): Promise<StructuredGenerateResponse> {
       try {
-        const thinkingConfig =
-          request.thinkingBudget > 0
-            ? { thinkingBudget: request.thinkingBudget }
-            : { thinkingBudget: 0 };
+        const generateConfig = buildGeminiGenerateContentConfig({
+          systemInstruction: request.systemInstruction,
+          ...(request.responseJsonSchema ? { responseJsonSchema: request.responseJsonSchema } : {}),
+          thinkingLevel: request.thinkingLevel,
+        });
+
+        if (process.env.GEMINI_DEBUG_REQUEST === "1") {
+          const debugPayload = {
+            model: request.model,
+            thinkingLevel: request.thinkingLevel,
+            ...(generateConfig.responseJsonSchema
+              ? { responseJsonSchema: generateConfig.responseJsonSchema }
+              : {}),
+          };
+          console.error(JSON.stringify(summarizeGenerationConfigForDebug(debugPayload), null, 2));
+        }
 
         const response = await ai.models.generateContent({
           model: request.model,
           contents: request.userPrompt,
-          config: {
-            systemInstruction: request.systemInstruction,
-            responseMimeType: "application/json",
-            ...(request.responseJsonSchema ? { responseSchema: request.responseJsonSchema } : {}),
-            thinkingConfig,
-          },
+          config: generateConfig,
         });
 
         const jsonText = response.text ?? "";

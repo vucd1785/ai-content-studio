@@ -28,6 +28,8 @@ export type ScriptGenerationInput = {
   brief: BriefInput;
   /** Tóm tắt research tùy chọn (Phase 3+); MVP có thể rỗng. */
   researchSummary?: string;
+  /** Ghi chú `changes_requested` của Director cho lượt viết lại (P3-04). */
+  directorNote?: string;
 };
 
 export type ScriptGenerationResult = {

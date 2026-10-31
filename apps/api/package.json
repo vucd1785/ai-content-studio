@@ -4,6 +4,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc -p ../../tsconfig.base.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node --import tsx src/main.ts"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^9.0.3",
+    "@fastify/type-provider-zod": "^1.0.3",
+    "@studio/config": "workspace:*",
+    "@studio/contracts": "workspace:*",
+    "@studio/db": "workspace:*",
+    "fastify": "^5.6.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from app import engine
 from app.alignment.gate import evaluate_go_gate
-from app.alignment.pipeline import align_transcript_to_wav
 from app.alignment.revalidate import artifact_from_saved_json, reevaluate_gate_on_disk
 from app.alignment.schema import AlignmentArtifact, AlignmentValidation, AlignmentWord
 from app.artifacts import alignment_json_path, resolve_tts_wav_path, validate_artifact_id
@@ -256,6 +255,8 @@ def synthesize(body: SynthesizeRequest) -> SynthesizeResponse:
 
 @app.post("/align", response_model=AlignResponse)
 def align(body: AlignRequest) -> AlignResponse:
+    from app.alignment.pipeline import align_transcript_to_wav
+
     audio_id = body.audioArtifactId.lower()
     wav_path = _resolve_audio_artifact(body.audioArtifactId)
     engine_name = body.engine or DEFAULT_ALIGNMENT_ENGINE

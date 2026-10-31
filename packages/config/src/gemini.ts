@@ -4,27 +4,35 @@
 export const GEMINI_ENV_KEYS = {
   API_KEY: "GEMINI_API_KEY",
   MODEL_SCRIPT: "GEMINI_MODEL_SCRIPT",
-  THINKING_BUDGET_SCRIPT: "GEMINI_THINKING_BUDGET_SCRIPT",
+  THINKING_LEVEL_SCRIPT: "GEMINI_THINKING_LEVEL_SCRIPT",
 } as const;
+
+/** Mức thinking Gemini 3.x (generateContent thinkingConfig.thinkingLevel). */
+export const GEMINI_THINKING_LEVELS = ["minimal", "low", "medium", "high"] as const;
+
+export type GeminiThinkingLevel = (typeof GEMINI_THINKING_LEVELS)[number];
 
 export type GeminiEnvConfig = {
   apiKey: string | undefined;
   modelScript: string;
-  /** 0 tắt extended thinking; giá trị dương là budget token (ADR-007: mức thấp). */
-  thinkingBudgetScript: number;
+  /** ADR-007: mức thấp mặc định `low` trên gemini-3.6-flash. */
+  thinkingLevelScript: GeminiThinkingLevel;
 };
 
-const DEFAULT_MODEL_SCRIPT = "gemini-2.0-flash";
+const DEFAULT_MODEL_SCRIPT = "gemini-3.6-flash";
+const DEFAULT_THINKING_LEVEL_SCRIPT: GeminiThinkingLevel = "low";
 
-function parseThinkingBudget(raw: string | undefined): number {
+function parseThinkingLevel(raw: string | undefined): GeminiThinkingLevel {
   if (raw === undefined || raw.trim() === "") {
-    return 0;
+    return DEFAULT_THINKING_LEVEL_SCRIPT;
   }
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
+  const normalized = raw.trim().toLowerCase();
+  for (const level of GEMINI_THINKING_LEVELS) {
+    if (level === normalized) {
+      return level;
+    }
   }
-  return parsed;
+  return DEFAULT_THINKING_LEVEL_SCRIPT;
 }
 
 /** Đọc cấu hình Gemini tại biên process (không validate bắt buộc API key). */
@@ -34,6 +42,6 @@ export function readGeminiEnv(env: Record<string, string | undefined>): GeminiEn
   return {
     apiKey: apiKey && apiKey.length > 0 ? apiKey : undefined,
     modelScript,
-    thinkingBudgetScript: parseThinkingBudget(env[GEMINI_ENV_KEYS.THINKING_BUDGET_SCRIPT]),
+    thinkingLevelScript: parseThinkingLevel(env[GEMINI_ENV_KEYS.THINKING_LEVEL_SCRIPT]),
   };
 }

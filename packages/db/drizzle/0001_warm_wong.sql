@@ -1,0 +1,2 @@
+ALTER TABLE "approvals" ADD COLUMN "variant_index" integer;--> statement-breakpoint
+ALTER TABLE "approvals" ADD CONSTRAINT "approvals_variant_index_valid" CHECK ("approvals"."variant_index" IS NULL OR ("approvals"."gate" = 'script' AND "approvals"."decision" = 'approved' AND "approvals"."variant_index" IN (1, 2)));
