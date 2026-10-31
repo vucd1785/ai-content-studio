@@ -622,7 +622,7 @@ Kiểm tra: test render với hai record.
 
 ## P5-03 — Template thứ hai
 
-- Trạng thái: pending
+- Trạng thái: done
 - Ưu tiên: low
 - Phụ thuộc: `P1-04`
 - Skill: `build-video-template`

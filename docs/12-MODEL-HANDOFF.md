@@ -217,16 +217,20 @@ Ffmpeg/Remotion nằm sau `RenderBackend`, test dùng backend giả. Worker 102 
 
 Test: render chết sau khi có audio, resume, render chạy lại; audio vẫn hai hàng cũ, TTS gọi một lần. Worker 106 + 1 skip, api 105. Chi tiết: [reports/P3-08.md](../reports/P3-08.md).
 
+### P5-03 — Template thứ hai (done 2026-10-31, Director PASS)
+
+Director mở task và chọn kiểu: nền sáng, bố cục khác, cùng 5 slot và cùng props. Composition `EduLight` nằm trong `apps/video/src/edu-light/`. Schema tách thành `slotRenderPropsSchema(templateId)`; EduVertical không đổi. Render hồi quy fixture Redis bằng EduVertical cho PSNR `inf` so với MP4 của P1-04. Chưa nối vào workflow. Chi tiết: [reports/P5-03.md](../reports/P5-03.md).
+
 ## Checkpoint agent
 
 Cập nhật bởi phiên tự hành ([13-AUTONOMOUS-AGENT-WORKFLOW.md](13-AUTONOMOUS-AGENT-WORKFLOW.md)). Mục này luôn là trạng thái mới nhất.
 
 - Thời điểm: 2026-10-31, phiên tự hành thứ năm.
-- Đã closeout (Director PASS): `P4-02`, `P5-02`, `P5-01`, `P4-03`, `P3-04`, `P2-07`, `P4-04`, `P2-08`, `P3-05`, `P3-06`, `P3-08` (cùng các task trước).
+- Đã closeout (Director PASS): `P4-02`, `P5-02`, `P5-01`, `P4-03`, `P3-04`, `P2-07`, `P4-04`, `P2-08`, `P3-05`, `P3-06`, `P3-08`, `P5-03` (cùng các task trước).
 - Task chờ Director verify: không.
 - Task đang làm: không. Không còn lỗi mở.
-- Lệnh cuối đã chạy (exit 0, P3-08): worker 106 + 1 skip (seed, vì DB đang có demo), api 105/105, contracts 84/84, db 7/7; typecheck 7 package. DB `studio` còn 0 hàng test. Migration và `data/` không đổi.
-- Đủ điều kiện kế tiếp: chỉ còn `P5-03` (template thứ hai), làm khi Director mở.
+- Lệnh cuối đã chạy (exit 0, P5-03): video test 25/25 + node:test 1/1, `render:p5-03` (2 MP4 trong `data/render/P5-03/`), typecheck video/worker/web. Trước đó (P3-08): worker 106 + 1 skip, api 105/105, contracts 84/84, db 7/7. DB `studio` còn 0 hàng test. Migration và `data/` không đổi.
+- Đủ điều kiện kế tiếp: không còn task `pending` trong `11-TASKS`.
 - Quyết định chờ Director:
   1. ~~Định dạng artifact script và route đọc artifact~~: đã chốt 2026-10-31.
   2. ~~Gắn UI~~: đã làm 2026-10-31 (mục Quyết định 2 ở trên).
@@ -236,5 +240,5 @@ Cập nhật bởi phiên tự hành ([13-AUTONOMOUS-AGENT-WORKFLOW.md](13-AUTON
   6. ~~Cách ghi phương án được chọn~~: đã chốt `variantIndex` 2026-10-31 (mục ở trên).
   7. **Mới:** route `GET /api/artifacts/:artifactId/media` để player và màn hình phát được audio/preview. Route có trong 07-API-CONTRACTS nhưng chưa task nào sở hữu.
   8. ~~Visual có gọi LLM không~~: Director chốt 2026-10-31 giữ storyboard dựng bằng code ở MVP, không gọi LLM.
-- Hành động kế tiếp chính xác: Director chọn hướng: `P5-03`, UI cổng final + nút hủy/resume (chưa có task), hoặc consumer (quyết định 5). Còn thiếu: UI cổng final, job cho `revise_assets`, và chạy thật backend render (cần consumer, quyết định 5). Quyết định 5 (consumer BullMQ, có chi phí Gemini) và 7 (route media) vẫn mở.
+- Hành động kế tiếp chính xác: Director chọn việc mới (chưa có task): cách chọn template trong workflow, UI cổng final + nút hủy/resume, hoặc consumer (quyết định 5). Còn thiếu: UI cổng final, job cho `revise_assets`, và chạy thật backend render (cần consumer, quyết định 5). Quyết định 5 (consumer BullMQ, có chi phí Gemini) và 7 (route media) vẫn mở.
 - Cần Director: có.

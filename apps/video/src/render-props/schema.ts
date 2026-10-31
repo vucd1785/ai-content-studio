@@ -102,64 +102,72 @@ const audioSchema = z
   })
   .strict();
 
-export const eduVerticalRenderPropsSchema = z
-  .object({
-    templateId: z.literal(EDU_VERTICAL_TEMPLATE_ID),
-    templateVersion: z.string().min(1),
-    fps: z.literal(MVP_FPS),
-    width: z.literal(MVP_WIDTH),
-    height: z.literal(MVP_HEIGHT),
-    audio: audioSchema,
-    scenes: z.array(eduVerticalRenderSceneSchema).min(1).max(8),
-    captions: z.array(remotionCaptionSchema),
-  })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (value.scenes[0]?.templateSlot !== "title") {
-      ctx.addIssue({
-        code: "custom",
-        message: "First scene must use templateSlot title",
-        path: ["scenes", 0, "templateSlot"],
-      });
-    }
-    const lastIndex = value.scenes.length - 1;
-    if (value.scenes[lastIndex]?.templateSlot !== "cta") {
-      ctx.addIssue({
-        code: "custom",
-        message: "Last scene must use templateSlot cta",
-        path: ["scenes", lastIndex, "templateSlot"],
-      });
-    }
-
-    for (let index = 0; index < value.scenes.length; index += 1) {
-      const scene = value.scenes[index];
-      if (!scene) {
-        continue;
-      }
-      const expectedFrom =
-        index === 0
-          ? 0
-          : (value.scenes[index - 1]?.fromMs ?? 0) + (value.scenes[index - 1]?.durationMs ?? 0);
-      if (scene.fromMs !== expectedFrom) {
+/**
+ * Schema render props cho một template dùng chung 5 slot (P5-03). Mỗi template chỉ nhận đúng `templateId`
+ * của nó, nên props của template này không lọt sang composition khác.
+ */
+export function slotRenderPropsSchema<TemplateId extends string>(templateId: TemplateId) {
+  return z
+    .object({
+      templateId: z.literal(templateId),
+      templateVersion: z.string().min(1),
+      fps: z.literal(MVP_FPS),
+      width: z.literal(MVP_WIDTH),
+      height: z.literal(MVP_HEIGHT),
+      audio: audioSchema,
+      scenes: z.array(eduVerticalRenderSceneSchema).min(1).max(8),
+      captions: z.array(remotionCaptionSchema),
+    })
+    .strict()
+    .superRefine((value, ctx) => {
+      if (value.scenes[0]?.templateSlot !== "title") {
         ctx.addIssue({
           code: "custom",
-          message: `Scene ${scene.sceneId} fromMs must be ${expectedFrom}`,
-          path: ["scenes", index, "fromMs"],
+          message: "First scene must use templateSlot title",
+          path: ["scenes", 0, "templateSlot"],
         });
       }
-    }
-
-    for (const caption of value.captions) {
-      if (caption.endMs <= caption.startMs) {
+      const lastIndex = value.scenes.length - 1;
+      if (value.scenes[lastIndex]?.templateSlot !== "cta") {
         ctx.addIssue({
           code: "custom",
-          message: "Caption endMs must be after startMs",
-          path: ["captions"],
+          message: "Last scene must use templateSlot cta",
+          path: ["scenes", lastIndex, "templateSlot"],
         });
-        break;
       }
-    }
-  });
+
+      for (let index = 0; index < value.scenes.length; index += 1) {
+        const scene = value.scenes[index];
+        if (!scene) {
+          continue;
+        }
+        const expectedFrom =
+          index === 0
+            ? 0
+            : (value.scenes[index - 1]?.fromMs ?? 0) + (value.scenes[index - 1]?.durationMs ?? 0);
+        if (scene.fromMs !== expectedFrom) {
+          ctx.addIssue({
+            code: "custom",
+            message: `Scene ${scene.sceneId} fromMs must be ${expectedFrom}`,
+            path: ["scenes", index, "fromMs"],
+          });
+        }
+      }
+
+      for (const caption of value.captions) {
+        if (caption.endMs <= caption.startMs) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Caption endMs must be after startMs",
+            path: ["captions"],
+          });
+          break;
+        }
+      }
+    });
+}
+
+export const eduVerticalRenderPropsSchema = slotRenderPropsSchema(EDU_VERTICAL_TEMPLATE_ID);
 
 export type EduVerticalRenderProps = z.infer<typeof eduVerticalRenderPropsSchema>;
 
