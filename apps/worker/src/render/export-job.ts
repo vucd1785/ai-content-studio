@@ -7,9 +7,10 @@ import {
   getArtifactById,
   type StudioDb,
 } from "@studio/db";
-import { eduVerticalRenderPropsSchema } from "@studio/video/render-props/schema";
+import { stickStoryRenderPropsSchema } from "@studio/video/stick-story/props";
 import { readJsonArtifact } from "../jobs/job-support.js";
 import type { RenderBackend } from "./render-backend.js";
+import { renderProgressRecorder } from "./render-progress.js";
 import { runStageJob, type StageJobResult } from "./stage-job.js";
 
 /**
@@ -17,7 +18,11 @@ import { runStageJob, type StageJobResult } from "./stage-job.js";
  * `final` trong key job trỏ tới, và chỉ khi đó vẫn là decision final mới nhất (`assertExportAllowed`).
  * Export render lại đúng render props của preview đó với CRF export (P1-05), không dựng props mới.
  */
-export function runExportJob(db: StudioDb, jobId: string, deps: { dataDir: string; backend: RenderBackend }): Promise<StageJobResult> {
+export function runExportJob(
+  db: StudioDb,
+  jobId: string,
+  deps: { dataDir: string; backend: RenderBackend },
+): Promise<StageJobResult> {
   return runStageJob(
     db,
     jobId,
@@ -26,14 +31,19 @@ export function runExportJob(db: StudioDb, jobId: string, deps: { dataDir: strin
       enter: { working: "exporting" },
       done: "exported",
       resumeFrom: "exporting",
-      precheck: (context) => (approvalIdFromExportJobKey(context.job.idempotencyKey) === null ? "not_export_job" : null),
+      precheck: (context) =>
+        approvalIdFromExportJobKey(context.job.idempotencyKey) === null ? "not_export_job" : null,
     },
     async (context) => {
       const runId = context.workflowRun.id;
       const approvalId = approvalIdFromExportJobKey(context.job.idempotencyKey) ?? "";
       const approval = await findRunApproval(db, runId, approvalId);
       if (approval === null || approval.gate !== "final" || approval.decision !== "approved") {
-        return { ok: false, errorCode: "approval_required", message: "export job has no final approval" };
+        return {
+          ok: false,
+          errorCode: "approval_required",
+          message: "export job has no final approval",
+        };
       }
       try {
         await assertExportAllowed(db, runId, approval.artifactId);
@@ -44,14 +54,27 @@ export function runExportJob(db: StudioDb, jobId: string, deps: { dataDir: strin
         throw error;
       }
       const preview = await getArtifactById(db, approval.artifactId);
-      const propsRow = preview === null ? null : await findParentArtifact(db, preview.id, "render_props");
+      const propsRow =
+        preview === null ? null : await findParentArtifact(db, preview.id, "render_props");
       const props =
-        propsRow === null ? null : await readJsonArtifact(deps.dataDir, propsRow.storageKey, eduVerticalRenderPropsSchema);
-      const audioSha = (propsRow?.metadata as { audioContentSha256?: unknown } | undefined)?.audioContentSha256;
+        propsRow === null
+          ? null
+          : await readJsonArtifact(deps.dataDir, propsRow.storageKey, stickStoryRenderPropsSchema);
+      const audioSha = (propsRow?.metadata as { audioContentSha256?: unknown } | undefined)
+        ?.audioContentSha256;
       if (preview === null || props === null || typeof audioSha !== "string") {
-        return { ok: false, errorCode: "render_props_invalid", message: "approved preview has no readable render props" };
+        return {
+          ok: false,
+          errorCode: "render_props_invalid",
+          message: "approved preview has no readable render props",
+        };
       }
-      const rendered = await deps.backend.render("export", props, audioSha);
+      const rendered = await deps.backend.render(
+        "export",
+        props,
+        audioSha,
+        renderProgressRecorder(db, jobId),
+      );
       return {
         ok: true,
         artifacts: [

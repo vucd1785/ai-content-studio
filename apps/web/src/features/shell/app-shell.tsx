@@ -1,30 +1,47 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { HomePage } from "@/features/home/home-page";
 import { ProjectDetail } from "@/features/projects/project-detail";
-import { ProjectList } from "@/features/projects/project-list";
-import { useProjectDetail } from "@/features/projects/use-projects";
+import { ProjectNav } from "@/features/projects/project-nav";
+import { useProjects } from "@/features/projects/use-projects";
 import { useLogout } from "@/features/session/use-session";
 import { vi } from "@/i18n/vi";
-
-// three.js + react-three-fiber nặng: tải riêng khi chọn project, giữ bundle đăng nhập nhỏ.
-const StudioWorkspace = lazy(() =>
-  import("@/studio/studio-workspace").then((module) => ({ default: module.StudioWorkspace })),
-);
+import { WorkerStatusPill } from "./worker-status";
 
 /**
- * Shell ba vùng (06-3D-UI-DESIGN mục Bố cục): trái danh sách dự án, giữa studio 3D của lượt chạy
- * mới nhất, phải brief, tài liệu, duyệt kịch bản và usage của dự án đang chọn.
+ * Khung ứng dụng theo 06-3D-UI-DESIGN (P2-11): thanh trên (logo, đường dẫn, trạng thái worker, đăng xuất);
+ * chưa chọn dự án thì là trang dự án; trong một dự án thì cột trái hẹp cộng màn của bước hiện tại.
+ * Studio 3D nằm trong màn "Đang chạy", không còn cột phải cố định.
  */
 export function AppShell() {
   const logout = useLogout();
+  const projects = useProjects();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedTitle = projects.data?.projects.find((project) => project.id === selectedId)?.title;
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b px-4 py-2">
-        <span className="font-semibold">{vi.app.name}</span>
+      <header className="bg-surface-raised flex h-14 shrink-0 items-center gap-3 border-b px-5">
+        <button
+          type="button"
+          onClick={() => setSelectedId(null)}
+          className="flex items-center gap-2.5"
+        >
+          <span className="bg-primary size-7 rounded-lg" aria-hidden="true" />
+          <span className="text-[15px] font-semibold">{vi.app.name}</span>
+        </button>
+        {selectedTitle === undefined ? null : (
+          <>
+            <span className="text-muted-foreground" aria-hidden="true">
+              /
+            </span>
+            <span className="text-muted-foreground truncate text-sm">{selectedTitle}</span>
+          </>
+        )}
+        <div className="flex-1" />
+        <WorkerStatusPill />
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={() => logout.mutate()}
           disabled={logout.isPending}
@@ -32,44 +49,27 @@ export function AppShell() {
           {logout.isPending ? vi.shell.loggingOut : vi.shell.logout}
         </Button>
       </header>
-      <div className="grid min-h-0 flex-1 grid-cols-[16rem_1fr_22rem]">
-        <aside aria-label={vi.shell.regionProjects} className="flex min-h-0 flex-col gap-3 border-r p-4">
-          <ProjectList selectedId={selectedId} onSelect={setSelectedId} />
-        </aside>
-        <main aria-label={vi.shell.regionStudio} className="min-h-0 overflow-y-auto bg-black/30 p-4">
-          {selectedId === null ? (
-            <p className="text-muted-foreground text-sm">{vi.shell.studioPlaceholder}</p>
-          ) : (
-            <ShellStudio key={selectedId} projectId={selectedId} />
-          )}
+      {selectedId === null ? (
+        <main aria-label={vi.shell.regionWorkspace} className="min-h-0 flex-1 overflow-y-auto">
+          <HomePage onSelect={setSelectedId} />
         </main>
-        <aside
-          aria-label={vi.shell.regionDetail}
-          className="flex min-h-0 flex-col gap-3 overflow-y-auto border-l p-4"
-        >
-          {selectedId === null ? (
-            <>
-              <h2 className="text-sm font-semibold">{vi.shell.detailTitle}</h2>
-              <p className="text-muted-foreground text-sm">{vi.shell.detailPlaceholder}</p>
-            </>
-          ) : (
+      ) : (
+        <div className="grid min-h-0 flex-1 grid-cols-[14rem_minmax(0,1fr)]">
+          <aside
+            aria-label={vi.shell.regionProjects}
+            className="bg-surface-raised min-h-0 overflow-y-auto border-r p-3"
+          >
+            <ProjectNav
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onHome={() => setSelectedId(null)}
+            />
+          </aside>
+          <main aria-label={vi.shell.regionWorkspace} className="min-h-0 overflow-y-auto px-7 py-6">
             <ProjectDetail key={selectedId} projectId={selectedId} />
-          )}
-        </aside>
-      </div>
+          </main>
+        </div>
+      )}
     </div>
-  );
-}
-
-/** Studio của project đang chọn: đọc run mới nhất từ cùng query chi tiết project (cache dùng chung). */
-function ShellStudio({ projectId }: { projectId: string }) {
-  const detail = useProjectDetail(projectId);
-  if (detail.isPending) {
-    return <p className="text-muted-foreground text-sm">{vi.app.loading}</p>;
-  }
-  return (
-    <Suspense fallback={<p className="text-muted-foreground text-sm">{vi.app.loading}</p>}>
-      <StudioWorkspace runId={detail.data?.workflowRun?.id ?? null} />
-    </Suspense>
   );
 }

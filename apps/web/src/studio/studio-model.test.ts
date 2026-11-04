@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { studioLabels } from "./studio-labels";
 import {
   AGENT_ROLES,
   AGENT_STATUSES,
@@ -6,14 +7,16 @@ import {
   CAMERA_LIMITS,
   STATUS_VISUALS,
 } from "./studio-model";
-import { studioLabels } from "./studio-labels";
 
 /** Source mọi file studio (trừ test), đọc qua Vite `?raw` để quét tĩnh. */
-const RAW_SOURCES = import.meta.glob<string>(["./*.ts", "./*.tsx", "!./*.test.ts", "!./*.test.tsx"], {
-  query: "?raw",
-  import: "default",
-  eager: true,
-});
+const RAW_SOURCES = import.meta.glob<string>(
+  ["./*.ts", "./*.tsx", "!./*.test.ts", "!./*.test.tsx"],
+  {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  },
+);
 
 function studioSources(): { file: string; source: string }[] {
   return Object.entries(RAW_SOURCES).map(([file, source]) => ({ file, source }));
@@ -65,13 +68,14 @@ describe("studio model (P4-01)", () => {
     expect(CAMERA_LIMITS.maxPolarAngle).toBeLessThan(Math.PI / 2);
     expect(CAMERA_LIMITS.minZoom).toBeLessThan(CAMERA_LIMITS.maxZoom);
     const scene = RAW_SOURCES["./studio-scene.tsx"] ?? "";
-    expect(scene).toMatch(/<OrthographicCamera makeDefault/);
+    expect(scene).toMatch(/<OrthographicCamera\s+makeDefault/);
     expect(scene).toMatch(/enablePan=\{false\}/);
   });
 
   it("không có interval/timer/useFrame tự đổi trạng thái trong studio", () => {
     expect(Object.keys(RAW_SOURCES).sort()).toEqual([
       "./canvas-flags.ts",
+      "./robot.tsx",
       "./role-inspector.tsx",
       "./studio-labels.ts",
       "./studio-live.tsx",
@@ -82,7 +86,12 @@ describe("studio model (P4-01)", () => {
       "./use-studio-run.ts",
     ]);
     for (const { file, source } of studioSources()) {
-      expect(source, file).not.toMatch(/setInterval|setTimeout|requestAnimationFrame|useFrame|Date\.now/);
+      // robot.tsx được dùng useFrame cho chuyển động tư thế (P4-05), nhưng chỉ đọc prop `status`, không ghi state.
+      const forbidden =
+        file === "./robot.tsx"
+          ? /setInterval|setTimeout|requestAnimationFrame|Date\.now|useState|useStudioStore/
+          : /setInterval|setTimeout|requestAnimationFrame|useFrame|Date\.now/;
+      expect(source, file).not.toMatch(forbidden);
     }
   });
 

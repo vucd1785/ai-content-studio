@@ -10,10 +10,24 @@ import { apiRequest } from "@/lib/api";
 export const workflowRunQueryKey = (runId: string) => ["workflow-runs", runId] as const;
 export const artifactQueryKey = (artifactId: string) => ["artifacts", artifactId] as const;
 
+/** Trạng thái máy đang làm: đọc lại run mỗi 5 s để thanh tiến trình theo kịp (P2-11). */
+const WORKING_STATUSES = new Set([
+  "idea_submitted",
+  "researching",
+  "research_ready",
+  "scripting",
+  "producing_assets",
+  "preview_rendering",
+  "qa",
+  "exporting",
+]);
+
 export function useWorkflowRun(runId: string | null) {
   return useQuery({
     queryKey: workflowRunQueryKey(runId ?? ""),
     enabled: runId !== null,
+    refetchInterval: (query) =>
+      WORKING_STATUSES.has(query.state.data?.workflowRun.status ?? "") ? 5_000 : false,
     queryFn: () =>
       apiRequest(`/api/workflow-runs/${encodeURIComponent(runId ?? "")}`, {
         schema: workflowRunDetailResponseSchema,

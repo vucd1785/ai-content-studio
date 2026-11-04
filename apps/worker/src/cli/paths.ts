@@ -14,7 +14,7 @@ export type PipelineErrorCode =
   | "audio_build_failed"
   | "render_failed"
   | "render_props_invalid"
-  | "caption_override_invalid";
+  | "cancelled";
 
 export class PipelineError extends Error {
   readonly code: PipelineErrorCode;
@@ -29,7 +29,7 @@ export class PipelineError extends Error {
 export function resolveRepoRoot(fromModuleUrl: string): string {
   let dir = dirname(fileURLToPath(fromModuleUrl));
   for (let depth = 0; depth < 10; depth += 1) {
-    const candidate = join(dir, "fixtures", "script.edu.json");
+    const candidate = join(dir, "pnpm-workspace.yaml");
     if (existsSync(candidate)) {
       return dir;
     }

@@ -1,0 +1,12 @@
+{
+  "id": "skin_dau",
+  "kind": "character_skin",
+  "version": "0.1.0",
+  "description": "Lớp da Đậu: hạt đậu có mầm lá, không thoại.",
+  "tags": ["nhân vật", "dau"],
+  "brandProfile": "kenh-mac-dinh",
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

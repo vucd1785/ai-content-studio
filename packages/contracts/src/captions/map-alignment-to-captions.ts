@@ -30,6 +30,8 @@ export type SceneAlignmentForCaptions = {
   validation: AlignmentValidation;
   /** Audio duration from the align response (ms). */
   alignmentDurationMs: number;
+  /** Phase 6: người nói của từng từ, cùng độ dài với `words` (từ `assignWordsToLines`). */
+  speakers?: readonly string[];
 };
 
 function assertDurationMatch(measuredDurationMs: number, alignmentDurationMs: number): void {
@@ -109,7 +111,13 @@ function clampMs(value: number, min: number, max: number): number {
  * Narration in the timeline starts after {@link SCENE_EDGE_PAD_MS} from `timing.fromMs`.
  */
 export function mapSceneAlignmentToCaptions(input: SceneAlignmentForCaptions): RemotionCaption[] {
-  const { timing, measuredDurationMs, words, validation, alignmentDurationMs } = input;
+  const { timing, measuredDurationMs, words, validation, alignmentDurationMs, speakers } = input;
+  if (speakers !== undefined && speakers.length !== words.length) {
+    throw new CaptionMappingError(
+      "missing_aligned_words",
+      `speakers has ${speakers.length} entries for ${words.length} words`,
+    );
+  }
 
   assertDurationMatch(measuredDurationMs, alignmentDurationMs);
   assertAlignmentReadyForCaptions(words, validation);
@@ -149,6 +157,7 @@ export function mapSceneAlignmentToCaptions(input: SceneAlignmentForCaptions): R
       endMs,
       timestampMs: startMs,
       confidence: null,
+      ...(speakers === undefined ? {} : { speaker: speakers[index] as string }),
     });
   }
 

@@ -1,4 +1,11 @@
-import { type Brief, type BriefWriteBody, briefWriteBodySchema } from "@studio/contracts";
+import {
+  type Brief,
+  type BriefWriteBody,
+  briefWriteBodySchema,
+  DEFAULT_FORMAT,
+  type FormatPack,
+  getFormatPack,
+} from "@studio/contracts";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +19,9 @@ const TEXT_FIELDS = ["topic", "audience", "goal", "tone", "visualStyle"] as cons
 type TextField = (typeof TEXT_FIELDS)[number];
 type FieldName = TextField | "durationSec" | "notes";
 type FormValues = Record<TextField | "notes" | "durationSec", string>;
+
+/** Mọi brief dùng một gói chung "Hoạt hình" (ADR-013 bổ sung (2)): không có ô chọn thể loại. */
+const PACK = getFormatPack(DEFAULT_FORMAT.id, DEFAULT_FORMAT.version) as FormatPack;
 type FieldErrors = Partial<Record<FieldName, string>>;
 
 function initialValues(brief: Brief | null): FormValues {
@@ -28,11 +38,11 @@ function initialValues(brief: Brief | null): FormValues {
 
 /**
  * Validate bằng đúng schema hợp đồng (`briefWriteBodySchema`). Sai thì không gửi request.
- * `durationSec` rỗng hoặc không phải số nguyên 30–90 → lỗi tiếng Việt.
+ * `durationSec` rỗng hoặc ngoài khoảng của gói `story` (30–90 giây) → lỗi tiếng Việt.
  */
-export function validateBrief(values: FormValues):
-  | { ok: true; body: BriefWriteBody }
-  | { ok: false; errors: FieldErrors } {
+export function validateBrief(
+  values: FormValues,
+): { ok: true; body: BriefWriteBody } | { ok: false; errors: FieldErrors } {
   const duration = values.durationSec.trim() === "" ? Number.NaN : Number(values.durationSec);
   const candidate = {
     topic: values.topic.trim(),
@@ -53,7 +63,7 @@ export function validateBrief(values: FormValues):
     const field = issue.path[0] as FieldName | undefined;
     if (field === undefined || errors[field] !== undefined) continue;
     if (field === "durationSec") {
-      errors.durationSec = vi.brief.durationRange;
+      errors.durationSec = vi.brief.durationRangeFor(PACK.durationSec.min, PACK.durationSec.max);
     } else {
       errors[field] = issue.code === "too_big" ? vi.brief.tooLong : vi.brief.required;
     }
@@ -101,7 +111,12 @@ export function BriefForm({ projectId, brief }: { projectId: string; brief: Brie
   });
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={onSubmit} noValidate aria-label={vi.brief.heading}>
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={onSubmit}
+      noValidate
+      aria-label={vi.brief.heading}
+    >
       <h3 className="text-sm font-semibold">{vi.brief.heading}</h3>
       {TEXT_FIELDS.map((field) => (
         <div key={field} className="flex flex-col gap-1">
@@ -120,8 +135,8 @@ export function BriefForm({ projectId, brief }: { projectId: string; brief: Brie
           {...ariaFor("durationSec")}
           type="number"
           inputMode="numeric"
-          min={30}
-          max={90}
+          min={PACK.durationSec.min}
+          max={PACK.durationSec.max}
           step={1}
           value={values.durationSec}
           onChange={(event) => setField("durationSec", event.target.value)}

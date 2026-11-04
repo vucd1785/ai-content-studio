@@ -11,7 +11,10 @@ vitest.mock("@react-three/fiber", () => ({
     throw new Error("WebGL unavailable");
   },
 }));
-vitest.mock("@react-three/drei", () => ({ OrbitControls: () => null, OrthographicCamera: () => null }));
+vitest.mock("@react-three/drei", () => ({
+  OrbitControls: () => null,
+  OrthographicCamera: () => null,
+}));
 
 afterEach(() => {
   cleanup();
@@ -27,7 +30,9 @@ describe("canvas lỗi (gắn vào shell)", () => {
       </QueryClientProvider>,
     );
     expect(screen.getByRole("status").textContent).toBe(studioLabels.canvasUnavailable);
-    await userEvent.setup().click(screen.getByRole("button", { name: studioLabels.roles.research }));
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: studioLabels.roles.research }));
     expect(screen.getByTestId("inspector-research")).toBeTruthy();
   });
 });

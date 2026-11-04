@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from app import engine
 from app.alignment.gate import evaluate_go_gate
-from app.alignment.revalidate import artifact_from_saved_json, reevaluate_gate_on_disk
+from app.alignment.revalidate import revalidate_on_disk
 from app.alignment.schema import AlignmentArtifact, AlignmentValidation, AlignmentWord
 from app.artifacts import alignment_json_path, resolve_tts_wav_path, validate_artifact_id
 from app.audio_meta import is_valid_wav_header, wav_duration_seconds, wav_metadata
@@ -326,12 +326,11 @@ def revalidate_gate(body: RevalidateGateRequest) -> AlignResponse:
         )
 
     try:
-        data = json.loads(json_path.read_text(encoding="utf-8"))
-        artifact = artifact_from_saved_json(data, audio_id)
+        # Sửa từ độ dài 0 và validate lại trên kết quả đã lưu (ADR-012 bổ sung 2026-11-02).
+        artifact, gate_payload = revalidate_on_disk(wav_path, json_path, audio_id)
     except (ValueError, json.JSONDecodeError) as exc:
         raise _api_error(422, "invalid_alignment_artifact", str(exc)) from exc
 
-    gate_payload = reevaluate_gate_on_disk(wav_path, json_path, audio_id)
     gate = AlignmentGate.model_validate(gate_payload)
     return _align_response_from_artifact(artifact, gate, audio_id)
 

@@ -32,3 +32,20 @@ P1-06 bị chặn ở cảnh `intro-title`: `durationDeltaMs = 260`, `validation
 
 - Cập nhật `packages/contracts` gate schema và worker reuse/revalidate.
 - `docs/05-VIDEO-PIPELINE.md` mô tả hai lối pass cổng.
+
+## Bổ sung 2026-11-02 — sửa từ có độ dài 0
+
+Director duyệt sau run `ba4dc84c` (2026-11-02). Cảnh s3 trượt cổng chỉ vì Whisper gán độ dài 0 ms cho hai từ ("code", "về"). Tỷ lệ từ đạt 24/26, độ lệch cuối 240 ms. Spike P6-02 cũng gặp lỗi này ở từ đầu câu ngắn.
+
+**Quyết định.**
+
+- **Sửa trong service, trước khi validate.** Từ có `endMs <= startMs` được cho một khoảng ngắn (hằng số trong code):
+  - lấy từ khoảng lặng sát bên nếu đủ;
+  - không thì lấy từ từ bên cạnh dài hơn.
+  - Sửa chỉ khi vẫn giữ thứ tự thời gian và không vượt độ dài file.
+- **Ghi rõ đã sửa.** Validation có `repairedWordCount` và một warning cho mỗi từ được sửa.
+- **Tỷ lệ từ của cổng không được nâng nhờ sửa.** `alignedWordRatio` tính trên số từ **trước khi** sửa. Từ được sửa vẫn bị coi là chưa căn được, nên ngưỡng 90% giữ nguyên ý nghĩa.
+- **Revalidate** (`POST /align/revalidate-gate`) áp dụng cùng phép sửa lên kết quả đã lưu và tính lại validation. Run đã lỗi bấm Tiếp tục là dùng được, không phải chạy lại Whisper.
+- `GATE_POLICY_VERSION` lên `2.1.0-repair-zero-length` ở service và worker.
+
+**Hệ quả.** Phụ đề của từ được sửa là ước lượng (dài khoảng 120 ms), không phải thời điểm đo được. Cổng ADR-011/012 về độ lệch cuối và im lặng đuôi không đổi.

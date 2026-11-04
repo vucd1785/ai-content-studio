@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
-  agentRuns,
   ApprovalError,
+  agentRuns,
   approvals,
   artifacts,
   createDbConnection,
@@ -21,8 +21,7 @@ import { buildApp } from "../app.js";
 const TEST_PASSWORD = "director-test-password";
 const TEST_SECRET = "0123456789abcdef0123456789abcdef0123456789ab";
 const NOW = 1_700_000_000;
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
+const DATABASE_URL = process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
 
 type Db = ReturnType<typeof createDbConnection>["db"];
 type RunStatus = (typeof workflowRuns.$inferSelect)["status"];
@@ -36,7 +35,9 @@ let dataDir = "";
 async function seedRun(
   status: RunStatus,
   artifactTypes: ArtifactType[] = ["script"],
-  failure: Partial<Pick<typeof workflowRuns.$inferInsert, "resumeFrom" | "failureCode" | "failureMessage">> = {},
+  failure: Partial<
+    Pick<typeof workflowRuns.$inferInsert, "resumeFrom" | "failureCode" | "failureMessage">
+  > = {},
 ) {
   const project = await createProject(db, "P2-04 test run");
   createdProjectIds.push(project.id);
@@ -112,7 +113,7 @@ describe("nextStatusAfterApproval", () => {
     expect(nextStatusAfterApproval("script", "changes_requested")).toBe("scripting");
     expect(nextStatusAfterApproval("script", "rejected")).toBe("waiting_script_approval");
     expect(nextStatusAfterApproval("final", "approved")).toBe("exporting");
-    expect(nextStatusAfterApproval("final", "changes_requested")).toBe("producing_assets");
+    expect(nextStatusAfterApproval("final", "changes_requested")).toBe("scripting");
     expect(nextStatusAfterApproval("final", "rejected")).toBe("waiting_final_approval");
   });
 });
@@ -194,11 +195,22 @@ describe("approval API (P2-04)", () => {
       method: "POST",
       url: `/api/workflow-runs/${seed.runId}/approvals`,
       headers: { cookie },
-      payload: { gate: "script", decision: "approved", artifactId: seed.artifactIds.script, variantIndex: 2, note: "" },
+      payload: {
+        gate: "script",
+        decision: "approved",
+        artifactId: seed.artifactIds.script,
+        variantIndex: 2,
+        note: "",
+      },
     });
     expect(response.statusCode).toBe(201);
     const body = response.json() as {
-      approval: { decision: string; artifactId: string; variantIndex: number | null; note: string | null };
+      approval: {
+        decision: string;
+        artifactId: string;
+        variantIndex: number | null;
+        note: string | null;
+      };
       workflowRun: { status: string };
     };
     expect(body.approval).toMatchObject({
@@ -223,13 +235,21 @@ describe("approval API (P2-04)", () => {
       { role: "voice", status: "queued" },
     ]);
     expect((await getWorkflowRunDetail(db, seed.runId))?.approvals[0]?.variantIndex).toBe(2);
-    expect(evts[1]?.payload).toMatchObject({ from: "waiting_script_approval", to: "producing_assets" });
+    expect(evts[1]?.payload).toMatchObject({
+      from: "waiting_script_approval",
+      to: "producing_assets",
+    });
 
     const again = await app.inject({
       method: "POST",
       url: `/api/workflow-runs/${seed.runId}/approvals`,
       headers: { cookie },
-      payload: { gate: "script", decision: "approved", artifactId: seed.artifactIds.script, variantIndex: 1 },
+      payload: {
+        gate: "script",
+        decision: "approved",
+        artifactId: seed.artifactIds.script,
+        variantIndex: 1,
+      },
     });
     expect(again.statusCode).toBe(409);
     expect((again.json() as { error: { code: string } }).error.code).toBe("invalid_transition");
@@ -256,9 +276,15 @@ describe("approval API (P2-04)", () => {
     const detail = await getWorkflowRunDetail(db, seed.runId);
     expect(detail?.approvals[0]?.note).toBe("Rút ngắn cảnh 2");
     // P3-04: cùng transaction tạo đúng một agent script + job `queued`, key mang approval id.
-    expect(detail?.agentRuns.map((agent) => [agent.role, agent.status])).toEqual([["script", "queued"]]);
+    expect(detail?.agentRuns.map((agent) => [agent.role, agent.status])).toEqual([
+      ["script", "queued"],
+    ]);
     const events = await listEventsForRun(db, seed.runId);
-    expect(events.map((e) => e.type)).toEqual(["approval.recorded", "workflow.transition", "agent.status"]);
+    expect(events.map((e) => e.type)).toEqual([
+      "approval.recorded",
+      "workflow.transition",
+      "agent.status",
+    ]);
     expect(events[2]?.payload).toEqual({ role: "script", status: "queued" });
     await app.close();
   });
@@ -324,7 +350,12 @@ describe("approval API (P2-04)", () => {
       method: "POST",
       url: `/api/workflow-runs/${other.runId}/approvals`,
       headers: { cookie },
-      payload: { gate: "script", decision: "approved", artifactId: other.artifactIds.script, variantIndex: 1 },
+      payload: {
+        gate: "script",
+        decision: "approved",
+        artifactId: other.artifactIds.script,
+        variantIndex: 1,
+      },
     });
     for (const response of [wrongGate, notWaiting]) {
       expect(response.statusCode).toBe(409);
@@ -354,7 +385,7 @@ describe("approval API (P2-04)", () => {
     });
   }
 
-  it("final gate: approved → exporting (kèm job export), changes_requested → producing_assets", async () => {
+  it("final gate: approved → exporting (kèm job export), changes_requested → scripting (kèm job script, P3-14)", async () => {
     const a = await seedRun("waiting_final_approval", ["preview"]);
     const b = await seedRun("waiting_final_approval", ["preview"]);
     await seedQaReport(a, true);
@@ -378,9 +409,24 @@ describe("approval API (P2-04)", () => {
     });
     expect([approved.statusCode, revise.statusCode]).toEqual([201, 201]);
     expect(await runStatus(a.runId)).toBe("exporting");
-    expect(await runStatus(b.runId)).toBe("producing_assets");
+    expect(await runStatus(b.runId)).toBe("scripting");
     const events = await listEventsForRun(db, a.runId);
     expect(events.at(-1)?.payload).toEqual({ role: "video", status: "queued" });
+    // Yêu cầu sửa bản cuối: một job script mới mang approval id trong key (ghi chú đọc từ approval đó).
+    const reviseId = (revise.json() as { approval: { id: string } }).approval.id;
+    const reviseAgents = (await db.select().from(agentRuns)).filter(
+      (agent) => agent.workflowRunId === b.runId,
+    );
+    const reviseJobs = (await db.select().from(jobs)).filter((job) =>
+      reviseAgents.some((agent) => agent.id === job.agentRunId),
+    );
+    expect(reviseJobs.map((job) => [job.queue, job.status, job.idempotencyKey])).toEqual([
+      ["llm", "queued", `script:${b.runId}:changes:${reviseId}`],
+    ]);
+    expect((await listEventsForRun(db, b.runId)).at(-1)?.payload).toEqual({
+      role: "script",
+      status: "queued",
+    });
     await app.close();
   });
 
@@ -489,7 +535,12 @@ describe("approval API (P2-04)", () => {
       { gate: "script" as const, decision: "rejected" as const, variantIndex: 1 as const },
     ]) {
       await expect(
-        recordApproval(db, { workflowRunId: seed.runId, artifactId: seed.artifactIds.script ?? "", note: "x", ...input }),
+        recordApproval(db, {
+          workflowRunId: seed.runId,
+          artifactId: seed.artifactIds.script ?? "",
+          note: "x",
+          ...input,
+        }),
       ).rejects.toMatchObject({ code: "invalid_variant" });
     }
     expect(await approvalCount(seed.runId)).toBe(0);
@@ -525,20 +576,30 @@ describe("approval API (P2-04)", () => {
   it("auth, Origin, UUID and unknown-run guards", async () => {
     const seed = await seedRun("waiting_script_approval");
     const { app, cookie } = await createAuthedApp();
-    const payload = { gate: "script", decision: "approved", artifactId: seed.artifactIds.script, variantIndex: 1 };
+    const payload = {
+      gate: "script",
+      decision: "approved",
+      artifactId: seed.artifactIds.script,
+      variantIndex: 1,
+    };
     const noSession = await app.inject({
       method: "POST",
       url: `/api/workflow-runs/${seed.runId}/approvals`,
       payload,
     });
-    const noSessionGet = await app.inject({ method: "GET", url: `/api/workflow-runs/${seed.runId}` });
+    const noSessionGet = await app.inject({
+      method: "GET",
+      url: `/api/workflow-runs/${seed.runId}`,
+    });
     const evil = await app.inject({
       method: "POST",
       url: `/api/workflow-runs/${seed.runId}/approvals`,
       headers: { cookie, origin: "https://evil.example" },
       payload,
     });
-    expect([noSession.statusCode, noSessionGet.statusCode, evil.statusCode]).toEqual([401, 401, 401]);
+    expect([noSession.statusCode, noSessionGet.statusCode, evil.statusCode]).toEqual([
+      401, 401, 401,
+    ]);
     const badUuid = await app.inject({
       method: "POST",
       url: "/api/workflow-runs/not-a-uuid/approvals",
@@ -572,20 +633,29 @@ describe("approval API (P2-04)", () => {
     jobStatus: (typeof jobs.$inferSelect)["status"] | null,
     key = `test-p3-08-${randomUUID()}`,
   ) {
-    const [agent] = await db.insert(agentRuns).values({ workflowRunId: runId, role, status: agentStatus }).returning();
+    const [agent] = await db
+      .insert(agentRuns)
+      .values({ workflowRunId: runId, role, status: agentStatus })
+      .returning();
     if (jobStatus === null) {
       return { agentId: agent?.id ?? "", jobId: "" };
     }
     const [job] = await db
       .insert(jobs)
-      .values({ agentRunId: agent?.id ?? "", queue: "render", idempotencyKey: key, status: jobStatus })
+      .values({
+        agentRunId: agent?.id ?? "",
+        queue: "render",
+        idempotencyKey: key,
+        status: jobStatus,
+      })
       .returning();
     return { agentId: agent?.id ?? "", jobId: job?.id ?? "" };
   }
 
   const agentStatus = async (id: string) =>
     (await db.select().from(agentRuns)).find((row) => row.id === id)?.status;
-  const jobStatus = async (id: string) => (await db.select().from(jobs)).find((row) => row.id === id)?.status;
+  const jobStatus = async (id: string) =>
+    (await db.select().from(jobs)).find((row) => row.id === id)?.status;
 
   it("cancel: run, job và agent chưa xong → cancelled, không ghi approval; hủy lại hoặc hủy run exported là 409", async () => {
     const seed = await seedRun("waiting_script_approval");
@@ -593,9 +663,15 @@ describe("approval API (P2-04)", () => {
     const research = await seedJob(seed.runId, "research", "completed", "completed");
     const queued = await seedJob(seed.runId, "visual", "queued", "queued");
     const { app, cookie } = await createAuthedApp();
-    const response = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/cancel`, headers: { cookie } });
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${seed.runId}/cancel`,
+      headers: { cookie },
+    });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ workflowRun: { id: seed.runId, status: "cancelled", resumeFrom: null } });
+    expect(response.json()).toMatchObject({
+      workflowRun: { id: seed.runId, status: "cancelled", resumeFrom: null },
+    });
     expect(await approvalCount(seed.runId)).toBe(0);
     expect(await agentStatus(script.agentId)).toBe("cancelled");
     expect(await agentStatus(queued.agentId)).toBe("cancelled");
@@ -610,18 +686,28 @@ describe("approval API (P2-04)", () => {
       to: "cancelled",
       cause: "cancel",
     });
-    expect(events.filter((event) => event.type === "agent.status").map((event) => event.payload)).toEqual(
+    expect(
+      events.filter((event) => event.type === "agent.status").map((event) => event.payload),
+    ).toEqual(
       expect.arrayContaining([
         { role: "script", status: "cancelled" },
         { role: "visual", status: "cancelled" },
       ]),
     );
 
-    const again = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/cancel`, headers: { cookie } });
+    const again = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${seed.runId}/cancel`,
+      headers: { cookie },
+    });
     expect(again.statusCode).toBe(409);
     expect((again.json() as { error: { code: string } }).error.code).toBe("invalid_transition");
     const exported = await seedRun("exported", []);
-    const blocked = await app.inject({ method: "POST", url: `/api/workflow-runs/${exported.runId}/cancel`, headers: { cookie } });
+    const blocked = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${exported.runId}/cancel`,
+      headers: { cookie },
+    });
     expect(blocked.statusCode).toBe(409);
     expect(await runStatus(exported.runId)).toBe("exported");
     await app.close();
@@ -630,7 +716,11 @@ describe("approval API (P2-04)", () => {
   it("resume: chỉ từ failed có resume_from; đưa job lỗi của bước đó về queued và xóa lỗi run", async () => {
     const { app, cookie } = await createAuthedApp();
     const notFailed = await seedRun("preview_rendering", []);
-    const refused = await app.inject({ method: "POST", url: `/api/workflow-runs/${notFailed.runId}/resume`, headers: { cookie } });
+    const refused = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${notFailed.runId}/resume`,
+      headers: { cookie },
+    });
     expect(refused.statusCode).toBe(409);
     expect((refused.json() as { error: { code: string } }).error.code).toBe("invalid_transition");
 
@@ -640,8 +730,18 @@ describe("approval API (P2-04)", () => {
       failureMessage: "killed",
     });
     const voice = await seedJob(seed.runId, "voice", "completed", "completed");
-    const render = await seedJob(seed.runId, "video", "failed", "failed", `render:${seed.runId}:approval:${randomUUID()}`);
-    const response = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/resume`, headers: { cookie } });
+    const render = await seedJob(
+      seed.runId,
+      "video",
+      "failed",
+      "failed",
+      `render:${seed.runId}:approval:${randomUUID()}`,
+    );
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${seed.runId}/resume`,
+      headers: { cookie },
+    });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       workflowRun: { status: "preview_rendering", resumeFrom: null, failureCode: null },
@@ -659,14 +759,25 @@ describe("approval API (P2-04)", () => {
 
     // Không còn job lỗi của bước cần chạy lại: từ chối, run đứng ở failed.
     const empty = await seedRun("failed", [], { resumeFrom: "qa" });
-    const conflict = await app.inject({ method: "POST", url: `/api/workflow-runs/${empty.runId}/resume`, headers: { cookie } });
+    const conflict = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${empty.runId}/resume`,
+      headers: { cookie },
+    });
     expect(conflict.statusCode).toBe(409);
     expect((conflict.json() as { error: { code: string } }).error.code).toBe("conflict");
     expect(await runStatus(empty.runId)).toBe("failed");
 
-    const unknown = await app.inject({ method: "POST", url: `/api/workflow-runs/${randomUUID()}/cancel`, headers: { cookie } });
+    const unknown = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${randomUUID()}/cancel`,
+      headers: { cookie },
+    });
     expect(unknown.statusCode).toBe(404);
-    const anonymous = await app.inject({ method: "POST", url: `/api/workflow-runs/${seed.runId}/cancel` });
+    const anonymous = await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${seed.runId}/cancel`,
+    });
     expect(anonymous.statusCode).toBe(401);
     await app.close();
   });
@@ -675,7 +786,11 @@ describe("approval API (P2-04)", () => {
     const { app, cookie } = await createAuthedApp();
     const empty = await createProject(db, "Quyết định 5: chưa có brief");
     createdProjectIds.push(empty.id);
-    const noBrief = await app.inject({ method: "POST", url: `/api/projects/${empty.id}/workflow-runs`, headers: { cookie } });
+    const noBrief = await app.inject({
+      method: "POST",
+      url: `/api/projects/${empty.id}/workflow-runs`,
+      headers: { cookie },
+    });
     expect(noBrief.statusCode).toBe(409);
     expect((noBrief.json() as { error: { code: string } }).error.code).toBe("conflict");
 
@@ -690,27 +805,134 @@ describe("approval API (P2-04)", () => {
       tone: "friendly",
       visualStyle: "edu",
     });
-    const created = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs`, headers: { cookie } });
+    const created = await app.inject({
+      method: "POST",
+      url: `/api/projects/${project.id}/workflow-runs`,
+      headers: { cookie },
+    });
     expect(created.statusCode).toBe(201);
-    const runId = (created.json() as { workflowRun: { id: string; status: string } }).workflowRun.id;
-    expect((created.json() as { workflowRun: { status: string } }).workflowRun.status).toBe("idea_submitted");
-    const agents = (await db.select().from(agentRuns)).filter((agent) => agent.workflowRunId === runId);
+    const runId = (created.json() as { workflowRun: { id: string; status: string } }).workflowRun
+      .id;
+    expect((created.json() as { workflowRun: { status: string } }).workflowRun.status).toBe(
+      "idea_submitted",
+    );
+    const agents = (await db.select().from(agentRuns)).filter(
+      (agent) => agent.workflowRunId === runId,
+    );
     expect(agents.map((agent) => [agent.role, agent.status])).toEqual([["research", "queued"]]);
-    const researchJob = (await db.select().from(jobs)).find((job) => job.agentRunId === agents[0]?.id);
-    expect(researchJob).toMatchObject({ queue: "llm", status: "queued", idempotencyKey: `research:${runId}` });
+    const researchJob = (await db.select().from(jobs)).find(
+      (job) => job.agentRunId === agents[0]?.id,
+    );
+    expect(researchJob).toMatchObject({
+      queue: "llm",
+      status: "queued",
+      idempotencyKey: `research:${runId}`,
+    });
     expect(await approvalCount(runId)).toBe(0);
 
-    const again = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs`, headers: { cookie } });
+    const again = await app.inject({
+      method: "POST",
+      url: `/api/projects/${project.id}/workflow-runs`,
+      headers: { cookie },
+    });
     expect(again.statusCode).toBe(409);
     // Hủy run cũ thì được bắt đầu run mới.
-    await app.inject({ method: "POST", url: `/api/workflow-runs/${runId}/cancel`, headers: { cookie } });
-    const next = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs`, headers: { cookie } });
+    await app.inject({
+      method: "POST",
+      url: `/api/workflow-runs/${runId}/cancel`,
+      headers: { cookie },
+    });
+    const next = await app.inject({
+      method: "POST",
+      url: `/api/projects/${project.id}/workflow-runs`,
+      headers: { cookie },
+    });
     expect(next.statusCode).toBe(201);
 
-    const unknown = await app.inject({ method: "POST", url: `/api/projects/${randomUUID()}/workflow-runs`, headers: { cookie } });
+    const unknown = await app.inject({
+      method: "POST",
+      url: `/api/projects/${randomUUID()}/workflow-runs`,
+      headers: { cookie },
+    });
     expect(unknown.statusCode).toBe(404);
-    const anonymous = await app.inject({ method: "POST", url: `/api/projects/${project.id}/workflow-runs` });
+    const anonymous = await app.inject({
+      method: "POST",
+      url: `/api/projects/${project.id}/workflow-runs`,
+    });
     expect(anonymous.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("P3-12: GET /api/llm-models và chọn model khi bắt đầu run; model ngoài danh sách bị từ chối", async () => {
+    const { app, cookie } = await createAuthedApp();
+    const listed = await app.inject({ method: "GET", url: "/api/llm-models", headers: { cookie } });
+    expect(listed.statusCode).toBe(200);
+    const { defaultModel, models } = listed.json() as { defaultModel: string; models: string[] };
+    expect(models[0]).toBe(defaultModel);
+    expect(listed.body).not.toMatch(/apiKey|GEMINI_API_KEY/);
+
+    const project = await createProject(db, "P3-12: chọn model");
+    createdProjectIds.push(project.id);
+    await insertBrief(db, project.id, {
+      topic: "Redis",
+      audience: "Dev",
+      goal: "Hiểu cache",
+      durationSec: 60,
+      language: "vi",
+      tone: "friendly",
+      visualStyle: "edu",
+    });
+    const url = `/api/projects/${project.id}/workflow-runs`;
+    const bad = await app.inject({
+      method: "POST",
+      url,
+      headers: { cookie },
+      payload: { llmModel: "model-khong-co" },
+    });
+    expect(bad.statusCode).toBe(400);
+    expect((bad.json() as { error: { code: string } }).error.code).toBe("validation_error");
+    const extra = await app.inject({
+      method: "POST",
+      url,
+      headers: { cookie },
+      payload: { llmModel: defaultModel, x: 1 },
+    });
+    expect(extra.statusCode).toBe(400);
+    const created = await app.inject({
+      method: "POST",
+      url,
+      headers: { cookie },
+      payload: { llmModel: defaultModel },
+    });
+    expect(created.statusCode).toBe(201);
+    const runId = (created.json() as { workflowRun: { id: string; llmModel: string | null } })
+      .workflowRun.id;
+    expect(
+      (created.json() as { workflowRun: { llmModel: string | null } }).workflowRun.llmModel,
+    ).toBe(defaultModel);
+    const detail = await app.inject({
+      method: "GET",
+      url: `/api/workflow-runs/${runId}`,
+      headers: { cookie },
+    });
+    const body = detail.json() as {
+      workflowRun: { llmModel: string };
+      agentRuns: { startedAt: string | null }[];
+    };
+    expect(body.workflowRun.llmModel).toBe(defaultModel);
+    expect(body.agentRuns[0]).toHaveProperty("startedAt", null);
+    await app.close();
+  });
+
+  it("route sửa kịch bản `1` (P2-12) đã xóa theo ADR-013 bổ sung (2): PUT script trả 404", async () => {
+    const { app, cookie } = await createAuthedApp();
+    const response = await app.inject({
+      method: "PUT",
+      url: `/api/workflow-runs/${randomUUID()}/script`,
+      headers: { cookie },
+      payload: { baseArtifactId: randomUUID(), variantIndex: 1, scenes: [] },
+    });
+    expect(response.statusCode).toBe(404);
     await app.close();
   });
 });

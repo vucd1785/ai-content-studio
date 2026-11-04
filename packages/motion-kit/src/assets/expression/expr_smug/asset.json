@@ -1,0 +1,12 @@
+{
+  "id": "expr_smug",
+  "kind": "expression",
+  "version": "0.1.0",
+  "description": "Biểu cảm đắc ý.",
+  "tags": ["đắc ý", "tự tin"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

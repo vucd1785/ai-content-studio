@@ -14,7 +14,10 @@ export type StudioCanvasFlags = {
   frameloop: "always" | "demand";
 };
 
-export function studioCanvasFlags(input: { reducedMotion: boolean; lowPower?: boolean | undefined }): StudioCanvasFlags {
+export function studioCanvasFlags(input: {
+  reducedMotion: boolean;
+  lowPower?: boolean | undefined;
+}): StudioCanvasFlags {
   // Reduced motion kéo theo chế độ hiệu năng thấp: `dpr` 1, tắt shadow, tắt vòng lặp.
   if (input.reducedMotion) {
     return { dpr: 1, shadows: false, frameloop: "demand" };

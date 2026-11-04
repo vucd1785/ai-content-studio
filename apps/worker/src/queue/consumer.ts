@@ -1,13 +1,29 @@
+import { isClaudeCodeModel } from "@studio/config/claude-code";
+import { type GeminiEnvConfig, readGeminiEnv } from "@studio/config/gemini";
 import { type JobPayload, jobPayloadSchema, type QueueName } from "@studio/contracts";
-import { failJob, type JobContext, loadJobContext, type StudioDb } from "@studio/db";
+import {
+  failJob,
+  isStoryboardJobKey,
+  type JobContext,
+  loadJobContext,
+  type StudioDb,
+} from "@studio/db";
 import { type ConnectionOptions, type Job, Worker } from "bullmq";
 import { runVisualJob } from "../assets/visual-job.js";
 import { runVoiceJob, type VoiceJobDeps } from "../assets/voice-job.js";
+import { LlmError } from "../llm/errors.js";
+import { createGeminiAdapter } from "../llm/gemini-adapter.js";
+import { createGeminiResearchAdapter } from "../llm/gemini-research-adapter.js";
 import type { StructuredGenerateClient } from "../llm/structured-output.js";
 import { runExportJob } from "../render/export-job.js";
 import { runQaJob } from "../render/qa-job.js";
 import { createDefaultRenderBackend, type RenderBackend } from "../render/render-backend.js";
 import { runRenderJob } from "../render/render-job.js";
+import {
+  finishStoryboardAfterCrash,
+  runStoryboardJob,
+  type StoryboardJobDeps,
+} from "../render/storyboard-job.js";
 import { type ResearchJobDeps, runResearchJob } from "../research/research-job.js";
 import { runScriptJob, type ScriptJobDeps } from "../script/script-job.js";
 import { closeQueues, createQueues, type QueueSet, reconcileQueues } from "./queues.js";
@@ -15,7 +31,7 @@ import { closeQueues, createQueues, type QueueSet, reconcileQueues } from "./que
 /**
  * Consumer BullMQ cho ba queue (quyết định 5 và P3-11). Payload chỉ có `jobId`; job đọc mọi thứ từ PostgreSQL
  * và tự chạy theo role của agent:
- * - `llm`: research, script (Gemini), visual (code);
+ * - `llm`: research, script (Gemini, hoặc Claude Code khi run chọn model `claude-code…`), visual (code);
  * - `media`: voice (TTS + alignment qua `services/tts`), qa;
  * - `render`: video, gồm render preview (key `render:`) và export (key `export:`).
  *
@@ -26,17 +42,32 @@ import { closeQueues, createQueues, type QueueSet, reconcileQueues } from "./que
 export type ConsumerDeps = {
   db: StudioDb;
   dataDir: string;
-  /** Client provider thô cho research và script. Không có thì worker không chạy queue `llm`. */
+  /** Client Gemini thô cho research và script. */
   client?: StructuredGenerateClient;
+  /** Client Claude Code theo model id `claude-code…` của run (ADR-007, bổ sung 2026-11-02). Không có thì tắt. */
+  claudeCodeClient?: (model: string) => StructuredGenerateClient;
+  /** Cấu hình Gemini gốc (model mặc định, thinking). Run có `llmModel` thì job research/script đổi model theo run. */
+  gemini?: GeminiEnvConfig;
   research?: Pick<ResearchJobDeps, "createLlm" | "fetchUrl">;
-  script?: Pick<ScriptJobDeps, "createLlm">;
-  /** TTS và alignment; mặc định gọi `TTS_BASE_URL`. */
-  voice?: Pick<VoiceJobDeps, "collectMedia" | "voiceId">;
+  script?: Pick<ScriptJobDeps, "createLlm" | "loadAssetCatalog">;
+  /** Test thay renderer ảnh tĩnh và kho tài sản của job storyboard (P6-10). */
+  storyboard?: Pick<StoryboardJobDeps, "renderer" | "loadAssetCatalog">;
+  /** TTS và alignment theo câu; mặc định gọi `TTS_BASE_URL`. */
+  voice?: Pick<VoiceJobDeps, "collectVoiceScenes" | "voiceId">;
   /** ffmpeg + Remotion; mặc định `createDefaultRenderBackend(dataDir)`, dựng khi job đầu tiên cần. */
   backend?: RenderBackend;
 };
 
 export type JobOutcome = { role: string; status: string; detail?: string };
+
+/** Client cho model mà worker không cấu hình: mọi lần gọi báo `configuration_missing`. */
+function unavailableClient(message: string): StructuredGenerateClient {
+  return {
+    async generateStructured() {
+      throw new LlmError("configuration_missing", message);
+    },
+  };
+}
 
 function detail(result: { status: string; reason?: string; errorCode?: string }): {
   detail?: string;
@@ -57,22 +88,55 @@ export async function processJob(deps: ConsumerDeps, jobId: string): Promise<Job
     deps.backend ??= createDefaultRenderBackend(dataDir);
     return deps.backend;
   };
-  const llm = () => {
-    if (deps.client === undefined) {
-      throw new Error("worker này không có client LLM cho research/script");
+  // P3-12: model Director chọn cho run thay model mặc định; usage ghi đúng model đã gọi.
+  const runModel = context.workflowRun.llmModel;
+  // Worker thiếu client cho model của run: không ném trước khi job được nhận (run sẽ kẹt ở trạng thái chờ),
+  // mà đưa client báo `configuration_missing` để job fail ngay, không retry, và giao diện hiện lý do.
+  const llm = (): StructuredGenerateClient => {
+    if (runModel !== null && isClaudeCodeModel(runModel)) {
+      return (
+        deps.claudeCodeClient?.(runModel) ??
+        unavailableClient(`Worker chưa bật Claude Code (CLAUDE_CODE_MODELS) cho model ${runModel}.`)
+      );
     }
-    return deps.client;
+    return deps.client ?? unavailableClient("Worker không có GEMINI_API_KEY cho research/script.");
   };
+  const runConfig: GeminiEnvConfig | null =
+    runModel === null
+      ? null
+      : { ...(deps.gemini ?? readGeminiEnv(process.env)), modelScript: runModel };
   let result: { status: string; reason?: string; errorCode?: string };
   switch (role) {
     case "research":
-      result = await runResearchJob(db, jobId, { client: llm(), dataDir, ...deps.research });
+      result = await runResearchJob(db, jobId, {
+        client: llm(),
+        dataDir,
+        ...(runConfig === null
+          ? {}
+          : {
+              createLlm: (metered) =>
+                createGeminiResearchAdapter({ config: runConfig, client: metered }),
+            }),
+        ...deps.research,
+      });
       break;
     case "script":
-      result = await runScriptJob(db, jobId, { client: llm(), dataDir, ...deps.script });
+      result = await runScriptJob(db, jobId, {
+        client: llm(),
+        dataDir,
+        ...(runConfig === null
+          ? {}
+          : {
+              createLlm: (metered) => createGeminiAdapter({ config: runConfig, client: metered }),
+            }),
+        ...deps.script,
+      });
       break;
     case "visual":
-      result = await runVisualJob(db, jobId, { dataDir });
+      // P6-10: job storyboard (queue `render`, key `storyboard:`) khác job visual sau duyệt script.
+      result = isStoryboardJobKey(context.job.idempotencyKey)
+        ? await runStoryboardJob(db, jobId, { dataDir, ...deps.storyboard })
+        : await runVisualJob(db, jobId, { dataDir });
       break;
     case "voice":
       result = await runVoiceJob(db, jobId, { dataDir, ...deps.voice });
@@ -122,8 +186,17 @@ function workingStage(context: JobContext): WorkingStage | null {
  * BullMQ đã hết lượt mà job trong PostgreSQL vẫn `queued`/`running`: ghi `failed` với `resume_from` đúng bước.
  * Job đã tự ghi kết quả (completed, failed, cancelled) thì không làm gì.
  */
-export async function failStuckJob(db: StudioDb, jobId: string, error: unknown): Promise<boolean> {
+export async function failStuckJob(
+  db: StudioDb,
+  jobId: string,
+  error: unknown,
+  dataDir?: string,
+): Promise<boolean> {
   const context = await loadJobContext(db, jobId);
+  // Storyboard hỏng không chặn cổng script (04 mục Phase 6): mở cổng với artifact chỉ có lỗi.
+  if (context !== null && isStoryboardJobKey(context.job.idempotencyKey)) {
+    return dataDir === undefined ? false : finishStoryboardAfterCrash(db, jobId, dataDir, error);
+  }
   const stage = context === null ? null : workingStage(context);
   if (context === null || stage === null || !["queued", "running"].includes(context.job.status)) {
     return false;
@@ -180,7 +253,7 @@ export function createConsumer(
       const final = job.attemptsMade >= (job.opts.attempts ?? 1);
       options.onError?.(job.data.jobId, error, final);
       if (final) {
-        void failStuckJob(deps.db, job.data.jobId, error).catch((cause) =>
+        void failStuckJob(deps.db, job.data.jobId, error, deps.dataDir).catch((cause) =>
           options.onError?.(job.data.jobId, cause, true),
         );
       }
@@ -193,7 +266,15 @@ export function createConsumer(
     reconcile: async () => {
       const scope =
         options.reconcileScope === undefined ? undefined : await options.reconcileScope();
-      return (await reconcileQueues(deps.db, queues, scope)).enqueued.length;
+      const result = await reconcileQueues(deps.db, queues, scope, {
+        // Hết lượt lúc DB không ghi được: ghi `failed` thay handler `failed` ở trên.
+        onExhausted: (jobId, failedReason) =>
+          failStuckJob(deps.db, jobId, new Error(failedReason), deps.dataDir),
+      });
+      for (const jobId of result.exhausted) {
+        options.onError?.(jobId, new Error("đối chiếu ghi failed sau khi BullMQ hết lượt"), true);
+      }
+      return result.enqueued.length;
     },
     close: async () => {
       await Promise.all(workers.map((worker) => worker.close()));

@@ -14,7 +14,12 @@ import {
 } from "@/test/fake-api";
 import { MAX_UPLOAD_BYTES } from "./reference-upload";
 
-const projectRow = { id: PROJECT_ID, title: "Redis cơ bản", createdAt: NOW_ISO, updatedAt: NOW_ISO };
+const projectRow = {
+  id: PROJECT_ID,
+  title: "Redis cơ bản",
+  createdAt: NOW_ISO,
+  updatedAt: NOW_ISO,
+};
 const listWithProject = () => jsonResponse(200, { projects: [projectRow] });
 const BRIEF_PUT = `PUT /api/projects/${PROJECT_ID}/brief`;
 const REF_POST = `POST /api/projects/${PROJECT_ID}/references`;
@@ -33,7 +38,9 @@ function renderShell() {
 async function openProject() {
   // applyAccept: false để thử cả tệp mà input `accept` sẽ lọc (kiểm chặn phía client).
   const user = userEvent.setup({ applyAccept: false });
-  await user.click(await screen.findByRole("button", { name: projectRow.title }, { timeout: 5000 }));
+  await user.click(
+    await screen.findByRole("button", { name: projectRow.title }, { timeout: 5000 }),
+  );
   const form = await screen.findByRole("form", { name: vi.brief.heading }, { timeout: 5000 });
   return { user, form };
 }
@@ -66,7 +73,7 @@ describe("Form brief (P2-06)", () => {
       await user.clear(duration);
       if (bad !== "") await user.type(duration, bad);
       await user.click(within(form).getByRole("button", { name: vi.brief.save }));
-      expect(within(form).getByText(vi.brief.durationRange)).toBeTruthy();
+      expect(within(form).getByText(vi.brief.durationRangeFor(30, 90))).toBeTruthy();
     }
     expect(api.callsTo(BRIEF_PUT)).toHaveLength(0);
   });
@@ -105,6 +112,9 @@ describe("Form brief (P2-06)", () => {
       [BRIEF_PUT]: (init) =>
         jsonResponse(201, {
           ...(JSON.parse(String(init?.body)) as object),
+          // Server luôn ghi gói `story` (ADR-013 bổ sung (2)); client không gửi thể loại.
+          formatId: "story",
+          formatVersion: 1,
           id: "00000000-0000-4000-8000-0000000000b1",
           projectId: PROJECT_ID,
           createdAt: NOW_ISO,
@@ -135,8 +145,7 @@ describe("Tạo project và đính kèm tệp (P2-06)", () => {
   it("tạo project gửi title và chọn project mới", async () => {
     let created = false;
     const api = installFakeApi({
-      "GET /api/projects": () =>
-        jsonResponse(200, { projects: created ? [projectRow] : [] }),
+      "GET /api/projects": () => jsonResponse(200, { projects: created ? [projectRow] : [] }),
       "POST /api/projects": () => {
         created = true;
         return jsonResponse(201, projectRow);

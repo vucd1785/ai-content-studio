@@ -19,7 +19,7 @@ describe("resolve storage_key (08-SECURITY)", () => {
       expect(await resolveStorageKey("/không-tồn-tại", key)).toBeNull();
     }
     for (const key of [
-      "render/cache/EduVertical/preview-1.mp4",
+      "render/cache/StickStory/preview-1.mp4",
       "a..b/c.wav",
       "render/public/x.wav",
     ]) {

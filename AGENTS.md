@@ -4,7 +4,16 @@
 
 ## Đang ở đâu
 
-Repository đang ở giai đoạn tài liệu. Chưa có mã ứng dụng. Task được phép làm tiếp là `P0-01` trong [docs/11-TASKS.md](docs/11-TASKS.md), và chỉ sau khi Director yêu cầu triển khai.
+Mã ứng dụng đã có cho Phase 0–5 (`apps/`, `packages/`). Tiến độ thật lấy từ trường `Trạng thái` trong [docs/11-TASKS.md](docs/11-TASKS.md) và các file `reports/<task-id>.md`, không lấy từ mục này.
+
+Ảnh chụp ngày 2026-11-02 (nhánh `feat/phase2-5-workflow-studio`, nhiều thay đổi chưa commit):
+
+- Đã viết report, chờ Director nghiệm thu: P2-11, P2-12, P3-12, P3-13, P3-14, P3-15, P3-16, P3-17, P4-05, P5-04. Không tự đổi sang `done`.
+- P3-17 còn phải chạy lại integration test của worker (`asset-jobs.integration.test.ts`) và bộ test API khi Docker/Postgres ổn định, rồi cập nhật report.
+- Chưa làm: P2-13 (Playwright, cần Director cho phép tải browser), P2-14.
+- Bảo mật mục C để sau.
+
+Chỉ commit khi Director yêu cầu.
 
 ## Cách làm một task
 
@@ -38,6 +47,9 @@ Phiên agent tự hành làm nhiều task liên tiếp theo [docs/13-AUTONOMOUS-
 | Task | [docs/11-TASKS.md](docs/11-TASKS.md) |
 | Đổi model | [docs/12-MODEL-HANDOFF.md](docs/12-MODEL-HANDOFF.md) |
 | ADR | [docs/decisions/README.md](docs/decisions/README.md) |
+| Spike Phase 6 | [docs/spikes/](docs/spikes/) (P6-01 shot list, P6-02 căn chữ, P6-03 render, P6-14 Claude Code) |
+| Nhân vật kênh | [docs/design/characters/sheet.html](docs/design/characters/sheet.html) |
+| Tài sản hình động | skill `create-motion-asset` ([.cursor](.cursor/skills/create-motion-asset/SKILL.md), [.claude](.claude/skills/create-motion-asset/SKILL.md)) |
 
 Quyết định chưa chốt nằm ở mục tương ứng trong kế hoạch triển khai. Không tự điền model ID, license alignment, hay `licenseKey` của Remotion.
 

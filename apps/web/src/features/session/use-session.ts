@@ -1,4 +1,4 @@
-import { sessionStatusResponseSchema, type SessionStatusResponse } from "@studio/contracts";
+import { type SessionStatusResponse, sessionStatusResponseSchema } from "@studio/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/api";
 

@@ -11,6 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --import tsx src/migrate.ts",
+    "db:test:prepare": "node --import tsx src/prepare-test-db.ts",
     "test": "vitest run"
   },
   "dependencies": {

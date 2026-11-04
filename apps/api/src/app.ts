@@ -1,15 +1,20 @@
-import type { ApiErrorBody } from "@studio/contracts";
-import Fastify, { type FastifyInstance } from "fastify";
 import {
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
 } from "@fastify/type-provider-zod";
+import type { ApiErrorBody } from "@studio/contracts";
+import Fastify, { type FastifyInstance } from "fastify";
 import { registerSecurityHooks } from "./hooks.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { createEventNotifier, registerEventStreamRoute } from "./routes/event-stream.js";
-import { registerProjectRoutes, type ProjectRouteDeps } from "./routes/projects.js";
+import { type ProjectRouteDeps, registerProjectRoutes } from "./routes/projects.js";
 import { registerSessionProbeRoute, registerSessionRoutes } from "./routes/session.js";
+import {
+  type HeartbeatReader,
+  redisHeartbeatReader,
+  registerWorkerStatusRoute,
+} from "./routes/worker-status.js";
 import { registerWorkflowRunRoutes } from "./routes/workflow-runs.js";
 
 export type BuildAppOptions = {
@@ -22,6 +27,8 @@ export type BuildAppOptions = {
   projects?: ProjectRouteDeps;
   /** Ghi đè chu kỳ poll và heartbeat của SSE (test). */
   eventStream?: { pollMs?: number; heartbeatMs?: number };
+  /** Đọc heartbeat worker (P3-15). Mặc định Redis của `REDIS_URL`; test thay bằng bản giả. */
+  readHeartbeats?: HeartbeatReader;
 };
 
 export type StudioApp = FastifyInstance & {
@@ -38,11 +45,7 @@ export async function buildApp(options: BuildAppOptions): Promise<StudioApp> {
         ? false
         : {
             redact: {
-              paths: [
-                "req.headers.cookie",
-                "req.body.password",
-                'res.headers["set-cookie"]',
-              ],
+              paths: ["req.headers.cookie", "req.body.password", 'res.headers["set-cookie"]'],
               censor: "[REDACTED]",
             },
           },
@@ -101,9 +104,18 @@ export async function buildApp(options: BuildAppOptions): Promise<StudioApp> {
   if (options.projects !== undefined) {
     await registerProjectRoutes(app, options.projects);
     const notifier = createEventNotifier();
-    registerWorkflowRunRoutes(app, { db: options.projects.db, notifier });
+    registerWorkflowRunRoutes(app, {
+      db: options.projects.db,
+      dataDir: options.projects.dataDir,
+      notifier,
+    });
     registerArtifactRoutes(app, { db: options.projects.db, dataDir: options.projects.dataDir });
     registerEventStreamRoute(app, { db: options.projects.db, notifier, ...options.eventStream });
+    registerWorkerStatusRoute(app, {
+      readHeartbeats:
+        options.readHeartbeats ??
+        redisHeartbeatReader(process.env.REDIS_URL ?? "redis://localhost:6379"),
+    });
   }
 
   const studioApp = app as StudioApp;
@@ -115,7 +127,9 @@ export async function buildApp(options: BuildAppOptions): Promise<StudioApp> {
   return studioApp;
 }
 
-function sendValidationError(reply: import("fastify").FastifyReply): import("fastify").FastifyReply {
+function sendValidationError(
+  reply: import("fastify").FastifyReply,
+): import("fastify").FastifyReply {
   const body: ApiErrorBody = {
     error: {
       code: "validation_error",

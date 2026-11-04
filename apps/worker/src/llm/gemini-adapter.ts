@@ -1,19 +1,15 @@
 import { type GeminiEnvConfig, readGeminiEnv } from "@studio/config/gemini";
+import { scriptV2ArtifactSchema } from "@studio/contracts";
 import { createGeminiStructuredClient } from "./gemini-client.js";
-import { mapGeminiScriptVariantsResponse } from "./gemini-diagram-transform.js";
 import {
-  buildScriptGenerationPrompt,
-  scriptTaskSystemInstruction,
-  scriptVariantsGeminiGenerationSchema,
-} from "./script-prompt.js";
-import { scriptVariantsPayloadSchema } from "./script-schema.js";
+  buildScriptV2Prompt,
+  decodeFlatScriptV2,
+  scriptV2GenerationSchema,
+  scriptV2SystemInstruction,
+} from "./script-v2-prompt.js";
 import type { StructuredGenerateClient } from "./structured-output.js";
 import { generateWithSchemaRepair } from "./structured-output.js";
-import type {
-  ScriptGenerationInput,
-  ScriptGenerationResult,
-  StructuredLlmAdapter,
-} from "./types.js";
+import type { ScriptV2GenerationResult, StructuredLlmAdapter } from "./types.js";
 
 export type GeminiAdapterOptions = {
   config?: GeminiEnvConfig;
@@ -25,22 +21,25 @@ export function createGeminiAdapter(options: GeminiAdapterOptions = {}): Structu
   const client = options.client ?? createGeminiStructuredClient(config);
 
   return {
-    async generateScriptVariants(input: ScriptGenerationInput): Promise<ScriptGenerationResult> {
-      const userPrompt = buildScriptGenerationPrompt(input);
-      const result = await generateWithSchemaRepair(scriptVariantsPayloadSchema, client, {
-        systemInstruction: scriptTaskSystemInstruction(),
-        userPrompt,
-        responseJsonSchema: scriptVariantsGeminiGenerationSchema(),
-        model: config.modelScript,
-        thinkingLevel: config.thinkingLevelScript,
-      }, {
-        mapParsedJson: mapGeminiScriptVariantsResponse,
-        repairNotes:
-          "Diagram scenes use diagramJson: a JSON string (no markdown fences) encoding { nodes: [{id,label}], edges: [{from,to,label?}] }. Do not emit nested diagram objects.",
-      });
-
+    async generateScriptV2Variants(input, schemaOptions) {
+      const result = await generateWithSchemaRepair(
+        scriptV2ArtifactSchema(schemaOptions),
+        client,
+        {
+          systemInstruction: scriptV2SystemInstruction(),
+          userPrompt: buildScriptV2Prompt(input),
+          responseJsonSchema: scriptV2GenerationSchema(input),
+          model: config.modelScript,
+          thinkingLevel: config.thinkingLevelScript,
+        },
+        {
+          mapParsedJson: (raw) => decodeFlatScriptV2(raw, input.format),
+          repairNotes:
+            "Flat layout: lines and shots are arrays at variant level with sceneId; actors are actor1 and optional actor2, actor3 (actor3 only for wide or high shots). Use only ids from the enums.",
+        },
+      );
       return {
-        variants: result.data.variants,
+        variants: result.data.variants as ScriptV2GenerationResult["variants"],
         usage: result.usage,
         repairCount: result.repairCount,
       };

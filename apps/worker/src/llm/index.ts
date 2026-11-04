@@ -6,7 +6,5 @@ export {
   type BriefInput,
   briefInputSchema,
   type LlmUsage,
-  type ScriptGenerationInput,
-  type ScriptGenerationResult,
   type StructuredLlmAdapter,
 } from "./types.js";

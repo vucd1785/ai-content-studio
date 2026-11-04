@@ -1,0 +1,12 @@
+{
+  "id": "skin_bit",
+  "kind": "character_skin",
+  "version": "0.1.0",
+  "description": "Lớp da Bit: robot linh vật, mặt màn hình phát sáng.",
+  "tags": ["nhân vật", "bit"],
+  "brandProfile": "kenh-mac-dinh",
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

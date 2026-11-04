@@ -11,6 +11,7 @@ export const workflowRunStatusSchema = z.enum([
   "researching",
   "research_ready",
   "scripting",
+  "storyboarding",
   "waiting_script_approval",
   "producing_assets",
   "preview_rendering",
@@ -84,6 +85,10 @@ export const workflowRunSchema = z.object({
   status: workflowRunStatusSchema,
   resumeFrom: z.string().nullable(),
   failureCode: z.string().nullable(),
+  /** Chi tiết lỗi đã lưu (P3-17), ví dụ "Scene s2: TTS align lỗi 503: …". Giới hạn 2000 ký tự. */
+  failureMessage: z.string().nullable().default(null),
+  /** Model LLM chọn khi bắt đầu run (P3-12); null là mặc định của worker. */
+  llmModel: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -93,10 +98,42 @@ export const approvalCreatedResponseSchema = z.object({
   workflowRun: workflowRunSchema,
 });
 
+/** Body `POST /api/projects/:projectId/workflow-runs` (P3-12): model tùy chọn, phải nằm trong danh sách cho phép. */
+export const startWorkflowRunBodySchema = z
+  .object({
+    llmModel: z.string().trim().min(1).max(100).optional(),
+  })
+  .strict();
+
+export type StartWorkflowRunBody = z.infer<typeof startWorkflowRunBodySchema>;
+
+/** `GET /api/llm-models` (P3-12): model chọn được khi bắt đầu run, đọc từ cấu hình server. */
+export const llmModelsResponseSchema = z.object({
+  defaultModel: z.string(),
+  models: z.array(z.string()),
+});
+
 /** `POST /api/workflow-runs/:runId/cancel` và `/resume` (P3-08). Không có approval trong response. */
 export const workflowRunControlResponseSchema = z.object({
   workflowRun: workflowRunSchema,
 });
+
+/**
+ * Tiến độ thật của một job media (P3-17), lấy từ event `job.progress` mới nhất của lượt chạy hiện tại.
+ * `done`/`total` đếm đơn vị đã xong thật: bước đọc hoặc căn chữ từng cảnh với voice, frame với render.
+ * Job LLM không có tiến độ (ADR-009).
+ */
+export const jobProgressSchema = z.object({
+  done: z.number().int().nonnegative(),
+  total: z.number().int().positive(),
+  unit: z.enum(["scene_step", "frame"]),
+  /** Voice: cảnh đang làm (1-based) và pha đang chạy. */
+  sceneIndex: z.number().int().positive().nullable().default(null),
+  sceneCount: z.number().int().positive().nullable().default(null),
+  phase: z.enum(["synthesize", "align"]).nullable().default(null),
+});
+
+export type JobProgress = z.infer<typeof jobProgressSchema>;
 
 export const workflowRunDetailResponseSchema = z.object({
   workflowRun: workflowRunSchema,
@@ -105,6 +142,13 @@ export const workflowRunDetailResponseSchema = z.object({
       id: z.uuid(),
       role: z.string(),
       status: z.string(),
+      /** Mốc thật của lượt chạy gần nhất (giao diện tính thời gian đã chạy, không phải phần trăm giả). */
+      startedAt: z.string().nullable().default(null),
+      finishedAt: z.string().nullable().default(null),
+      /** Lỗi của lượt chạy gần nhất (P3-17). */
+      errorCode: z.string().nullable().default(null),
+      errorMessage: z.string().nullable().default(null),
+      progress: jobProgressSchema.nullable().default(null),
     }),
   ),
   approvals: z.array(approvalSchema),
@@ -117,6 +161,8 @@ export const workflowRunDetailResponseSchema = z.object({
     }),
   ),
 });
+
+export type WorkflowRunDetailResponse = z.infer<typeof workflowRunDetailResponseSchema>;
 
 export const runIdParamsSchema = z.object({
   runId: z.uuid(),
@@ -154,9 +200,7 @@ export const eventStreamQuerySchema = z.object({
  * Field `data` của một event SSE: payload đã lưu, cộng `workflowRunId` của hàng.
  * `job.progress` giữ nguyên payload callback Remotion.
  */
-export const eventStreamDataSchema = z
-  .object({ workflowRunId: z.uuid() })
-  .catchall(z.unknown());
+export const eventStreamDataSchema = z.object({ workflowRunId: z.uuid() }).catchall(z.unknown());
 
 export type EventStreamData = z.infer<typeof eventStreamDataSchema>;
 
@@ -175,6 +219,25 @@ export const usageRecordSchema = z.object({
 });
 
 export type UsageRecord = z.infer<typeof usageRecordSchema>;
+
+/** `GET /api/usage/summary?from=&to=` (P5-04): khoảng thời gian do client tính theo múi giờ của Director. */
+export const usageSummaryQuerySchema = z
+  .object({ from: z.iso.datetime({ offset: true }), to: z.iso.datetime({ offset: true }) })
+  .refine((value) => Date.parse(value.from) < Date.parse(value.to), {
+    message: "from phải trước to",
+  })
+  .refine((value) => Date.parse(value.to) - Date.parse(value.from) <= 400 * 24 * 3600 * 1000, {
+    message: "khoảng tối đa 400 ngày",
+  });
+
+export const usageSummaryResponseSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  calls: z.number().int().nonnegative(),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  thinkingTokens: z.number().int().nonnegative(),
+});
 
 /** `GET /api/workflow-runs/:runId/usage`. */
 export const usageListResponseSchema = z.object({

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fetchLogSchema, researchSchema } from "@studio/contracts";
@@ -27,8 +27,8 @@ import {
   type ResearchExtractionInput,
   type ResearchLlm,
 } from "../llm/gemini-research-adapter.js";
-import type { StructuredGenerateClient } from "../llm/structured-output.js";
 import type { ResearchExtraction } from "../llm/research-prompt.js";
+import type { StructuredGenerateClient } from "../llm/structured-output.js";
 import { runResearchJob } from "./research-job.js";
 import { isPublicAddress, safeFetch } from "./safe-fetch.js";
 
@@ -43,7 +43,11 @@ let server: Server;
 let port = 0;
 const createdProjectIds: string[] = [];
 
-const testGeminiConfig = { apiKey: "test-key-not-real", modelScript: "fake-model", thinkingLevelScript: "low" as const };
+const testGeminiConfig = {
+  apiKey: "test-key-not-real",
+  modelScript: "fake-model",
+  thinkingLevelScript: "low" as const,
+};
 
 /**
  * Provider giả ở mức client: adapter Gemini research thật (parse, Zod, repair) chạy trên JSON kịch bản.
@@ -64,7 +68,13 @@ function fakeLlm(outcomes: (ResearchExtraction | Error | string)[]) {
       }
       return {
         jsonText: typeof next === "string" ? next : JSON.stringify(next),
-        usage: { provider: "gemini", model: request.model, inputTokens: 12, outputTokens: 3, thinkingTokens: 1 },
+        usage: {
+          provider: "gemini",
+          model: request.model,
+          inputTokens: 12,
+          outputTokens: 3,
+          thinkingTokens: 1,
+        },
       };
     },
   };
@@ -122,7 +132,11 @@ async function seedResearchJob(options: { withReferences?: boolean; status?: Run
       byteSize: 10,
       contentHash: "b".repeat(64),
     });
-    await insertReferenceUrl(db, { projectId: project.id, url: `http://docs.test:${port}/redis`, title: "Redis docs" });
+    await insertReferenceUrl(db, {
+      projectId: project.id,
+      url: `http://docs.test:${port}/redis`,
+      title: "Redis docs",
+    });
     await insertReferenceUrl(db, {
       projectId: project.id,
       url: "http://169.254.169.254/latest/meta-data/",
@@ -134,7 +148,11 @@ async function seedResearchJob(options: { withReferences?: boolean; status?: Run
 }
 
 /** Thêm một run + agent research + job vào project có sẵn (P5-01 cần hai run cùng project). */
-async function seedRunJob(projectId: string, briefId: string, status: RunStatus = "idea_submitted") {
+async function seedRunJob(
+  projectId: string,
+  briefId: string,
+  status: RunStatus = "idea_submitted",
+) {
   const [run] = await db.insert(workflowRuns).values({ projectId, briefId, status }).returning();
   if (run === undefined) {
     throw new Error("seed run failed");
@@ -148,7 +166,12 @@ async function seedRunJob(projectId: string, briefId: string, status: RunStatus 
   }
   const [job] = await db
     .insert(jobs)
-    .values({ agentRunId: agent.id, queue: "llm", idempotencyKey: `test-p3-03-${randomUUID()}`, status: "queued" })
+    .values({
+      agentRunId: agent.id,
+      queue: "llm",
+      idempotencyKey: `test-p3-03-${randomUUID()}`,
+      status: "queued",
+    })
     .returning();
   if (job === undefined) {
     throw new Error("seed job failed");
@@ -219,9 +242,11 @@ describe("research job (P3-03)", () => {
     expect(detail?.workflowRun.status).toBe("research_ready");
     // Research xong thì có thêm agent script `queued` (P3-04).
     expect(detail?.agentRuns.filter((agent) => agent.role === "research")).toEqual([
-      { id: seeded.agentRunId, role: "research", status: "completed" },
+      expect.objectContaining({ id: seeded.agentRunId, role: "research", status: "completed" }),
     ]);
-    expect(detail?.agentRuns.filter((agent) => agent.role === "script").map((agent) => agent.status)).toEqual(["queued"]);
+    expect(
+      detail?.agentRuns.filter((agent) => agent.role === "script").map((agent) => agent.status),
+    ).toEqual(["queued"]);
     expect((await getJobById(db, seeded.jobId))?.status).toBe("completed");
     expect(detail?.artifacts.map((a) => [a.type, a.version]).sort()).toEqual([
       ["fetch_log", 1],
@@ -232,18 +257,27 @@ describe("research job (P3-03)", () => {
     const rows = await db.select().from(artifactTable);
     const research = rows.find((row) => row.id === result.researchArtifactId);
     const fetchLogRow = rows.find((row) => row.id === result.fetchLogArtifactId);
-    expect(research?.storageKey).toMatch(new RegExp(`^artifacts/${seeded.runId}/research-[0-9a-f-]{36}\\.json$`));
+    expect(research?.storageKey).toMatch(
+      new RegExp(`^artifacts/${seeded.runId}/research-[0-9a-f-]{36}\\.json$`),
+    );
 
-    const fetchLog = fetchLogSchema.parse(JSON.parse(await readFile(join(dataDir, fetchLogRow?.storageKey ?? ""), "utf8")));
+    const fetchLog = fetchLogSchema.parse(
+      JSON.parse(await readFile(join(dataDir, fetchLogRow?.storageKey ?? ""), "utf8")),
+    );
     expect(fetchLog.requests).toHaveLength(2);
-    expect(fetchLog.requests[0]).toMatchObject({ status: 200, finalUrl: `http://docs.test:${port}/redis` });
+    expect(fetchLog.requests[0]).toMatchObject({
+      status: 200,
+      finalUrl: `http://docs.test:${port}/redis`,
+    });
     expect(fetchLog.requests[1]).toMatchObject({
       url: "http://169.254.169.254/latest/meta-data/",
       error: "address_blocked",
       contentHash: null,
     });
 
-    const saved = researchSchema.parse(JSON.parse(await readFile(join(dataDir, research?.storageKey ?? ""), "utf8")));
+    const saved = researchSchema.parse(
+      JSON.parse(await readFile(join(dataDir, research?.storageKey ?? ""), "utf8")),
+    );
     expect(saved.sources.map((s) => s.id)).toEqual(["ref-1", "url-1"]);
     expect(saved.facts.map((f) => f.statement)).toEqual([
       "Redis lưu dữ liệu trong RAM.",
@@ -262,9 +296,9 @@ describe("research job (P3-03)", () => {
 
     // Một lần gọi provider → đúng một row usage, gắn agent research.
     const usage = await listUsageRecordsForRun(db, seeded.runId);
-    expect(usage.map((u) => [u.agentRunId, u.model, u.inputTokens, u.outputTokens, u.thinkingTokens])).toEqual([
-      [seeded.agentRunId, "fake-model", 12, 3, 1],
-    ]);
+    expect(
+      usage.map((u) => [u.agentRunId, u.model, u.inputTokens, u.outputTokens, u.thinkingTokens]),
+    ).toEqual([[seeded.agentRunId, "fake-model", 12, 3, 1]]);
 
     const events = await listEventsForRun(db, seeded.runId);
     expect(events.map((e) => [e.type, e.payload])).toEqual([
@@ -280,7 +314,9 @@ describe("research job (P3-03)", () => {
   it("chạy lại job đã xong không gọi provider lần hai", async () => {
     const seeded = await seedResearchJob({ withReferences: false });
     const { deps: llm, calls } = fakeLlm([{ summary: "Chưa có nguồn.", facts: [] }]);
-    expect((await runResearchJob(db, seeded.jobId, { ...llm, dataDir, fetchUrl: testFetch })).status).toBe("completed");
+    expect(
+      (await runResearchJob(db, seeded.jobId, { ...llm, dataDir, fetchUrl: testFetch })).status,
+    ).toBe("completed");
     const again = await runResearchJob(db, seeded.jobId, { ...llm, dataDir, fetchUrl: testFetch });
     expect(again).toEqual({ status: "skipped", reason: "job_completed" });
     expect(calls).toHaveLength(1);
@@ -291,7 +327,10 @@ describe("research job (P3-03)", () => {
   it("schema sai sau repair: job, agent, run failed với resume_from researching", async () => {
     const seeded = await seedResearchJob({ withReferences: false });
     // Hai response sai schema: lần đầu và lần repair.
-    const bad = JSON.stringify({ summary: "x", facts: [{ statement: "a", claimStatus: "verified", sourceIds: [] }] });
+    const bad = JSON.stringify({
+      summary: "x",
+      facts: [{ statement: "a", claimStatus: "verified", sourceIds: [] }],
+    });
     const { deps: llm } = fakeLlm([bad, bad]);
     const result = await runResearchJob(db, seeded.jobId, { ...llm, dataDir, fetchUrl: testFetch });
     expect(result).toEqual({ status: "failed", errorCode: "schema_invalid" });
@@ -314,7 +353,9 @@ describe("research job (P3-03)", () => {
       new LlmError("provider_error", "503"),
       new LlmError("provider_error", "503"),
     ]);
-    await expect(runResearchJob(db, seeded.jobId, { ...llm, dataDir, fetchUrl: testFetch })).rejects.toMatchObject({
+    await expect(
+      runResearchJob(db, seeded.jobId, { ...llm, dataDir, fetchUrl: testFetch }),
+    ).rejects.toMatchObject({
       code: "provider_error",
     });
     expect(await getJobById(db, seeded.jobId)).toMatchObject({ status: "running", attempt: 1 });
@@ -383,7 +424,9 @@ describe("cache research (P5-01)", () => {
     expect(a2?.workflowRunId).toBe(second.runId);
     expect(a2?.contentHash).toBe(a1?.contentHash);
     expect(a2?.storageKey).not.toBe(a1?.storageKey);
-    expect((a2?.metadata as { inputHash?: string }).inputHash).toBe((a1?.metadata as { inputHash?: string }).inputHash);
+    expect((a2?.metadata as { inputHash?: string }).inputHash).toBe(
+      (a1?.metadata as { inputHash?: string }).inputHash,
+    );
     expect(a2?.metadata).toMatchObject({ reusedFromArtifactId: r1.researchArtifactId });
     const agents = await db.select().from(agentTable);
     const hashes = agents
@@ -392,13 +435,17 @@ describe("cache research (P5-01)", () => {
     expect(hashes).toHaveLength(2);
     expect(hashes[0]).toMatch(/^[a-f0-9]{64}$/);
     expect(hashes[0]).toBe(hashes[1]);
-    expect((await getWorkflowRunDetail(db, second.runId))?.workflowRun.status).toBe("research_ready");
+    expect((await getWorkflowRunDetail(db, second.runId))?.workflowRun.status).toBe(
+      "research_ready",
+    );
   });
 
   it("brief đổi nội dung hoặc file reference đổi nội dung thì gọi provider lại", async () => {
     const first = await seedResearchJob();
     const { deps: llm, providerCalls } = fakeLlm([goodExtraction, goodExtraction, goodExtraction]);
-    expect((await runResearchJob(db, first.jobId, { ...llm, dataDir, fetchUrl: testFetch })).status).toBe("completed");
+    expect(
+      (await runResearchJob(db, first.jobId, { ...llm, dataDir, fetchUrl: testFetch })).status,
+    ).toBe("completed");
     expect(providerCalls()).toBe(1);
 
     const newBrief = await insertBrief(db, first.projectId, {
@@ -416,7 +463,11 @@ describe("cache research (P5-01)", () => {
     expect(providerCalls()).toBe(2);
     expect(r2.status === "completed" && r2.reusedFromArtifactId).toBeFalsy();
 
-    await writeFile(join(dataDir, first.uploadKey ?? ""), "# Ghi chú\nTTL đặt bằng EXPIRE.", "utf8");
+    await writeFile(
+      join(dataDir, first.uploadKey ?? ""),
+      "# Ghi chú\nTTL đặt bằng EXPIRE.",
+      "utf8",
+    );
     const byFile = await seedRunJob(first.projectId, first.briefId);
     const r3 = await runResearchJob(db, byFile.jobId, { ...llm, dataDir, fetchUrl: testFetch });
     expect(providerCalls()).toBe(3);

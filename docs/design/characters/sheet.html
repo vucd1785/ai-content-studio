@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: #f4efe6; }
+  svg { display: block; font-family: "Segoe UI", system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// Phác thảo nhân vật: một bộ góc khớp (rig) dùng chung, ba lớp da khác nhau.
+const rad = (d) => (d * Math.PI) / 180;
+// Góc 0 = chỉ xuống, 90 = sang phải màn hình, 180 = chỉ lên.
+const step = (p, a, l) => ({ x: p.x + l * Math.sin(rad(a)), y: p.y + l * Math.cos(rad(a)) });
+function limb(start, [a1, a2], [l1, l2]) {
+  const mid = step(start, a1, l1);
+  return { mid, end: step(mid, a1 + a2, l2) };
+}
+const pathOf = (pts) => "M " + pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ");
+
+// ---------- Khuôn mặt dùng chung ----------
+const EXPRESSIONS = {
+  vui: { label: "Vui", eyes: "oval", brows: [-8, 8, -26], mouth: "smileOpen", blush: true },
+  ngacnhien: { label: "Ngạc nhiên", eyes: "big", brows: [-4, 4, -34], mouth: "o" },
+  hoang: { label: "Hoảng", eyes: "wide", brows: [18, -18, -28], mouth: "wavy", sweat: true },
+  nghingo: { label: "Nghi ngờ", eyes: "half", brows: [14, -10, -24], mouth: "flat", look: [4, 0] },
+  dacy: { label: "Đắc ý", eyes: "happy", brows: [0, -14, -26], mouth: "smirk" },
+  buon: { label: "Buồn", eyes: "oval", brows: [-16, 16, -24], mouth: "frown", look: [0, 4], tear: true },
+};
+
+function face(exprKey, pal, scale = 1) {
+  const e = EXPRESSIONS[exprKey];
+  const ink = pal.ink;
+  const glow = pal.screen === true;
+  const [lx, ly] = e.look ?? [0, 0];
+  const out = [];
+  for (const side of [-1, 1]) {
+    const x = side * 18;
+    const y = -2;
+    switch (e.eyes) {
+      case "oval":
+      case "big": {
+        const big = e.eyes === "big";
+        out.push(`<ellipse cx="${x + lx}" cy="${y + ly}" rx="${big ? 8 : 6.5}" ry="${big ? 11 : 9}" fill="${ink}"/>`);
+        if (!glow) out.push(`<circle cx="${x + lx + 2.5}" cy="${y + ly - 3.5}" r="2.4" fill="#fff"/>`);
+        break;
+      }
+      case "wide":
+        out.push(`<circle cx="${x}" cy="${y}" r="11" fill="${glow ? "none" : "#fff"}" stroke="${ink}" stroke-width="3"/>`);
+        out.push(`<circle cx="${x + lx}" cy="${y + ly}" r="3.5" fill="${ink}"/>`);
+        break;
+      case "half":
+        out.push(`<path d="M ${x - 7 + lx} ${y} A 7 8 0 0 0 ${x + 7 + lx} ${y} Z" fill="${ink}"/>`);
+        out.push(`<line x1="${x - 10}" y1="${y}" x2="${x + 10}" y2="${y}" stroke="${ink}" stroke-width="3.5" stroke-linecap="round"/>`);
+        break;
+      case "happy":
+        out.push(`<path d="M ${x - 8} ${y + 3} Q ${x} ${y - 9} ${x + 8} ${y + 3}" fill="none" stroke="${ink}" stroke-width="4" stroke-linecap="round"/>`);
+        break;
+    }
+  }
+  if (e.brows) {
+    const [aL, aR, by] = e.brows;
+    for (const [side, a] of [[-1, aL], [1, aR]]) {
+      out.push(
+        `<line x1="-8" y1="0" x2="8" y2="0" stroke="${ink}" stroke-width="4" stroke-linecap="round" transform="translate(${side * 18} ${by}) rotate(${a})"/>`,
+      );
+    }
+  }
+  const mouthFill = glow ? ink : "#b8323a";
+  switch (e.mouth) {
+    case "smileOpen":
+      out.push(`<path d="M -14 17 Q 0 38 14 17 Z" fill="${mouthFill}" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>`);
+      break;
+    case "o":
+      out.push(`<ellipse cx="0" cy="24" rx="6" ry="8" fill="${ink}"/>`);
+      break;
+    case "wavy":
+      out.push(`<path d="M -14 24 q 3.5 -5 7 0 t 7 0 t 7 0 t 7 0" fill="none" stroke="${ink}" stroke-width="3.5" stroke-linecap="round"/>`);
+      break;
+    case "flat":
+      out.push(`<line x1="-6" y1="25" x2="12" y2="22" stroke="${ink}" stroke-width="3.5" stroke-linecap="round"/>`);
+      break;
+    case "smirk":
+      out.push(`<path d="M -10 22 Q 4 29 15 15" fill="none" stroke="${ink}" stroke-width="3.5" stroke-linecap="round"/>`);
+      break;
+    case "frown":
+      out.push(`<path d="M -12 29 Q 0 18 12 29" fill="none" stroke="${ink}" stroke-width="3.5" stroke-linecap="round"/>`);
+      break;
+  }
+  const drop = (x, y, s) =>
+    `<path d="M ${x} ${y - 9 * s} Q ${x + 6 * s} ${y} ${x} ${y + 4 * s} Q ${x - 6 * s} ${y} ${x} ${y - 9 * s} Z" fill="${glow ? ink : "#6ec6ff"}" stroke="${glow ? "none" : "#2d7fb8"}" stroke-width="1.5"/>`;
+  if (e.sweat) out.push(drop(36, -26, 1.3));
+  if (e.tear) out.push(drop(-20, 14, 1));
+  if ((e.blush || pal.alwaysBlush) && !glow) {
+    out.push(`<ellipse cx="-30" cy="13" rx="8" ry="5" fill="#ff6f91" opacity="0.8"/>`);
+    out.push(`<ellipse cx="30" cy="13" rx="8" ry="5" fill="#ff6f91" opacity="0.8"/>`);
+  }
+  return `<g transform="scale(${scale})">${out.join("")}</g>`;
+}
+
+// ---------- Tư thế dùng chung (góc khớp) ----------
+// armA/legA: phía trái màn hình; armB/legB: phía phải.
+const POSES = {
+  hero: { label: "Chống nạnh", armA: [-40, 86], armB: [40, -86], legA: [-12, 0], legB: [12, 0], lean: 0, tilt: -6, hop: 0, expr: "dacy" },
+  wave: { label: "Chào", armA: [-12, 8], armB: [115, 45], legA: [-6, 0], legB: [6, 0], lean: -4, tilt: 6, hop: 0, expr: "vui" },
+  point: { label: "Chỉ tay giải thích", armA: [-40, 86], armB: [96, -4], legA: [-8, 0], legB: [10, 0], lean: 4, tilt: 0, hop: 0, expr: "nghingo" },
+  celebrate: { label: "Ăn mừng", armA: [-125, -25], armB: [125, 25], legA: [-28, 40], legB: [28, -40], lean: 0, tilt: 0, hop: 34, expr: "vui" },
+  scared: { label: "Hoảng hốt", armA: [-130, 64], armB: [130, -64], legA: [-18, 6], legB: [16, -6], lean: -10, tilt: -8, hop: 0, expr: "hoang" },
+};
+
+// ---------- Lớp da ----------
+const STICK = {
+  key: "stick",
+  title: "Kiểu 1 — Người que nâng cấp “Tí”",
+  traits: "Đầu tròn to, cọng tóc dựng, khăn quàng cam, tay có bàn tay. Dễ diễn mọi tư thế, làm nhanh nhất.",
+  pal: { ink: "#1f2a44" },
+  hip: { x: 0, y: -132 },
+  neck: { x: 0, y: -236 },
+  shoulderA: { x: -6, y: -226 },
+  shoulderB: { x: 6, y: -226 },
+  armLen: [56, 50],
+  legA: { x: -4, y: -132 },
+  legB: { x: 4, y: -132 },
+  legLen: [66, 66],
+  limbW: 13,
+  head(expr) {
+    const ink = this.pal.ink;
+    return `
+      <path d="M -10 -58 Q -6 -88 12 -84 M 2 -60 Q 8 -80 24 -72" fill="none" stroke="${ink}" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="62" fill="#fffaf2" stroke="${ink}" stroke-width="7"/>
+      ${face(expr, this.pal, 1.2)}`;
+  },
+  headOffset: -70,
+  torso() {
+    const ink = this.pal.ink;
+    return `<line x1="${this.hip.x}" y1="${this.hip.y}" x2="${this.neck.x}" y2="${this.neck.y + 6}" stroke="${ink}" stroke-width="15" stroke-linecap="round"/>`;
+  },
+  neckDecor() {
+    const ink = this.pal.ink;
+    const y = this.neck.y;
+    return `
+      <path d="M 18 ${y + 10} q 30 6 44 30 q -16 2 -26 -10 z" fill="#f26b3a" stroke="${ink}" stroke-width="4" stroke-linejoin="round"/>
+      <rect x="-30" y="${y - 6}" width="60" height="20" rx="10" fill="#f26b3a" stroke="${ink}" stroke-width="4"/>`;
+  },
+  hand(p) {
+    return `<circle cx="${p.x}" cy="${p.y}" r="12" fill="${this.pal.ink}"/>`;
+  },
+  foot(p, side) {
+    return `<ellipse cx="${p.x + side * 10}" cy="${p.y + 2}" rx="17" ry="9" fill="${this.pal.ink}"/>`;
+  },
+  limbColor() { return this.pal.ink; },
+  portrait(expr) {
+    const ink = this.pal.ink;
+    return `<g transform="translate(0 -8) scale(0.9)">
+      <rect x="-30" y="60" width="60" height="20" rx="10" fill="#f26b3a" stroke="${ink}" stroke-width="4"/>
+      ${this.head(expr)}</g>`;
+  },
+};
+
+const BEAN = {
+  key: "bean",
+  title: "Kiểu 2 — Hạt đậu “Đậu”",
+  traits: "Thân tròn như hạt đậu, mầm lá trên đầu, má hồng. Co giãn khi chuyển động rất có hồn, hợp giải trí và hài.",
+  pal: { ink: "#173b37", alwaysBlush: true },
+  hip: { x: 0, y: -46 },
+  neck: { x: 0, y: -150 },
+  shoulderA: { x: -72, y: -128 },
+  shoulderB: { x: 72, y: -128 },
+  armLen: [34, 30],
+  legA: { x: -30, y: -46 },
+  legB: { x: 30, y: -46 },
+  legLen: [22, 22],
+  limbW: 13,
+  body(expr) {
+    const ink = this.pal.ink;
+    return `
+      <path d="M 0 -236 L 0 -262" stroke="#2f7a2a" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="-14" cy="-266" rx="16" ry="8" transform="rotate(-25 -14 -266)" fill="#6cc04a" stroke="${ink}" stroke-width="4"/>
+      <ellipse cx="15" cy="-272" rx="18" ry="9" transform="rotate(20 15 -272)" fill="#6cc04a" stroke="${ink}" stroke-width="4"/>
+      <ellipse cx="0" cy="-136" rx="80" ry="100" fill="#2bb3a3" stroke="${ink}" stroke-width="7"/>
+      <ellipse cx="0" cy="-92" rx="46" ry="38" fill="#8fe0d4" opacity="0.9"/>
+      <g transform="translate(0 -168)">${face(expr, this.pal, 1.4)}</g>`;
+  },
+  hand(p) {
+    return `<circle cx="${p.x}" cy="${p.y}" r="13" fill="#2bb3a3" stroke="${this.pal.ink}" stroke-width="4"/>`;
+  },
+  foot(p, side) {
+    return `<ellipse cx="${p.x + side * 6}" cy="${p.y + 2}" rx="18" ry="10" fill="${this.pal.ink}"/>`;
+  },
+  limbColor() { return this.pal.ink; },
+  portrait(expr) {
+    const ink = this.pal.ink;
+    return `<g transform="translate(0 104) scale(0.62)">
+      <clipPath id="beanclip"><rect x="-120" y="-300" width="240" height="210"/></clipPath>
+      <g clip-path="url(#beanclip)">${this.body(expr)}</g></g>`;
+  },
+};
+
+const ROBOT = {
+  key: "robot",
+  title: "Kiểu 3 — Robot linh vật “Bit”",
+  traits: "Cùng họ với robot trong studio 3D của app: thân kem, mặt là màn hình phát sáng, ăng-ten bóng cam. Kênh và app chung một linh vật.",
+  pal: { ink: "#8fe9ff", screen: true },
+  outline: "#0b0d12",
+  hip: { x: 0, y: -64 },
+  neck: { x: 0, y: -160 },
+  shoulderA: { x: -60, y: -136 },
+  shoulderB: { x: 60, y: -136 },
+  armLen: [38, 34],
+  legA: { x: -26, y: -64 },
+  legB: { x: 26, y: -64 },
+  legLen: [30, 28],
+  limbW: 12,
+  torso() {
+    const o = this.outline;
+    return `
+      <rect x="-56" y="-158" width="112" height="100" rx="24" fill="#e9e4da" stroke="${o}" stroke-width="5"/>
+      <circle cx="0" cy="-108" r="12" fill="#d85a30" stroke="${o}" stroke-width="4"/>
+      <path d="M -3 -116 L 3 -110 L -2 -108 L 3 -100" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>`;
+  },
+  head(expr) {
+    const o = this.outline;
+    return `
+      <line x1="0" y1="-62" x2="0" y2="-92" stroke="#3a4157" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="0" cy="-98" r="11" fill="#d85a30" stroke="${o}" stroke-width="4"/>
+      <circle cx="-82" cy="0" r="10" fill="#3a4157" stroke="${o}" stroke-width="3"/>
+      <circle cx="82" cy="0" r="10" fill="#3a4157" stroke="${o}" stroke-width="3"/>
+      <rect x="-80" y="-64" width="160" height="128" rx="32" fill="#e9e4da" stroke="${o}" stroke-width="5"/>
+      <rect x="-64" y="-48" width="128" height="96" rx="20" fill="#0b1220"/>
+      <g style="filter: drop-shadow(0 0 4px #8fe9ff)">${face(expr, this.pal, 1.15)}</g>`;
+  },
+  headOffset: -76,
+  hand(p) {
+    return `<circle cx="${p.x}" cy="${p.y}" r="13" fill="#e9e4da" stroke="${this.outline}" stroke-width="4"/>`;
+  },
+  foot(p, side) {
+    return `<rect x="${p.x - 18 + side * 4}" y="${p.y - 6}" width="36" height="16" rx="8" fill="#e9e4da" stroke="${this.outline}" stroke-width="4"/>`;
+  },
+  limbColor() { return "#3a4157"; },
+  portrait(expr) {
+    return `<g transform="translate(0 14) scale(0.78)">${this.head(expr)}</g>`;
+  },
+};
+
+function character(skin, poseKey, opts = {}) {
+  const pose = POSES[poseKey];
+  const expr = opts.expr ?? pose.expr;
+  const lw = skin.limbW;
+  const col = skin.limbColor();
+  const legs = [];
+  for (const [start, angles, side] of [[skin.legA, pose.legA, -1], [skin.legB, pose.legB, 1]]) {
+    const { mid, end } = limb(start, angles, skin.legLen);
+    legs.push(`<path d="${pathOf([start, mid, end])}" fill="none" stroke="${col}" stroke-width="${lw + 1}" stroke-linecap="round" stroke-linejoin="round"/>`);
+    legs.push(skin.foot(end, side));
+  }
+  // Chân đứng trên mặt đất: dời để bàn chân thấp nhất chạm y = 0.
+  const feetY = Math.max(
+    limb(skin.legA, pose.legA, skin.legLen).end.y,
+    limb(skin.legB, pose.legB, skin.legLen).end.y,
+  );
+  const arms = [];
+  for (const [start, angles] of [[skin.shoulderA, pose.armA], [skin.shoulderB, pose.armB]]) {
+    const { mid, end } = limb(start, angles, skin.armLen);
+    arms.push(`<path d="${pathOf([start, mid, end])}" fill="none" stroke="${col}" stroke-width="${lw}" stroke-linecap="round" stroke-linejoin="round"/>`);
+    arms.push(skin.hand(end));
+  }
+  let upper;
+  if (skin.key === "bean") {
+    upper = `${skin.body(expr)}${arms.join("")}`;
+  } else {
+    const headY = skin.neck.y + skin.headOffset;
+    const head = `<g transform="rotate(${pose.tilt} ${skin.neck.x} ${skin.neck.y}) translate(0 ${headY})">${skin.head(expr)}</g>`;
+    const decor = skin.neckDecor ? skin.neckDecor() : "";
+    upper = `${skin.torso()}${decor}${arms.join("")}${head}`;
+  }
+  const lean = `rotate(${pose.lean} ${skin.hip.x} ${skin.hip.y})`;
+  const shadow = `<ellipse cx="0" cy="${pose.hop + 4}" rx="${70 - pose.hop * 0.6}" ry="10" fill="#000" opacity="${opts.silhouette ? 0 : 0.12}"/>`;
+  return `${shadow}<g transform="translate(0 ${-feetY - pose.hop})">${legs.join("")}<g transform="${lean}">${upper}</g></g>`;
+}
+
+function sheet(skin) {
+  const W = 1600;
+  const H = 900;
+  const parts = [];
+  parts.push(`<rect width="${W}" height="${H}" fill="#f4efe6"/>`);
+  parts.push(`<text x="40" y="62" font-size="34" font-weight="700" fill="#1d1d1f">${skin.title}</text>`);
+  parts.push(`<text x="40" y="98" font-size="19" fill="#55524c">${skin.traits}</text>`);
+  // Nhân vật lớn + bóng đen
+  parts.push(`<g transform="translate(250 820) scale(1.22)">${character(skin, "hero")}</g>`);
+  parts.push(`<g transform="translate(500 820) scale(0.55)" filter="url(#sil)">${character(skin, "hero", { silhouette: true })}</g>`);
+  parts.push(`<text x="500" y="860" font-size="17" fill="#55524c" text-anchor="middle">Bóng đen</text>`);
+  parts.push(`<line x1="610" y1="130" x2="610" y2="870" stroke="#d6cfc2" stroke-width="2"/>`);
+  // Biểu cảm
+  parts.push(`<text x="650" y="150" font-size="22" font-weight="600" fill="#1d1d1f">Biểu cảm</text>`);
+  Object.entries(EXPRESSIONS).forEach(([key, e], i) => {
+    const cx = 715 + i * 150;
+    parts.push(`<g transform="translate(${cx} 268)">${skin.portrait(key)}</g>`);
+    parts.push(`<text x="${cx}" y="378" font-size="18" fill="#3b3934" text-anchor="middle">${e.label}</text>`);
+  });
+  parts.push(`<line x1="650" y1="404" x2="1560" y2="404" stroke="#d6cfc2" stroke-width="2"/>`);
+  // Tư thế
+  parts.push(`<text x="650" y="446" font-size="22" font-weight="600" fill="#1d1d1f">Tư thế</text>`);
+  ["wave", "point", "celebrate", "scared"].forEach((key, i) => {
+    const cx = 760 + i * 220;
+    parts.push(`<g transform="translate(${cx} 825) scale(0.72)">${character(skin, key)}</g>`);
+    parts.push(`<text x="${cx}" y="866" font-size="18" fill="#3b3934" text-anchor="middle">${POSES[key].label}</text>`);
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs><filter id="sil"><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/></filter></defs>
+    ${parts.join("\n")}</svg>`;
+}
+
+const skins = { stick: STICK, bean: BEAN, robot: ROBOT };
+const which = new URLSearchParams(location.search).get("style") ?? "stick";
+document.getElementById("root").innerHTML = sheet(skins[which]);
+</script>
+</body>
+</html>

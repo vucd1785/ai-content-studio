@@ -1,0 +1,12 @@
+{
+  "id": "action_wave",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Chào: lấy đà, vung tay lên, vẫy lặp.",
+  "tags": ["chào", "vẫy"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

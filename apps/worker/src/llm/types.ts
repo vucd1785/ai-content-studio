@@ -1,5 +1,6 @@
-import type { Script } from "@studio/contracts";
+import type { ScriptV2, ScriptV2SchemaOptions } from "@studio/contracts";
 import { z } from "zod/v4";
+import type { ScriptV2GenerationInput } from "./script-v2-prompt.js";
 
 export const briefInputSchema = z
   .object({
@@ -17,27 +18,28 @@ export const briefInputSchema = z
 export type BriefInput = z.infer<typeof briefInputSchema>;
 
 export type LlmUsage = {
-  provider: "gemini";
+  /** `claude-code`: gói thuê bao qua Claude Code CLI (ADR-007, bổ sung 2026-11-02), chi phí 0. */
+  provider: "gemini" | "claude-code";
   model: string;
   inputTokens: number;
   outputTokens: number;
   thinkingTokens: number;
 };
 
-export type ScriptGenerationInput = {
-  brief: BriefInput;
-  /** Tóm tắt research tùy chọn (Phase 3+); MVP có thể rỗng. */
-  researchSummary?: string;
-  /** Ghi chú `changes_requested` của Director cho lượt viết lại (P3-04). */
-  directorNote?: string;
-};
-
-export type ScriptGenerationResult = {
-  variants: [Script, Script];
+export type ScriptV2GenerationResult = {
+  variants: [ScriptV2, ScriptV2];
   usage: LlmUsage[];
   repairCount: number;
 };
 
 export type StructuredLlmAdapter = {
-  generateScriptVariants(input: ScriptGenerationInput): Promise<ScriptGenerationResult>;
+  /**
+   * Script `2` có shot list (P6-10): một lần gọi cho hai phương án, repair tối đa một lần.
+   * `schema` là `ScriptV2SchemaOptions` của kênh, gói và chế độ (contracts kiểm sau khi giải mã).
+   * Script `1` đã xóa (ADR-013 bổ sung (2) 2026-11-03).
+   */
+  generateScriptV2Variants(
+    input: ScriptV2GenerationInput,
+    schema: ScriptV2SchemaOptions,
+  ): Promise<ScriptV2GenerationResult>;
 };

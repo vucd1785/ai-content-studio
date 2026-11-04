@@ -257,16 +257,68 @@ Test dùng client giả (worker 109 + 1 skip, api 111, web 69). Lần chạy Gem
 
 `run-worker.ts --queues=…` với các script `worker`, `worker:llm`, `worker:media`, `worker:render`. Test BullMQ thật với TTS và backend giả đi từ duyệt kịch bản tới `exported`. Worker 111 + 1 skip. **Chưa chạy TTS hay render thật qua worker** (ghi `data/`, chờ Director). Chi tiết: [reports/P3-11.md](../reports/P3-11.md).
 
+### P2-11 — Giao diện theo 06 mới (pending, chờ Director verify, 2026-11-01)
+
+Bố cục ba cột lần đầu đã thay bằng thiết kế 06 mới: token màu tối, font Be Vietnam Pro, thanh trên có nhãn worker, trang dự án (số liệu, "Cần bạn xử lý", mọi dự án), năm màn theo bước với `defaultTab`, studio là khối chính màn "Đang chạy", lưới so cảnh PA1/PA2, khung điện thoại ở bản cuối. Giữ ước tính `MACHINE_SPEED` và thanh tiến trình bảy bước. Chi tiết: [reports/P2-11.md](../reports/P2-11.md).
+
+### P2-12, P3-13 → P3-16, P4-05, P5-04 (pending, chờ Director verify, 2026-11-01)
+
+- `P2-12`: `PUT /api/workflow-runs/:runId/script` tạo version script mới do Director sửa; trình sửa trên màn duyệt.
+- `P3-13`: test api, worker, db chạy trên DB `studio_test` (`db:test:prepare`), không đụng DB `studio`.
+- `P3-14`: bản cuối `changes_requested` quay về `scripting` và tạo job script mới.
+- `P3-15`: nhịp tim worker trong Redis, `GET /api/worker-status`.
+- `P3-16`: QA cảnh báo `long_silence` đầu và cuối trên 1,2 s.
+- `P4-05`: robot chibi dựng bằng code, mặt theo trạng thái, quay về camera.
+- `P5-04`: `GET /api/usage/summary`, token tháng trên trang dự án.
+
+Report từng task trong `reports/`.
+
+### P3-12 — Chọn model theo lượt chạy (pending, chờ Director verify, 2026-11-01)
+
+Migration 0002 (`workflow_runs.llm_model`, đã áp). `GEMINI_MODELS` trong `.env` (Director điền). `GET /api/llm-models`; bắt đầu run nhận `{ llmModel }`; worker gọi research và script bằng model của run. Suite api/worker đầy đủ chưa chạy lại vì worker của Director đang bật. Chi tiết: [reports/P3-12.md](../reports/P3-12.md).
+
 ## Checkpoint agent
 
 Cập nhật bởi phiên tự hành ([13-AUTONOMOUS-AGENT-WORKFLOW.md](13-AUTONOMOUS-AGENT-WORKFLOW.md)). Mục này luôn là trạng thái mới nhất.
 
-- Thời điểm: 2026-10-31, phiên tự hành thứ năm.
+- Thời điểm: 2026-11-02, phiên tự hành thứ sáu.
+- 2026-11-02: `P3-17` chạy lại đủ bằng chứng. Docker Desktop đã tắt hẳn; bật lại chỉ `postgres` + `redis`, Postgres recovery sạch. Sửa test hủy (id cảnh ghi cứng `s1`), thêm assertion lỗi run detail, thêm `apps/worker/src/render/render-progress.test.ts`. Lệnh (exit 0): contracts 84/84, db 7/7, api 116/116, worker 127/127, web 92/92, typecheck 5 package; số hàng DB `studio` không đổi. Chi tiết: [reports/P3-17.md](../reports/P3-17.md) mục 4.1 và 7.
+- 2026-11-02: Director mở `P5-05` (sơ đồ `EduVertical` cắt khối thứ 4, mũi tên bị che). Đã làm: hàm `layoutDiagram` xếp dọc + làn vòng, `DiagramSlot` viết lại, version template `1.1.0`. Video 33/33, worker 127/127, typecheck exit 0, ffprobe đúng chuẩn. Chờ Director xem preview thật (khởi động lại worker). Chi tiết: [reports/P5-05.md](../reports/P5-05.md).
+- 2026-11-02: Director yêu cầu soạn ADR Phase 6 (thương hiệu, dàn ba nhân vật Tí/Bit/Đậu, thể loại ngoài giáo dục, nhiều giọng, chế độ sáng tạo). Đã soạn ADR-013 đến ADR-016 trạng thái **Proposed** và mục Phase 6 (đề xuất) trong `10-IMPLEMENTATION-PLAN.md`. Director duyệt cả bốn ADR (Accepted 2026-11-02). Đã tạo task `P6-01`…`P6-13` (pending) và lưu bản phác nhân vật ở `docs/design/characters/sheet.html`. Đủ điều kiện ngay: ba spike `P6-01` (live Gemini cần Director cho phép), `P6-02` (cần container tts), `P6-03`. Quyết định còn chờ: tên nhân vật, giọng Tí/Bit, gói giải trí đầu tiên, nguồn SFX, thời lượng theo thể loại.
+- 2026-11-02: `P6-03` xong phần đo, chờ Director verify ([reports/P6-03.md](../reports/P6-03.md)). Giây render/giây video: EduVertical 4,26; mức 1 4,56; mức 2 5,60; mức 3 8,58 (bỏ blur 8,17). Director chốt mức 2 mặc định (ghi vào P6-05); phần verify lệnh của P6-03 vẫn chờ. Code spike ở `apps/video/src/spikes/p6-03/`, đầu ra `data/spikes/p6-03/`. Typecheck, test video 33/33 exit 0.
+- 2026-11-02: `P6-02` xong phần đo, chờ Director ([reports/P6-02.md](../reports/P6-02.md)). Căn từng câu: câu ngắn 16/20, câu vừa 20/20; đệm im lặng 2/20; căn cả cảnh hai giọng 4/4, từ đúng câu 88/89, nhanh hơn ~5×. Đề xuất đọc theo câu, căn theo cảnh: lệch chữ ADR-015, Director đã duyệt; mục Bổ sung 2026-11-02 đã thêm vào ADR-015 và khối P6-08 đã cập nhật. Container `tts` đã bật lại.
+- 2026-11-02: `P6-01` xong, chờ Director ([reports/P6-01.md](../reports/P6-01.md)). Gemini 3.6-flash từ chối (400) schema lồng ≥3 tầng; cách `flat` (2 tầng) đạt; chuỗi JSON lớn làm model chạy mất kiểm soát (~$0,25). Tổng spike ~$0,27.
+- 2026-11-02: Director muốn Claude Code viết kịch bản thay Gemini API (gói Pro) và yêu cầu thử worker gọi `claude -p`. Đã thêm task `P6-14` (spike), viết `apps/worker/src/spikes/p6-14/`. Agent đã cài Claude Code CLI 2.1.302 qua WinGet theo yêu cầu của Director (chữ ký Anthropic hợp lệ). Director đã đăng nhập (Pro). `P6-14` xong phần đo ([reports/P6-14.md](../reports/P6-14.md)): hai ca đạt Zod lần đầu, 33–60 s, không công cụ nào chạy ở ca chèn lệnh (Opus 5.5 bị bộ lọc an toàn chặn, tự chuyển Opus 4.8). Director duyệt "Làm adapter": ADR-007 có Bổ sung 2026-11-02 (client Claude Code).
+- 2026-11-02: `P6-15` xong code, chờ Director verify ([reports/P6-15.md](../reports/P6-15.md)). Model `claude-code[:alias]` chọn theo run qua `CLAUDE_CODE_MODELS` (Director điền); lỗi `configuration_missing`/`quota_exhausted` không retry. Test: config 9, contracts 84, db 7, api 119, worker 138, web 94, typecheck 6 package, exit 0. Chưa chạy thật từ giao diện.
+- 2026-11-02: Run `ba4dc84c` lỗi `alignment_gate_failed` ở cảnh s3 (Whisper gán độ dài 0 cho "code", "về"), không phải thiếu RAM. Director mở `P3-18`; xong code, chờ verify ([reports/P3-18.md](../reports/P3-18.md)). Từ độ dài 0 được cho khoảng ước lượng, tỷ lệ cổng trừ từ được sửa, policy `2.1.0-repair-zero-length`. Pytest không-integration 51 đạt, worker 138/138. Đã `docker cp` vào container `tts` (không build image); revalidate s3 thật đạt (24/26). Container `tts` từng bị OOM do agent chạy pytest nạp model song song, đã bật lại.
+- 2026-11-02: Director nghiệm thu `P6-01`, `P6-02`, `P6-03` (đã `done`) và yêu cầu `P6-04`. P6-04 xong phần viết, chờ Director đọc duyệt ([reports/P6-04.md](../reports/P6-04.md)): 00–09 cập nhật theo ADR-013..016, skill mới `create-motion-asset` (`.cursor` và `.claude`), `build-video-template` sửa. 96 link tương đối, 0 hỏng. Có 4 câu hỏi mở (duyệt tài sản ghi vào repo, cạnh final → preview_rendering, số nhịp đề xuất, quyết định treo).
+- 2026-11-03: Director trả lời bốn câu hỏi của P6-04 "theo đề xuất": gói giải trí đầu tiên `what_if`; giữ nhịp, 12–20/20–27 cắt/phút, DB 10–600 s; xác nhận cạnh `waiting_final_approval → preview_rendering` khi `rebuildWithAssets`; cách duyệt tài sản chốt ở P6-11. Đã ghi vào 01, 03, 04, 05, khối P6-06. Còn chờ: thời lượng `what_if`, tên chính thức ba nhân vật, giọng Tí/Bit, nguồn SFX. Director nghiệm thu P6-04 cùng ngày (`done`).
+- 2026-11-03: `P6-07` xong code, chờ Director verify; migration đã chạy trên `studio` theo lời Director (4 migration, dữ liệu cũ giữ nguyên) ([reports/P6-07.md](../reports/P6-07.md)). Migration `0003_phase6_brand_formats`: bốn bảng kênh/kho, cột kênh, thể loại, chế độ có DEFAULT; seed kênh `kenh-mac-dinh` với Tí, Bit, Đậu, không giọng. Test db 14/14, api 119/119, worker 138/138. DB tạm `studio_p607_upgrade_test` còn lại.
+- 2026-11-03: Director nghiệm thu `P6-07` (`done`). Bắt đầu `P6-05` theo lời Director dù phụ thuộc `P5-05` còn chờ verify (P6-05 không sửa file của P5-05).
+- 2026-11-03: `P6-05` xong code, chờ Director verify ([reports/P6-05.md](../reports/P6-05.md)). Package `@studio/motion-kit` 0.1.0: rig, 6 biểu cảm, Tí/Bit/Đậu, 3 tư thế, 6 hành động, 2 bối cảnh, 2 camera, 22 manifest `candidate`. Test 19/19, typecheck pass. Ảnh tĩnh và MP4 đo chi phí ở `data/motion-kit/p6-05/`. Chờ Director duyệt đổi manifest sang `approved`.
+- 2026-11-03: Director nghiệm thu `P6-05` (`done`); 22 manifest motion kit đổi sang `approved` theo lời Director. Task kế: `P6-06` chờ thời lượng `what_if`; `P6-08` chờ giọng Tí và Bit.
+- 2026-11-03: Director chốt thời lượng `what_if` 30–60 s. `P6-06` xong code, chờ Director verify ([reports/P6-06.md](../reports/P6-06.md)): gói `explainer`/`what_if`, `scriptV2Schema`, `checkPacing`; `explainer` trần shot 5 s (lý do trong report). Contracts 129/129. Chờ Director cho sửa bảng gói trong 05.
+- 2026-11-03: Director nghiệm thu `P6-06` (`done`), cho sửa bảng gói trong 05 (`what_if` 30–60 s, `explainer` shot dài nhất 5 s). Task kế: `P6-08` chờ giọng Tí và Bit (cổng Director); `P6-09` cần P6-08.
+- 2026-11-03: Director chốt giọng: Tí "Hải Đăng", Bit "Trúc Ly" (mẫu nghe thử ở `data/voice-samples/`). Đã ghi vào `brand_characters.voice_id` của kênh `kenh-mac-dinh` trên DB `studio` theo lời Director (UPDATE 2 hàng; `dau` vẫn null).
+- 2026-11-03: chạy lại test P3-17 theo lời Director: tích hợp worker 8/8, client 6/6, api 119/119, worker 138/138, web 94/94, contracts 129/129, db 14/14 ([reports/P3-17.md](../reports/P3-17.md) mục 4.2). P3-17 vẫn chờ Director verify.
+- 2026-11-03: Director nghiệm thu `P3-17` (`done`). Bắt đầu `P6-08`.
+- 2026-11-03: `P6-08` xong code, chờ Director verify ([reports/P6-08.md](../reports/P6-08.md)): đọc theo câu, worker ghép WAV cảnh vào `data/tts` (không đổi ADR-005), căn một lần mỗi cảnh, chia từ về câu, dự phòng theo nhóm câu, `captions[].speaker`. Worker 152/152, contracts 135/135. Thử thật 1 cảnh 3 câu hai giọng: qua cổng, 26/26 từ đúng người nói; căn mất 519 s (spike 7 s), cần theo dõi. Job voice chưa nhận script `2` (nối ở P6-10).
+- 2026-11-03: Director nghiệm thu `P6-08` (`done`). Bắt đầu `P6-09`.
+- 2026-11-03: `P6-09` xong code, chờ Director verify ([reports/P6-09.md](../reports/P6-09.md)): composition `StickStory` (`1.0.0+kit.0.1.0`), cache theo version kit, builder `buildStickStoryRenderProps` trong worker. Render `data/stick-story/p6-09/fixture.mp4` và `live.mp4` (audio thật P6-08): h264 1080×1920 30 fps. Video 42/42, worker 160/160. Chưa nối vào job render (P6-10).
+- 2026-11-03: Director xem fixture, yêu cầu bỏ chữ phủ màn hình và khung bảng code/sơ đồ, chỉ dùng hoạt hình. Đã bỏ khỏi template và render props (`1.1.0+kit.0.1.0`), render lại. Script `2`, 05, ADR-014 vẫn có `onScreenText`/`board`: cần mục Bổ sung ADR-014 nếu bỏ hẳn khỏi script.
+- 2026-11-03: Director "Bỏ, soạn bổ sung ADR". Đã soạn mục Bổ sung 2026-11-03 trong ADR-014 (trạng thái **đề xuất**, chờ Director duyệt): script `2` bỏ `onScreenText`, `board`; ý truyền bằng hoạt hình, đồ vật, chế độ creative. Chưa sửa contracts, 05, skill hay code.
+- 2026-11-03: Director duyệt bổ sung ADR-014 (Accepted). Mở và làm `P6-16` ([reports/P6-16.md](../reports/P6-16.md)): contracts v2 bỏ `onScreenText`, `board`; sửa 05, skill `create-motion-asset`, ghi chú P6-10. Contracts 136/136, worker 160/160, video 43/43. Chờ Director verify.
+- 2026-11-03: Director nghiệm thu `P6-09` và `P6-16` (`done`). Task kế: `P6-10` (cổng Director: lần gọi Gemini live đầu tiên; phụ thuộc P6-06, P6-07, P6-09 đã done).
+- 2026-11-03: `P6-10` xong code (LLM giả, render giả), chờ Director verify ([reports/P6-10.md](../reports/P6-10.md)). Director mở rộng phạm vi 2 lần (worker cấu hình + migration `0004` enum `storyboarding`, API schema, nhãn web). Worker 180/180. Chưa gọi Gemini live (cổng), chưa chạy migration `0004` trên `studio`. Duyệt script `2` mới tới cổng: voice/render chưa nối (cần task).
+- 2026-11-03: P6-10 chạy thật trên `studio_test`: Gemini 503 hai lần (không tốn token); Claude Code (`claude-opus-5-5`) một lần gọi, không repair, 82 s, 2 phương án 16–17 shot, ~23 cắt/phút, storyboard 12 ảnh, 6 cảnh báo mép khung cỡ trung hai người. Trần `maxOutputTokens` đã thêm rồi gỡ theo lời Director.
+- 2026-11-03: Director "Làm đủ để chạy trọn": mở `P6-17` ([reports/P6-17.md](../reports/P6-17.md)). Brief chọn thể loại; màn duyệt kịch bản `2` có storyboard; voice theo câu bằng giọng kênh; render/QA/export `StickStory`; player web phát `StickStory`. Worker 182, api 121, web 97 test. Chờ Director cho chạy migration `0004` trên `studio` rồi tự test trên web.
+- 2026-11-03: Migration `0004` đã chạy trên `studio` theo lời Director (5 migration, enum có `storyboarding`, dữ liệu không đổi). Chờ Director khởi động lại API/worker/web và tự test `what_if` trên web.
 - Đã closeout (Director PASS): `P4-02`, `P5-02`, `P5-01`, `P4-03`, `P3-04`, `P2-07`, `P4-04`, `P2-08`, `P3-05`, `P3-06`, `P3-08`, `P5-03`, `P2-09`, `P2-10`, `P3-10`, `P3-11` (cùng các task trước).
-- Task chờ Director verify: không. Project thử `[Thử Gemini] Redis TTL` còn trong DB, chờ duyệt kịch bản.
+- Task chờ Director verify (đã triển khai, `11-TASKS` vẫn `pending`): `P2-11`, `P2-12`, `P3-12`, `P3-13`, `P3-14`, `P3-15`, `P3-16`, `P4-05`, `P5-04`, `P5-05`, `P6-14`, `P6-15`, `P3-18`, `P6-10`, `P6-17`. Tất cả chưa commit (commit cuối `f6c5960`).
 - Task đang làm: không. Không còn lỗi mở.
-- Lệnh cuối đã chạy (exit 0, P3-11): worker 111 + 1 skip, typecheck worker; khởi động thử worker media/render. Trước đó (P3-10): api 111/111, web 69/69, db 7/7. Redis không còn key test. Trước đó (P2-10): build web. Trước nữa (P5-03): video 25/25, `render:p5-03`. Trước nữa (P3-08): worker 106 + 1 skip, api 105/105, contracts 84/84, db 7/7. DB `studio` còn 0 hàng test. Migration và `data/` không đổi.
-- Đủ điều kiện kế tiếp: không còn task `pending` trong `11-TASKS`.
+- Lệnh cuối đã chạy (2026-11-01, exit 0): contracts 84/84, db 7/7, api 116/116 (DB `studio_test`), worker 120/120, web 87/87, video 25/25, typecheck mọi package, build web. `biome check` sạch cho file mới; repo còn lỗi lint cũ ở file không thuộc các task này. Robot xem trên trang preview tạm qua Vite 5173 (đã xóa), console không lỗi.
+- Lưu ý diff: `biome check --write apps/web/src` lỡ định dạng lại khoảng 20 file web ngoài phạm vi (chỉ xuống dòng, không đổi logic): `app.tsx`, `components/ui/*`, `usage-panel*`, `studio-store*`, `use-studio-run.ts`… Agent không được phép ghi đè để trả về HEAD; Director chọn giữ hoặc trả lại trước khi commit.
+- Đủ điều kiện kế tiếp: `P2-13` sau khi `P2-11` được verify. Director chọn 2026-11-02 dùng Chrome của Remotion (`chrome-headless-shell` 157, `executablePath`), không tải trình duyệt Playwright. `P2-14` chờ Director mở.
 - Quyết định chờ Director:
   1. ~~Định dạng artifact script và route đọc artifact~~: đã chốt 2026-10-31.
   2. ~~Gắn UI~~: đã làm 2026-10-31 (mục Quyết định 2 ở trên).
@@ -276,6 +328,14 @@ Cập nhật bởi phiên tự hành ([13-AUTONOMOUS-AGENT-WORKFLOW.md](13-AUTON
   6. ~~Cách ghi phương án được chọn~~: đã chốt `variantIndex` 2026-10-31 (mục ở trên).
   7. ~~Route media~~: Director mở 2026-10-31, triển khai ở `P2-09`.
   8. ~~Visual có gọi LLM không~~: Director chốt 2026-10-31 giữ storyboard dựng bằng code ở MVP, không gọi LLM.
+  9. ~~Dàn agent 8 vai trò (Director, Planner, Script, Critic, Voice, Video, QA, Publisher)~~: Director chốt 2026-11-01:
+     - Director vẫn là con người, không có "Director agent" (ADR-004: chỉ người duyệt).
+     - Không thêm Planner LLM; `producer` vẫn là state machine bằng code (ADR-002).
+     - Publisher (tự đăng YouTube, Facebook, TikTok) để tương lai. Khi mở cần sửa PRD, ADR mới, bảng tài khoản OAuth mã hóa, review bảo mật, và một cổng duyệt "Đăng" riêng. Đừng đề xuất lại trước khi Director mở.
+     - Không thêm Reviewer/Critic: Director tự review hai phương án (chốt 2026-11-01).
 - Sau lần chạy thật (2026-10-31): sửa resume qua BullMQ (đối chiếu đẩy lại bản Redis đã kết thúc) và timeout TTS 30 phút (`TTS_TIMEOUT_MS`); chi tiết mục 6 của [reports/P3-11.md](../reports/P3-11.md). Máy không có GPU NVIDIA, TTS chạy CPU (RTF khoảng 9). Chưa commit.
-- Hành động kế tiếp chính xác: Director bật lại worker với code mới và chạy lại run thật. Sau đó: DB test riêng (đề xuất), giao diện (ước tính thời gian, chọn model cần danh sách model và migration, thiết kế lại), job cho `revise_assets`, cách chọn template, bảng giá. Lưu ý: không chạy test khi worker đang chạy trên cùng DB. Quyết định còn mở: bảng giá (3), parse PDF (4).
+- Thiết kế lại giao diện (2026-11-01): Director duyệt hướng mockup 5 màn (canvas "AI Content Studio — giao diện mới") và yêu cầu viết lại quy tắc 3D. `06-3D-UI-DESIGN.md` đã viết lại: token màu, khung ứng dụng, năm màn, studio là khối chính màn "Đang chạy", ánh xạ trạng thái có màu, tooltip, khung chi tiết, chuyển động được phép. ADR-009 không đổi (thiết kế mới vẫn đúng ADR). Bố cục P2-11 (đang `pending`) sẽ làm lại theo tài liệu này.
+- Nhân vật 3D anime có rig (yêu cầu 2026-11-01): **Director hoãn, tự phát triển sau.** Lý do: không có model; máy dưới cấu hình tối thiểu của VRoid Studio. Màn concept đã gỡ khỏi canvas. Thay vào đó, 06 quy định robot dựng bằng code đẹp nhất có thể: chibi, mặt màn hình có biểu cảm, toon shading, viền, phụ kiện riêng từng vai trò. ADR-009 giữ nguyên. Đừng đề xuất lại nhân vật rig trước khi Director mở.
+- Director duyệt 2026-11-01 "theo tất cả đề xuất" cho 12 mục, trừ phần C bảo mật (bind cổng Docker 127.0.0.1, key Gemini trả phí): duyệt sau khi kiểm sản phẩm. Task mới: `P2-12` (sửa lời thoại), `P2-13` (Playwright), `P2-14` (timing phụ đề trên web, để Director mở), `P3-13` (DB test riêng), `P3-14` (yêu cầu sửa bản cuối), `P3-15` (heartbeat worker), `P3-16` (QA long_silence), `P4-05` (robot), `P5-04` (token tháng); khối nghiên cứu nằm trong `P2-11`. Hai thư mục mồ côi trong `data/artifacts/` đã xóa.
+- Hành động kế tiếp chính xác: Director verify các task pending trên; commit khi Director yêu cầu; rồi `P2-13`. Phần C bảo mật chờ Director sau khi kiểm sản phẩm.
 - Cần Director: có.

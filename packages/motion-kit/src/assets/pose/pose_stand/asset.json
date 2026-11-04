@@ -1,0 +1,12 @@
+{
+  "id": "pose_stand",
+  "kind": "pose",
+  "version": "0.1.0",
+  "description": "Đứng thẳng, tay buông; tư thế nghỉ.",
+  "tags": ["đứng", "nghỉ"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

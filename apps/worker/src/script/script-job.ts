@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { type Research, researchSchema, scriptArtifactSchema } from "@studio/contracts";
+import { type FormatPack, getFormatPack, type Research, researchSchema } from "@studio/contracts";
 import {
   approvalIdFromScriptJobKey,
   claimJob,
@@ -10,9 +10,12 @@ import {
   findRunApproval,
   JobStateError,
   loadJobContext,
+  loadRunBrandProfile,
   type StudioDb,
+  storyboardJobKeyAfterScript,
 } from "@studio/db";
 import { advanceTransition, readJsonArtifact, writeJsonArtifact } from "../jobs/job-support.js";
+import { loadApprovedAssetCatalog } from "../llm/asset-catalog.js";
 import { LlmError } from "../llm/errors.js";
 import { createGeminiAdapter } from "../llm/gemini-adapter.js";
 import {
@@ -21,13 +24,15 @@ import {
   dbUsageStore,
   llmCallCeiling,
 } from "../llm/metered-client.js";
+import type { CatalogEntry } from "../llm/script-v2-prompt.js";
 import type { StructuredGenerateClient } from "../llm/structured-output.js";
-import type { LlmUsage, StructuredLlmAdapter } from "../llm/types.js";
+import type { LlmUsage, ScriptV2GenerationResult, StructuredLlmAdapter } from "../llm/types.js";
 
 /**
- * Job script (P3-04, docs/04-AGENT-ORCHESTRATION.md). Chỉ nhận `jobId`, đọc research mới nhất của run,
- * gọi LLM một lần (cộng repair) cho hai phương án, ghi artifact `script` `{ variants: [Script, Script] }`,
- * rồi dừng ở `waiting_script_approval` với agent `waiting_approval`. Không bao giờ ghi `approved`.
+ * Job script (P3-04, P6-10, docs/04-AGENT-ORCHESTRATION.md). Chỉ nhận `jobId`, đọc research mới nhất của run,
+ * gọi LLM một lần (cộng repair) cho hai phương án script `2` có shot list, ghi artifact `script` schema `2`,
+ * rồi sang `storyboarding` và tạo job storyboard. Không bao giờ ghi `approved`. Mọi gói đều đi script `2`:
+ * script `1` đã xóa (ADR-013 bổ sung (2) 2026-11-03).
  *
  * Lượt sửa: route approval tạo job script mới khi `changes_requested`; key job mang approval id,
  * job đọc note từ đó. Research không chạy lại.
@@ -40,12 +45,19 @@ export type ScriptJobDeps = {
   createLlm?: (client: StructuredGenerateClient) => StructuredLlmAdapter;
   llmCallCeiling?: number;
   dataDir: string;
+  /** Kho tài sản `approved` theo slug kênh; mặc định đọc manifest motion kit (test thay bản cố định). */
+  loadAssetCatalog?: (brandSlug: string) => CatalogEntry[];
 };
 
 export type ScriptJobResult =
   | { status: "skipped"; reason: string }
   | { status: "failed"; errorCode: string }
-  | { status: "completed"; scriptArtifactId: string; usage: LlmUsage[]; directorNote: string | null };
+  | {
+      status: "completed";
+      scriptArtifactId: string;
+      usage: LlmUsage[];
+      directorNote: string | null;
+    };
 
 /** Tóm tắt research đưa vào prompt: summary và fact đã qua bộ lọc nguồn. */
 function researchSummaryText(research: Research): string {
@@ -53,7 +65,11 @@ function researchSummaryText(research: Research): string {
   return [research.summary, ...facts].join("\n");
 }
 
-export async function runScriptJob(db: StudioDb, jobId: string, deps: ScriptJobDeps): Promise<ScriptJobResult> {
+export async function runScriptJob(
+  db: StudioDb,
+  jobId: string,
+  deps: ScriptJobDeps,
+): Promise<ScriptJobResult> {
   const context = await loadJobContext(db, jobId);
   if (context === null) {
     return { status: "skipped", reason: "job_not_found" };
@@ -95,7 +111,9 @@ export async function runScriptJob(db: StudioDb, jobId: string, deps: ScriptJobD
   const runId = context.workflowRun.id;
   const researchRow = await findLatestRunArtifact(db, runId, "research");
   const research =
-    researchRow === null ? null : await readJsonArtifact(deps.dataDir, researchRow.storageKey, researchSchema);
+    researchRow === null
+      ? null
+      : await readJsonArtifact(deps.dataDir, researchRow.storageKey, researchSchema);
   if (researchRow === null || research === null) {
     return fail("research_missing", "no readable research artifact for this run");
   }
@@ -111,66 +129,158 @@ export async function runScriptJob(db: StudioDb, jobId: string, deps: ScriptJobD
     store: dbUsageStore(db, { workflowRunId: runId, agentRunId: context.agentRun.id }),
   });
   const llm = (deps.createLlm ?? ((client) => createGeminiAdapter({ client })))(metered);
-  let generated;
+  const pack = getFormatPack(brief.formatId, brief.formatVersion);
+  if (pack === undefined) {
+    return fail(
+      "configuration_missing",
+      `unknown format pack ${brief.formatId} v${brief.formatVersion}`,
+    );
+  }
+  return runScriptV2({
+    db,
+    jobId,
+    deps,
+    context,
+    claimed,
+    fail,
+    research,
+    researchRow,
+    approvalId,
+    directorNote,
+    pack,
+    llm,
+  });
+}
+
+type ScriptV2Args = {
+  db: StudioDb;
+  jobId: string;
+  deps: ScriptJobDeps;
+  context: NonNullable<Awaited<ReturnType<typeof loadJobContext>>>;
+  claimed: { attempt: number; maxAttempts: number };
+  fail: (errorCode: string, message: string) => Promise<ScriptJobResult>;
+  research: Research;
+  researchRow: { id: string };
+  approvalId: string | null;
+  directorNote: string | null;
+  pack: FormatPack;
+  llm: StructuredLlmAdapter;
+};
+
+/**
+ * Script `2` (P6-10): một lần gọi cho hai phương án kèm shot list, dùng tính cách và giọng điệu kênh,
+ * danh sách tài sản `approved`. Ghi artifact `script` schema `2`, chuyển `scripting → storyboarding` và
+ * tạo job storyboard (queue `render`) trong cùng transaction. Không ghi approval.
+ */
+async function runScriptV2(args: ScriptV2Args): Promise<ScriptJobResult> {
+  const { db, jobId, deps, context, claimed, fail, research, pack, llm } = args;
+  const runId = context.workflowRun.id;
+  const brand = await loadRunBrandProfile(db, runId);
+  if (brand === null) {
+    return fail("configuration_missing", "project has no brand profile");
+  }
+  const catalog = (deps.loadAssetCatalog ?? loadApprovedAssetCatalog)(brand.slug);
+  const mode = context.workflowRun.creativeMode === "creative" ? "creative" : "standard";
+  const cast = brand.characters.map((c) => ({
+    characterKey: c.characterKey,
+    speaks: c.speaks,
+    displayName: c.displayName,
+    role: c.role,
+    personality: c.personality,
+    catchphrases: c.catchphrases,
+  }));
+  const brief = context.brief;
+  let generated: ScriptV2GenerationResult;
   try {
-    generated = await llm.generateScriptVariants({
-      brief: {
-        topic: brief.topic,
-        audience: brief.audience,
-        goal: brief.goal,
-        durationSec: brief.durationSec,
-        language: "vi",
-        tone: brief.tone,
-        visualStyle: brief.visualStyle,
-        ...(brief.notes === null ? {} : { notes: brief.notes }),
+    generated = await llm.generateScriptV2Variants(
+      {
+        brief: {
+          topic: brief.topic,
+          audience: brief.audience,
+          goal: brief.goal,
+          durationSec: brief.durationSec,
+          language: "vi",
+          tone: brief.tone,
+          visualStyle: brief.visualStyle,
+          ...(brief.notes === null ? {} : { notes: brief.notes }),
+        },
+        format: pack,
+        cast,
+        assetCatalog: catalog,
+        mode,
+        toneRules: brand.toneRules,
+        researchSummary: researchSummaryText(research),
+        researchSources: research.sources.map((source) => ({
+          id: source.id,
+          title: source.title,
+          ...(source.url === undefined ? {} : { url: source.url }),
+        })),
+        ...(args.directorNote === null ? {} : { directorNote: args.directorNote }),
       },
-      researchSummary: researchSummaryText(research),
-      ...(directorNote === null ? {} : { directorNote }),
-    });
+      {
+        cast: cast.map((c) => ({ characterKey: c.characterKey, speaks: c.speaks })),
+        assetCatalog: catalog.map((a) => ({ id: a.id, kind: a.kind })),
+        format: pack,
+        mode,
+      },
+    );
   } catch (error) {
     if (error instanceof CostCeilingError) {
       return fail("cost_ceiling", error.message);
     }
     if (error instanceof LlmError) {
-      if (error.code === "schema_invalid" || error.code === "configuration_missing") {
-        return fail(error.code, error.message);
-      }
-      if (claimed.attempt >= claimed.maxAttempts) {
+      if (
+        error.code === "schema_invalid" ||
+        error.code === "configuration_missing" ||
+        error.code === "quota_exhausted" ||
+        claimed.attempt >= claimed.maxAttempts
+      ) {
         return fail(error.code, error.message);
       }
     }
     throw error;
   }
 
-  const artifact = scriptArtifactSchema.safeParse({ variants: generated.variants });
-  if (!artifact.success) {
-    return fail("schema_invalid", artifact.error.message);
-  }
   const key = `artifacts/${runId}/script-${randomUUID()}.json`;
-  const contentHash = await writeJsonArtifact(deps.dataDir, key, artifact.data);
+  const contentHash = await writeJsonArtifact(deps.dataDir, key, { variants: generated.variants });
   const [scriptArtifact] = await completeJob(db, {
     jobId,
     artifacts: [
       {
         type: "script",
-        schemaVersion: "1",
+        schemaVersion: "2",
         contentHash,
         storageKey: key,
         metadata: {
           idempotencyKey: context.job.idempotencyKey,
           jobId,
-          researchArtifactId: researchRow.id,
+          researchArtifactId: args.researchRow.id,
           repairCount: generated.repairCount,
-          ...(approvalId === null ? {} : { changesRequestedApprovalId: approvalId }),
+          formatId: pack.id,
+          formatVersion: pack.version,
+          creativeMode: mode,
+          brandProfileId: brand.id,
+          ...(args.approvalId === null ? {} : { changesRequestedApprovalId: args.approvalId }),
         },
       },
     ],
-    parentArtifacts: [[0, researchRow.id]],
-    runTransition: advanceTransition("scripting", "waiting_script_approval"),
+    parentArtifacts: [[0, args.researchRow.id]],
+    runTransition: advanceTransition("scripting", "storyboarding"),
+    // Kịch bản đã xong và chờ Director; storyboard chỉ thêm ảnh cho màn duyệt (04 mục Phase 6).
     agentStatus: "waiting_approval",
+    nextJob: {
+      role: "visual",
+      queue: "render",
+      idempotencyKey: storyboardJobKeyAfterScript(runId, jobId),
+    },
   });
   if (scriptArtifact === undefined) {
     throw new Error("complete_job_failed");
   }
-  return { status: "completed", scriptArtifactId: scriptArtifact.id, usage: generated.usage, directorNote };
+  return {
+    status: "completed",
+    scriptArtifactId: scriptArtifact.id,
+    usage: generated.usage,
+    directorNote: args.directorNote,
+  };
 }

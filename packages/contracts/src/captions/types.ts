@@ -10,6 +10,8 @@ export const remotionCaptionSchema = z.object({
   endMs: z.number().int().nonnegative(),
   timestampMs: z.number().int().nonnegative().nullable(),
   confidence: z.number().nullable(),
+  /** Script `2`: `character_key` hoặc `narrator` của câu. */
+  speaker: z.string().min(1).max(32).optional(),
 });
 
 export type RemotionCaption = z.infer<typeof remotionCaptionSchema>;

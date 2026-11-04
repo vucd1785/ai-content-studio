@@ -1,0 +1,12 @@
+{
+  "id": "action_talk",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Nói: tay mở theo nhịp câu.",
+  "tags": ["nói", "giải thích"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

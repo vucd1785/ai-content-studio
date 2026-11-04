@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { sanitizeJsonSchemaForGemini, summarizeGeminiJsonSchema } from "./gemini-json-schema.js";
-import { scriptVariantsGeminiGenerationSchema } from "./gemini-generation-schema.js";
 import { buildGeminiGenerateContentConfig } from "./gemini-request-config.js";
 
 describe("sanitizeJsonSchemaForGemini", () => {
@@ -23,8 +22,19 @@ describe("sanitizeJsonSchemaForGemini", () => {
     });
   });
 
-  it("schema generation sau sanitize không còn keyword bị Gemini từ chối", () => {
-    const sanitized = scriptVariantsGeminiGenerationSchema();
+  it("schema sinh có const và pattern: sau sanitize không còn keyword bị Gemini từ chối", () => {
+    const sanitized = sanitizeJsonSchemaForGemini({
+      $schema: "x",
+      type: "object",
+      properties: {
+        schemaVersion: { const: 2 },
+        id: { type: "string", pattern: "^s[0-9]+$" },
+        lines: {
+          type: "array",
+          items: { type: "object", properties: { text: { type: "string" } } },
+        },
+      },
+    });
     const keywords = summarizeGeminiJsonSchema(sanitized).keywords;
     expect(keywords).not.toContain("$schema");
     expect(keywords).not.toContain("const");

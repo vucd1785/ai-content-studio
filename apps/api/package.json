@@ -15,6 +15,7 @@
     "@studio/contracts": "workspace:*",
     "@studio/db": "workspace:*",
     "fastify": "^5.6.0",
+    "redis": "^5.8.2",
     "zod": "^4.2.0"
   },
   "devDependencies": {

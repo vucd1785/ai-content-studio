@@ -1,0 +1,12 @@
+{
+  "id": "skin_ti",
+  "kind": "character_skin",
+  "version": "0.1.0",
+  "description": "Lớp da Tí: người que nâng cấp, đầu tròn, khăn quàng cam.",
+  "tags": ["nhân vật", "ti"],
+  "brandProfile": "kenh-mac-dinh",
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

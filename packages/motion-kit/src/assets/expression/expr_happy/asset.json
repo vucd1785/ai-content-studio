@@ -1,0 +1,12 @@
+{
+  "id": "expr_happy",
+  "kind": "expression",
+  "version": "0.1.0",
+  "description": "Biểu cảm vui.",
+  "tags": ["vui", "cảm xúc tích cực"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

@@ -14,27 +14,38 @@ import type { StudioEventSource } from "./use-studio-run";
 // Canvas thật cần WebGL. Bản giả render con của nó thành phần tử DOM để click được `<group name=...>`
 // đúng như click avatar; React cảnh báo prop lạ của three nên tắt console.error trong file này.
 vitest.mock("@react-three/fiber", () => ({
-  Canvas: ({ children }: { children: ReactNode }) => <div data-testid="fake-canvas">{children}</div>,
+  Canvas: ({ children }: { children: ReactNode }) => (
+    <div data-testid="fake-canvas">{children}</div>
+  ),
+  useFrame: () => undefined,
 }));
-vitest.mock("@react-three/drei", () => ({ OrbitControls: () => null, OrthographicCamera: () => null }));
+vitest.mock("@react-three/drei", () => ({
+  ContactShadows: () => null,
+  Outlines: () => null,
+  OrbitControls: () => null,
+  OrthographicCamera: () => null,
+}));
 
 const RUN_ID = "00000000-0000-4000-8000-0000000000f1";
 const ARTIFACT_ID = "00000000-0000-4000-8000-0000000000f2";
 const APPROVAL_URL = `POST /api/workflow-runs/${RUN_ID}/approvals`;
 
+/** Phương án script `2` tối giản (P6-17); script `1` đã xóa (ADR-013 bổ sung (2)). */
 function script(title: string) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     language: "vi",
+    formatId: "story",
+    formatVersion: 1,
     title,
-    hook: "Mở đầu",
-    scenes: [
-      { id: "s1", templateSlot: "title", narration: "Lời 1", onScreenText: `${title} 1`, visualIntent: "x" },
-      { id: "s2", templateSlot: "explain", narration: "Lời 2", onScreenText: `${title} 2`, visualIntent: "x" },
-      { id: "s3", templateSlot: "cta", narration: "Lời 3", onScreenText: `${title} 3`, visualIntent: "x" },
-    ],
-    cta: "Theo dõi",
     sources: [],
+    scenes: [1, 2, 3].map((n) => ({
+      id: `canh-${n}`,
+      beat: "cold_open",
+      sourceIds: [],
+      lines: [{ id: `l${n}`, speaker: "ti", text: `${title} ${n}` }],
+      shots: [{ id: `s${n}`, shotSize: "wide" }],
+    })),
   };
 }
 
@@ -64,7 +75,7 @@ function installServer() {
           workflowRunId: RUN_ID,
           type: "script",
           version: 1,
-          schemaVersion: "1",
+          schemaVersion: "2",
           contentHash: "c".repeat(64),
           metadata: {},
           createdAt: NOW_ISO,
@@ -100,12 +111,17 @@ function installServer() {
 /** Snapshot `agent_runs` đã lưu; stream giả không phát event. */
 const studioDeps = {
   loadSnapshot: async () => ({ agentRuns: [{ role: "script", status: "waiting_approval" }] }),
-  createEventSource: (): StudioEventSource => ({ addEventListener: () => undefined, close: () => undefined }),
+  createEventSource: (): StudioEventSource => ({
+    addEventListener: () => undefined,
+    close: () => undefined,
+  }),
 };
 
 async function renderWorkspace() {
   const result = render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <StudioWorkspace runId={RUN_ID} deps={studioDeps} />
     </QueryClientProvider>,
   );
@@ -149,8 +165,12 @@ describe("inspector (P4-04)", () => {
       fireEvent.click(avatar(container, "script"));
     });
     expect(screen.getByTestId("inspector-script")).toBeTruthy();
-    expect(await screen.findByRole("article", { name: `${vi.scriptReview.variant} 1` })).toBeTruthy();
-    expect(screen.getByRole("button", { name: studioLabels.roles.script }).getAttribute("aria-pressed")).toBe("true");
+    expect(
+      await screen.findByRole("article", { name: `${vi.scriptReview.variant} 1` }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: studioLabels.roles.script }).getAttribute("aria-pressed"),
+    ).toBe("true");
 
     act(() => {
       fireEvent.click(avatar(container, "research"));
@@ -163,7 +183,9 @@ describe("inspector (P4-04)", () => {
       fireEvent.click(avatar(container, "director"));
     });
     expect(screen.getByTestId("inspector-director")).toBeTruthy();
-    expect(await screen.findByRole("article", { name: `${vi.scriptReview.variant} 2` })).toBeTruthy();
+    expect(
+      await screen.findByRole("article", { name: `${vi.scriptReview.variant} 2` }),
+    ).toBeTruthy();
   });
 
   it("ẩn canvas không gỡ route duyệt: chọn bằng phím và duyệt bằng nút 2D", async () => {

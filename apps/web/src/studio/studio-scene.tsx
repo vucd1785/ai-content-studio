@@ -1,6 +1,8 @@
-import { OrbitControls, OrthographicCamera } from "@react-three/drei";
+import { ContactShadows, OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { studioCanvasFlags, usePrefersReducedMotion } from "./canvas-flags";
+import { DirectorChair, Robot } from "./robot";
+import { studioLabels } from "./studio-labels";
 import {
   type AgentRole,
   type AgentStatus,
@@ -9,7 +11,6 @@ import {
   type StationModel,
   type StudioSelection,
 } from "./studio-model";
-import { studioLabels } from "./studio-labels";
 import type { RenderProgress } from "./studio-store";
 
 export type StudioSceneProps = {
@@ -27,9 +28,18 @@ export type StudioSceneProps = {
   onSelect?: (id: StudioSelection) => void;
 };
 
+/** Hướng camera isometric trên mặt sàn. Robot quay về phía camera để Director thấy mặt và đạo cụ. */
+const CAMERA_YAW = Math.atan2(CAMERA_LIMITS.position[0], CAMERA_LIMITS.position[2]);
+
+/** Góc xoay cục bộ của robot trong bàn đã xoay `stationYaw`, giữ trong (-π, π]. */
+export function faceCameraYaw(stationYaw: number): number {
+  const yaw = CAMERA_YAW - stationYaw;
+  return Math.atan2(Math.sin(yaw), Math.cos(yaw));
+}
+
 /**
- * Canvas low-poly (ADR-009, 06-3D-UI-DESIGN). Chỉ vẽ props; không timer, không vòng lặp khung hình,
- * không gọi API. Hình học dựng bằng code, không asset ngoài.
+ * Canvas low-poly (ADR-009, 06-3D-UI-DESIGN). Chỉ vẽ props; không timer, không gọi API. Robot có chuyển động
+ * tư thế (vòng khung hình nằm trong robot.tsx) khi không reduced motion (P4-05), nhưng trạng thái luôn lấy từ props. Hình học dựng bằng code, không asset ngoài.
  */
 export function StudioScene({
   statuses,
@@ -40,11 +50,18 @@ export function StudioScene({
   onSelect,
 }: StudioSceneProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
-  const flags = studioCanvasFlags({ reducedMotion: reducedMotion ?? prefersReducedMotion, lowPower });
+  const flags = studioCanvasFlags({
+    reducedMotion: reducedMotion ?? prefersReducedMotion,
+    lowPower,
+  });
   const stations = buildStations(statuses);
+  const directorWaiting = stations.some((station) => station.status === "waiting_approval");
   const summary = stations
     .filter((station) => station.id !== "director")
-    .map((station) => `${studioLabels.roles[station.id as AgentRole]}: ${studioLabels.statuses[station.status]}`)
+    .map(
+      (station) =>
+        `${studioLabels.roles[station.id as AgentRole]}: ${studioLabels.statuses[station.status]}`,
+    )
     .join(", ");
   const progressLabel =
     renderProgress === null
@@ -52,10 +69,18 @@ export function StudioScene({
       : `. ${studioLabels.renderProgress}: ${Math.round(renderProgress.progress * 100)}%, ${renderProgress.renderedFrames} frame`;
 
   return (
-    <div className="h-full w-full" role="img" aria-label={`${studioLabels.canvas}. ${summary}${progressLabel}`}>
+    <div
+      className="h-full w-full"
+      role="img"
+      aria-label={`${studioLabels.canvas}. ${summary}${progressLabel}`}
+    >
       <Canvas shadows={flags.shadows} dpr={flags.dpr} frameloop={flags.frameloop}>
-        <color attach="background" args={["#0b0b0f"]} />
-        <OrthographicCamera makeDefault position={CAMERA_LIMITS.position} zoom={CAMERA_LIMITS.zoom} />
+        <color attach="background" args={["#0b0d12"]} />
+        <OrthographicCamera
+          makeDefault
+          position={CAMERA_LIMITS.position}
+          zoom={CAMERA_LIMITS.zoom}
+        />
         <OrbitControls
           enablePan={false}
           minZoom={CAMERA_LIMITS.minZoom}
@@ -63,15 +88,26 @@ export function StudioScene({
           minPolarAngle={CAMERA_LIMITS.minPolarAngle}
           maxPolarAngle={CAMERA_LIMITS.maxPolarAngle}
         />
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[6, 10, 4]} intensity={1.1} castShadow={flags.shadows} />
+        {/* Đèn bán cầu dịu cộng đèn chính chéo trên tạo bóng mềm (06 mục Robot của từng vai trò). */}
+        <hemisphereLight args={["#dfe6ff", "#1a1d26", 0.9]} />
+        <directionalLight
+          position={[6, 10, 4]}
+          intensity={1.3}
+          castShadow={flags.shadows}
+          shadow-mapSize={[1024, 1024]}
+        />
         <Floor />
+        {flags.shadows ? (
+          <ContactShadows position={[0, 0.005, 0]} opacity={0.45} scale={16} blur={2.2} far={3} />
+        ) : null}
         {stations.map((station) => (
           <Station
             key={station.id}
             station={station}
             renderProgress={station.id === "video" ? renderProgress : null}
             selected={station.id === selected}
+            animate={flags.frameloop === "always" && lowPower !== true}
+            directorWaiting={directorWaiting}
             {...(onSelect === undefined ? {} : { onSelect })}
           />
         ))}
@@ -84,7 +120,7 @@ function Floor() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
       <circleGeometry args={[7, 8]} />
-      <meshStandardMaterial color="#1c1c22" flatShading />
+      <meshStandardMaterial color="#12151c" flatShading />
     </mesh>
   );
 }
@@ -93,15 +129,21 @@ export function Station({
   station,
   renderProgress,
   selected = false,
+  animate = false,
+  directorWaiting = false,
   onSelect,
 }: {
   station: StationModel;
   renderProgress: RenderProgress | null;
   selected?: boolean;
+  /** Animation lặp; tắt khi reduced motion hoặc hiệu năng thấp (06 mục Chuyển động). */
+  animate?: boolean;
+  /** Có vai trò chờ Director duyệt: ghế đạo diễn bật bảng vàng. */
+  directorWaiting?: boolean;
   onSelect?: (id: StudioSelection) => void;
 }) {
   const isDirector = station.id === "director";
-  const deskColor = selected ? "#a1a1aa" : isDirector ? "#52525b" : "#3f3f46";
+  const deskColor = selected ? "#3a4560" : isDirector ? "#2a3042" : "#22262f";
   const { lightColor, lightIntensity, approvalSign } = station.visual;
 
   return (
@@ -130,20 +172,27 @@ export function Station({
           flatShading
         />
       </mesh>
-      {/* Robot: thân và đầu low-poly */}
-      <mesh position={[0, 0.45, 0.65]} castShadow>
-        <cylinderGeometry args={[0.22, 0.28, 0.9, 6]} />
-        <meshStandardMaterial color={isDirector ? "#d4d4d8" : "#a1a1aa"} flatShading />
-      </mesh>
-      <mesh position={[0, 1.08, 0.65]} castShadow>
-        <icosahedronGeometry args={[0.22, 0]} />
-        <meshStandardMaterial color="#e4e4e7" flatShading />
-      </mesh>
+      {/* Robot chibi của vai trò (P4-05); bàn Director là ghế đạo diễn */}
+      {isDirector ? (
+        <DirectorChair waiting={directorWaiting} />
+      ) : (
+        <group
+          position={[0, 0, 0.7]}
+          rotation={[0, faceCameraYaw(station.rotationY), 0]}
+          scale={1.3}
+        >
+          <Robot role={station.id as AgentRole} status={station.status} animate={animate} />
+        </group>
+      )}
       {/* Đèn trạng thái */}
       {isDirector ? null : (
         <mesh position={[0.55, 0.62, 0.2]}>
           <octahedronGeometry args={[0.1, 0]} />
-          <meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={lightIntensity} />
+          <meshStandardMaterial
+            color={lightColor}
+            emissive={lightColor}
+            emissiveIntensity={lightIntensity}
+          />
         </mesh>
       )}
       {/* Biển chờ duyệt */}

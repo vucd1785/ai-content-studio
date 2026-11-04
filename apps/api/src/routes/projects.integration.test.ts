@@ -1,7 +1,8 @@
-import { mkdtemp, mkdir, readdir, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, mkdtemp, readdir, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import * as dbProjects from "@studio/db";
 import {
   countBriefsForProject,
   createDbConnection,
@@ -13,7 +14,6 @@ import {
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app.js";
 import { MAX_UPLOAD_BYTES } from "../storage/constants.js";
-import * as dbProjects from "@studio/db";
 import {
   fileExistsAtKey,
   readUploadFile,
@@ -24,8 +24,7 @@ import {
 const TEST_PASSWORD = "director-test-password";
 const TEST_SECRET = "0123456789abcdef0123456789abcdef0123456789ab";
 const NOW = 1_700_000_000;
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
+const DATABASE_URL = process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
 
 const MULTIPART_BOUNDARY = "----p203boundary";
 const createdProjectIds: string[] = [];
@@ -168,6 +167,34 @@ describe("projects API (I1–I13 + security)", () => {
     });
     expect(bad.statusCode).toBe(400);
     expect(await countBriefsForProject(db, project.id)).toBe(0);
+    await app.close();
+  });
+
+  it("brief không chọn thể loại: luôn lưu gói story v1, thời lượng 30–90, formatId client gửi bị bỏ qua (ADR-013 bổ sung (2))", async () => {
+    const { app, cookieHeader } = await createAuthedApp();
+    const create = await app.inject({
+      method: "POST",
+      url: "/api/projects",
+      headers: { cookie: cookieHeader },
+      payload: { title: "Brief story" },
+    });
+    const project = create.json() as { id: string };
+    createdProjectIds.push(project.id);
+    const put = (payload: Record<string, unknown>) =>
+      app.inject({
+        method: "PUT",
+        url: `/api/projects/${project.id}/brief`,
+        headers: { cookie: cookieHeader },
+        payload,
+      });
+    expect((await put({ ...validBrief(), durationSec: 91 })).statusCode).toBe(400);
+    expect((await put({ ...validBrief(), durationSec: 29 })).statusCode).toBe(400);
+    const ok = await put({ ...validBrief(), durationSec: 90 });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ formatId: "story", formatVersion: 1, durationSec: 90 });
+    const ignored = await put({ ...validBrief(), formatId: "what_if", durationSec: 75 });
+    expect(ignored.statusCode).toBe(201);
+    expect(ignored.json()).toMatchObject({ formatId: "story", formatVersion: 1 });
     await app.close();
   });
 
@@ -512,9 +539,9 @@ describe("projects API (I1–I13 + security)", () => {
   });
 
   it("U1 resolve rejects traversal key before touching disk", async () => {
-    await expect(
-      resolveStoragePath(dataDir, "uploads/../outside-secret.txt"),
-    ).rejects.toThrow(StorageValidationError);
+    await expect(resolveStoragePath(dataDir, "uploads/../outside-secret.txt")).rejects.toThrow(
+      StorageValidationError,
+    );
   });
 
   it("symlink/junction escape: reading a key that links outside uploads is rejected", async () => {

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi as vitest } from "vitest";
 import { vi } from "@/i18n/vi";
 import { installFakeApi, jsonResponse, NOW_ISO, PROJECT_ID } from "@/test/fake-api";
+import { STICK_STORY_FIXTURE_PROPS } from "../../../../video/src/stick-story/stick-story-fixture";
 import { groupArtifactVersions } from "./artifact-versions";
 import { PreviewPanel } from "./preview-panel";
 
@@ -21,14 +22,8 @@ const RAW_SOURCES = import.meta.glob<string>(["./*.ts", "./*.tsx", "!./*.test.ts
   import: "default",
   eager: true,
 });
-const FIXTURES = import.meta.glob<Record<string, unknown>>(
-  "../../../../video/fixtures/edu-vertical-redis-props.json",
-  {
-    import: "default",
-    eager: true,
-  },
-);
-const BASE_PROPS = Object.values(FIXTURES)[0] ?? {};
+/** Props `StickStory` hợp lệ của P6-09 (template duy nhất từ ADR-013 bổ sung (2)). */
+const BASE_PROPS = STICK_STORY_FIXTURE_PROPS;
 
 const RUN_ID = "00000000-0000-4000-8000-0000000000a9";
 const IDS = {
@@ -40,11 +35,12 @@ const IDS = {
   audio: "00000000-0000-4000-8000-000000000106",
 };
 
+/** Đánh dấu bản bằng chữ của phụ đề đầu tiên để biết player đang phát artifact nào. */
 function propsWithHeadline(headline: string) {
-  const scenes = (BASE_PROPS.scenes as Record<string, unknown>[]).map((scene, index) =>
-    index === 0 ? { ...scene, headline } : scene,
+  const captions = BASE_PROPS.captions.map((caption, index) =>
+    index === 0 ? { ...caption, text: headline } : caption,
   );
-  return { ...BASE_PROPS, scenes };
+  return { ...BASE_PROPS, captions };
 }
 
 function artifactBody(id: string, type: string, version: number, content: unknown) {
@@ -111,9 +107,9 @@ function renderPanel() {
 
 function lastHeadline() {
   const inputProps = playerProps.at(-1)?.inputProps as
-    | { scenes: { headline?: string }[] }
+    | { captions: { text?: string }[] }
     | undefined;
-  return inputProps?.scenes[0]?.headline;
+  return inputProps?.captions[0]?.text;
 }
 
 afterEach(() => {

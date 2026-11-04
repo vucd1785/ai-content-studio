@@ -18,12 +18,15 @@ const DOC_EDGES: ReadonlyArray<readonly [WorkflowStatus, WorkflowStatus]> = [
   ["researching", "research_ready"],
   ["research_ready", "scripting"],
   ["scripting", "waiting_script_approval"],
+  // Phase 6 (04 mục Phase 6): script `2` qua storyboard trước cổng; storyboard không có cạnh failed.
+  ["scripting", "storyboarding"],
+  ["storyboarding", "waiting_script_approval"],
   ["waiting_script_approval", "scripting"],
   ["waiting_script_approval", "producing_assets"],
   ["producing_assets", "preview_rendering"],
   ["preview_rendering", "qa"],
   ["qa", "waiting_final_approval"],
-  ["waiting_final_approval", "producing_assets"],
+  ["waiting_final_approval", "scripting"],
   ["waiting_final_approval", "exporting"],
   ["exporting", "exported"],
   ["researching", "failed"],
@@ -37,13 +40,16 @@ const DOC_EDGES: ReadonlyArray<readonly [WorkflowStatus, WorkflowStatus]> = [
 const GATE_EDGES = new Set([
   "waiting_script_approval>scripting",
   "waiting_script_approval>producing_assets",
-  "waiting_final_approval>producing_assets",
+  "waiting_final_approval>scripting",
   "waiting_final_approval>exporting",
 ]);
 
 const key = (from: WorkflowStatus, to: WorkflowStatus) => `${from}>${to}`;
 const docSet = new Set(DOC_EDGES.map(([a, b]) => key(a, b)));
-const st = (status: WorkflowStatus, resumeFrom: ResumeFrom | null = null) => ({ status, resumeFrom });
+const st = (status: WorkflowStatus, resumeFrom: ResumeFrom | null = null) => ({
+  status,
+  resumeFrom,
+});
 
 beforeEach(() => {
   vi.stubGlobal("fetch", () => {
@@ -57,11 +63,12 @@ describe("workflow state machine (P3-02)", () => {
     expect(new Set(diagramEdges().map(([a, b]) => key(a, b)))).toEqual(docSet);
   });
 
-  it("bảng advance: mọi cặp (from, to) 13×13 — chỉ cạnh job hợp lệ được nhận", () => {
+  it("bảng advance: mọi cặp (from, to) 14×14 — chỉ cạnh job hợp lệ được nhận", () => {
     for (const from of WORKFLOW_STATUSES) {
       for (const to of WORKFLOW_STATUSES) {
         const result = applyWorkflowCommand(st(from), { kind: "advance", to });
-        const expected = docSet.has(key(from, to)) && to !== "failed" && !GATE_EDGES.has(key(from, to));
+        const expected =
+          docSet.has(key(from, to)) && to !== "failed" && !GATE_EDGES.has(key(from, to));
         expect(result.ok, `${from} -> ${to}`).toBe(expected);
         if (!result.ok) expect(result.code).toBe("invalid_transition");
       }
@@ -84,19 +91,28 @@ describe("workflow state machine (P3-02)", () => {
       },
       final: {
         approved: "exporting",
-        changes_requested: "producing_assets",
+        changes_requested: "scripting",
         rejected: "waiting_final_approval",
       },
     };
-    const gateStatus = { script: "waiting_script_approval", final: "waiting_final_approval" } as const;
+    const gateStatus = {
+      script: "waiting_script_approval",
+      final: "waiting_final_approval",
+    } as const;
     for (const gate of ["script", "final"] as const) {
       for (const decision of ["approved", "rejected", "changes_requested"] as const) {
         for (const from of WORKFLOW_STATUSES) {
           const result = applyWorkflowCommand(st(from), { kind: "approval", gate, decision });
           if (from === gateStatus[gate]) {
-            expect(result, `${gate}/${decision}@${from}`).toEqual({ ok: true, to: expected[gate][decision] });
+            expect(result, `${gate}/${decision}@${from}`).toEqual({
+              ok: true,
+              to: expected[gate][decision],
+            });
           } else {
-            expect(result, `${gate}/${decision}@${from}`).toEqual({ ok: false, code: "invalid_transition" });
+            expect(result, `${gate}/${decision}@${from}`).toEqual({
+              ok: false,
+              code: "invalid_transition",
+            });
           }
         }
       }
@@ -146,7 +162,10 @@ describe("workflow state machine (P3-02)", () => {
   });
 
   it("module không import gì (thuần, không network)", () => {
-    const source = readFileSync(fileURLToPath(new URL("./state-machine.ts", import.meta.url)), "utf8");
+    const source = readFileSync(
+      fileURLToPath(new URL("./state-machine.ts", import.meta.url)),
+      "utf8",
+    );
     expect(source).not.toMatch(/^\s*import\s/m);
     expect(source).not.toMatch(/\bfetch\b|\brequire\(|process\.|Date\.now|setInterval|setTimeout/);
   });

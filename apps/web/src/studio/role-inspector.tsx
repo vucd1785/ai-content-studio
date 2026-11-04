@@ -32,7 +32,11 @@ export function RoleInspector({
 }) {
   const panel = inspectorPanelFor(selection);
   return (
-    <section aria-label={studioLabels.inspector} className="flex flex-col gap-3" data-testid={`inspector-${selection}`}>
+    <section
+      aria-label={studioLabels.inspector}
+      className="flex flex-col gap-3"
+      data-testid={`inspector-${selection}`}
+    >
       <h3 className="text-sm font-semibold">
         {selectionLabel(selection)}
         {status === null ? null : ` · ${studioLabels.statuses[status]}`}

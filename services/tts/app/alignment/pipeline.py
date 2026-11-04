@@ -5,9 +5,9 @@ from pathlib import Path
 
 from app.alignment.audio_io import load_wav_mono
 from app.alignment.ctc_backend import align_with_ctc, DEFAULT_VI_CTC_MODEL
+from app.alignment.repair import validate_with_repair
 from app.alignment.schema import AlignmentArtifact
 from app.alignment.tokenize import preprocess_transcript, tokenize_transcript_words
-from app.alignment.validate import validate_alignment
 from app.alignment.whisper_backend import align_with_whisper
 from app.config import DEFAULT_ALIGNMENT_ENGINE, WHISPER_MODEL_NAME
 
@@ -41,7 +41,7 @@ def align_transcript_to_wav(
     else:
         raise ValueError(f"unknown alignment engine: {engine}")
 
-    validation = validate_alignment(words, expected, duration_ms)
+    words, validation = validate_with_repair(words, expected, duration_ms)
     elapsed_ms = int(round((time.perf_counter() - started) * 1000))
 
     return AlignmentArtifact(

@@ -84,9 +84,9 @@ describe("LoginPage", () => {
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText(vi.login.passwordLabel), "dung-mat-khau");
     await user.click(screen.getByRole("button", { name: vi.login.submit }));
-    expect(await screen.findByRole("complementary", { name: vi.shell.regionProjects })).toBeTruthy();
-    expect(screen.getByRole("main", { name: vi.shell.regionStudio })).toBeTruthy();
-    expect(screen.getByRole("complementary", { name: vi.shell.regionDetail })).toBeTruthy();
+    // P2-11: sau đăng nhập là trang dự án (vùng chính), cột dự án chỉ có khi mở một dự án.
+    expect(await screen.findByRole("main", { name: vi.shell.regionWorkspace })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: vi.home.heading })).toBeTruthy();
     const loginCall = fetchMock.mock.calls.find(([url]) => String(url) === "/api/session/login");
     expect(loginCall?.[1]?.body).toBe(JSON.stringify({ password: "dung-mat-khau" }));
     expect(loginCall?.[1]?.credentials).toBe("same-origin");

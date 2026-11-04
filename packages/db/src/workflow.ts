@@ -1,15 +1,17 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import type { StudioDb } from "./db.js";
 import {
   assetJobKeyAfterScriptApproval,
   exportJobKeyAfterApproval,
   insertQueuedJob,
   scriptJobKeyAfterChangesRequested,
 } from "./agent-jobs.js";
+import { getBrandProfileById } from "./brand-profiles.js";
+import type { StudioDb } from "./db.js";
 import { publishEvents } from "./events.js";
 import {
   agentRuns,
   approvals,
+  artifactDependencies,
   artifacts,
   briefs,
   events,
@@ -21,6 +23,27 @@ import {
 } from "./schema/index.js";
 
 export type StudioTx = Parameters<Parameters<StudioDb["transaction"]>[0]>[0];
+
+/** Key job storyboard sau một job script `2` (P6-10): queue `render`, vai `visual`. */
+export function storyboardJobKeyAfterScript(workflowRunId: string, scriptJobId: string): string {
+  return `storyboard:${workflowRunId}:script:${scriptJobId}`;
+}
+
+/** Job visual của Phase 6 dựng storyboard ảnh tĩnh, khác job visual cũ sau duyệt script. */
+export function isStoryboardJobKey(idempotencyKey: string): boolean {
+  return idempotencyKey.startsWith("storyboard:");
+}
+
+/** Kênh của run qua project (P6-10): tính cách, giọng điệu, nhân vật cho prompt script `2`. */
+export async function loadRunBrandProfile(db: StudioDb, workflowRunId: string) {
+  const [row] = await db
+    .select({ brandProfileId: projects.brandProfileId })
+    .from(workflowRuns)
+    .innerJoin(projects, eq(projects.id, workflowRuns.projectId))
+    .where(eq(workflowRuns.id, workflowRunId))
+    .limit(1);
+  return row === undefined ? null : getBrandProfileById(db, row.brandProfileId);
+}
 
 type WorkflowRunStatus = (typeof workflowRuns.$inferSelect)["status"];
 type ApprovalGate = (typeof approvals.$inferSelect)["gate"];
@@ -42,7 +65,7 @@ export const APPROVAL_GATE_ARTIFACT_TYPE: Record<ApprovalGate, ArtifactType> = {
 /**
  * Trạng thái kế tiếp sau decision. `rejected` giữ nguyên cổng.
  * script: changes_requested → scripting, approved → producing_assets.
- * final: changes_requested (revise_assets) → producing_assets, approved → exporting.
+ * final: changes_requested → scripting (viết lại kịch bản theo ghi chú, P3-14), approved → exporting.
  */
 export function nextStatusAfterApproval(
   gate: ApprovalGate,
@@ -54,11 +77,16 @@ export function nextStatusAfterApproval(
   if (gate === "script") {
     return decision === "approved" ? "producing_assets" : "scripting";
   }
-  return decision === "approved" ? "exporting" : "producing_assets";
+  return decision === "approved" ? "exporting" : "scripting";
 }
 
 export class ApprovalError extends Error {
-  readonly code: "not_found" | "invalid_transition" | "artifact_mismatch" | "invalid_variant" | "qa_not_passed";
+  readonly code:
+    | "not_found"
+    | "invalid_transition"
+    | "artifact_mismatch"
+    | "invalid_variant"
+    | "qa_not_passed";
 
   constructor(code: ApprovalError["code"], message: string) {
     super(message);
@@ -104,6 +132,8 @@ export function mapWorkflowRunRow(row: WorkflowRunRow) {
     status: row.status,
     resumeFrom: row.resumeFrom,
     failureCode: row.failureCode,
+    failureMessage: row.failureMessage,
+    llmModel: row.llmModel,
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
@@ -272,6 +302,16 @@ export async function recordApproval(
         }
       }
     }
+    // P3-14: yêu cầu sửa bản cuối tạo job script mới như ở cổng script; job đọc ghi chú qua approval id trong key.
+    // Research không chạy lại. Kịch bản mới phải được duyệt lại, rồi giọng, hình và render chạy lại từ đó.
+    if (input.gate === "final" && input.decision === "changes_requested") {
+      const created = await insertQueuedJob(tx, run.id, {
+        role: "script",
+        queue: "llm",
+        idempotencyKey: scriptJobKeyAfterChangesRequested(run.id, approval.id),
+      });
+      eventRows.push(created.event);
+    }
     // P3-06: duyệt final tạo job export; job chỉ export đúng preview mà approval này trỏ tới.
     if (input.gate === "final" && input.decision === "approved") {
       const created = await insertQueuedJob(tx, run.id, {
@@ -300,29 +340,93 @@ export class ExportNotAllowedError extends Error {
  * Export chỉ được với preview mà decision `final` mới nhất của run đã `approved` (ADR-004,
  * 04-AGENT-ORCHESTRATION mục Approval). Preview khác, hay approval đã bị decision sau thay thế, là `approval_required`.
  */
-export async function assertExportAllowed(db: StudioDb, workflowRunId: string, previewArtifactId: string) {
+export async function assertExportAllowed(
+  db: StudioDb,
+  workflowRunId: string,
+  previewArtifactId: string,
+) {
   const [latest] = await db
     .select()
     .from(approvals)
     .where(and(eq(approvals.workflowRunId, workflowRunId), eq(approvals.gate, "final")))
     .orderBy(desc(approvals.createdAt), desc(approvals.id))
     .limit(1);
-  if (latest === undefined || latest.decision !== "approved" || latest.artifactId !== previewArtifactId) {
+  if (
+    latest === undefined ||
+    latest.decision !== "approved" ||
+    latest.artifactId !== previewArtifactId
+  ) {
     throw new ExportNotAllowedError("preview is not the approved final preview");
   }
   return mapApprovalRow(latest);
 }
 
 /** Chỉ đọc. Không tạo run, agent, approval. */
+type JobProgressRow = {
+  done: number;
+  total: number;
+  unit: "scene_step" | "frame";
+  sceneIndex: number | null;
+  sceneCount: number | null;
+  phase: "synthesize" | "align" | null;
+};
+
+function positiveInt(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+/** Đọc payload `job.progress` đã chuẩn hóa (P3-17); payload khác (cũ, thiếu field) trả null. */
+export function readJobProgress(payload: unknown): JobProgressRow | null {
+  if (typeof payload !== "object" || payload === null) {
+    return null;
+  }
+  const value = payload as Record<string, unknown>;
+  const total = positiveInt(value.total);
+  const done =
+    typeof value.done === "number" && Number.isInteger(value.done) && value.done >= 0
+      ? value.done
+      : null;
+  if (total === null || done === null || (value.unit !== "scene_step" && value.unit !== "frame")) {
+    return null;
+  }
+  return {
+    done: Math.min(done, total),
+    total,
+    unit: value.unit,
+    sceneIndex: positiveInt(value.sceneIndex),
+    sceneCount: positiveInt(value.sceneCount),
+    phase: value.phase === "synthesize" || value.phase === "align" ? value.phase : null,
+  };
+}
+
 export async function getWorkflowRunDetail(db: StudioDb, runId: string) {
   const [run] = await db.select().from(workflowRuns).where(eq(workflowRuns.id, runId)).limit(1);
   if (run === undefined) {
     return null;
   }
   const agentRows = await db
-    .select({ id: agentRuns.id, role: agentRuns.role, status: agentRuns.status })
+    .select({
+      id: agentRuns.id,
+      role: agentRuns.role,
+      status: agentRuns.status,
+      startedAt: agentRuns.startedAt,
+      finishedAt: agentRuns.finishedAt,
+      errorCode: agentRuns.errorCode,
+      errorMessage: agentRuns.errorMessage,
+    })
     .from(agentRuns)
     .where(eq(agentRuns.workflowRunId, runId));
+  // P3-17: event tiến độ mới nhất của từng agent; chỉ dùng khi thuộc lượt chạy hiện tại (sau `startedAt`).
+  const progressRows = await db
+    .selectDistinctOn([events.agentRunId], {
+      agentRunId: events.agentRunId,
+      payload: events.payload,
+      createdAt: events.createdAt,
+    })
+    .from(events)
+    .where(and(eq(events.workflowRunId, runId), eq(events.type, "job.progress")))
+    .orderBy(events.agentRunId, desc(events.id));
+  const progressByAgent = new Map(progressRows.map((row) => [row.agentRunId, row]));
   const approvalRows = await db
     .select()
     .from(approvals)
@@ -340,7 +444,19 @@ export async function getWorkflowRunDetail(db: StudioDb, runId: string) {
     .orderBy(desc(artifacts.createdAt));
   return {
     workflowRun: mapWorkflowRunRow(run),
-    agentRuns: agentRows,
+    agentRuns: agentRows.map((row) => {
+      const latest = progressByAgent.get(row.id);
+      const current =
+        latest !== undefined && row.startedAt !== null && latest.createdAt >= row.startedAt
+          ? readJobProgress(latest.payload)
+          : null;
+      return {
+        ...row,
+        startedAt: row.startedAt === null ? null : toIso(row.startedAt),
+        finishedAt: row.finishedAt === null ? null : toIso(row.finishedAt),
+        progress: current,
+      };
+    }),
     approvals: approvalRows.map(mapApprovalRow),
     artifacts: artifactRows.map((row) => ({ ...row, createdAt: toIso(row.createdAt) })),
   };
@@ -389,4 +505,81 @@ export async function deleteProjectCascadeForTests(db: StudioDb, projectId: stri
   await db.delete(references).where(eq(references.projectId, projectId));
   await db.delete(briefs).where(eq(briefs.projectId, projectId));
   await db.delete(projects).where(eq(projects.id, projectId));
+}
+
+export class ScriptEditError extends Error {
+  readonly code: "not_found" | "invalid_transition" | "stale";
+
+  constructor(code: ScriptEditError["code"], message: string) {
+    super(message);
+    this.name = "ScriptEditError";
+    this.code = code;
+  }
+}
+
+/**
+ * Lưu bản kịch bản Director đã sửa (P2-12) thành artifact `script` version mới, phụ thuộc bản gốc.
+ * Chỉ khi run đang chờ duyệt kịch bản và bản gốc vẫn là bản mới nhất (không ghi đè sửa của người khác).
+ * File JSON đã được route ghi trước; hàm này chỉ ghi hàng. Không ghi approval.
+ */
+export async function saveDirectorScriptEdit(
+  db: StudioDb,
+  input: {
+    workflowRunId: string;
+    baseArtifactId: string;
+    variantIndex: 1 | 2;
+    storageKey: string;
+    contentHash: string;
+  },
+) {
+  return db.transaction(async (tx) => {
+    const [run] = await tx
+      .select()
+      .from(workflowRuns)
+      .where(eq(workflowRuns.id, input.workflowRunId))
+      .for("update")
+      .limit(1);
+    if (run === undefined) {
+      throw new ScriptEditError("not_found", "workflow run not found");
+    }
+    if (run.status !== "waiting_script_approval") {
+      throw new ScriptEditError("invalid_transition", `workflow run is ${run.status}`);
+    }
+    const [latest] = await tx
+      .select({ id: artifacts.id, version: artifacts.version })
+      .from(artifacts)
+      .where(and(eq(artifacts.workflowRunId, run.id), eq(artifacts.type, "script")))
+      .orderBy(desc(artifacts.version))
+      .limit(1);
+    if (latest === undefined) {
+      throw new ScriptEditError("not_found", "run has no script");
+    }
+    if (latest.id !== input.baseArtifactId) {
+      throw new ScriptEditError("stale", "base script is not the latest version");
+    }
+    const [row] = await tx
+      .insert(artifacts)
+      .values({
+        projectId: run.projectId,
+        workflowRunId: run.id,
+        type: "script",
+        version: latest.version + 1,
+        schemaVersion: "1",
+        contentHash: input.contentHash,
+        storageKey: input.storageKey,
+        metadata: {
+          editedBy: "director",
+          baseArtifactId: latest.id,
+          variantIndex: input.variantIndex,
+        },
+      })
+      .returning({ id: artifacts.id, version: artifacts.version });
+    if (row === undefined) {
+      throw new Error("insert_artifact_failed");
+    }
+    await tx
+      .insert(artifactDependencies)
+      .values({ artifactId: row.id, parentArtifactId: latest.id });
+    return row;
+  });
 }

@@ -10,12 +10,17 @@ import { initialStudioState, type StudioState, studioReducer } from "./studio-st
 
 /** Phần `EventSource` mà hook dùng; test thay bằng bản giả. */
 export type StudioEventSource = {
-  addEventListener(type: string, listener: (event: { data: string; lastEventId: string }) => void): void;
+  addEventListener(
+    type: string,
+    listener: (event: { data: string; lastEventId: string }) => void,
+  ): void;
   close(): void;
 };
 
 export type StudioRunDeps = {
-  loadSnapshot?: (runId: string) => Promise<{ agentRuns: readonly { role: string; status: string }[] }>;
+  loadSnapshot?: (
+    runId: string,
+  ) => Promise<{ agentRuns: readonly { role: string; status: string }[] }>;
   createEventSource?: (url: string) => StudioEventSource;
 };
 
@@ -27,7 +32,9 @@ export function studioStreamUrl(runId: string): string {
 }
 
 const defaultLoadSnapshot = (runId: string) =>
-  apiRequest(`/api/workflow-runs/${encodeURIComponent(runId)}`, { schema: workflowRunDetailResponseSchema });
+  apiRequest(`/api/workflow-runs/${encodeURIComponent(runId)}`, {
+    schema: workflowRunDetailResponseSchema,
+  });
 
 const defaultCreateEventSource = (url: string): StudioEventSource => new EventSource(url);
 

@@ -13,7 +13,7 @@ function renderButton(props: { hasBrief: boolean; latestStatus: string | null })
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <StartRunButton projectId={PROJECT_ID} {...props} />
+      <StartRunButton projectId={PROJECT_ID} durationSec={30} {...props} />
     </QueryClientProvider>,
   );
 }
@@ -60,5 +60,50 @@ describe("bắt đầu lượt chạy (quyết định 5)", () => {
     renderButton({ hasBrief: true, latestStatus: "cancelled" });
     await userEvent.setup().click(screen.getByRole("button", { name: vi.startRun.startNew }));
     expect((await screen.findByRole("alert")).textContent).toBe(vi.startRun.conflict);
+  });
+
+  it("P3-12: chọn model từ danh sách server; POST gửi đúng model; hiện ước tính thời gian máy chạy", async () => {
+    const api = installFakeApi({
+      "GET /api/llm-models": () =>
+        jsonResponse(200, { defaultModel: "model-a", models: ["model-a", "model-b"] }),
+      [START]: () =>
+        jsonResponse(201, {
+          workflowRun: {
+            id: "00000000-0000-4000-8000-0000000000f1",
+            projectId: PROJECT_ID,
+            briefId: "00000000-0000-4000-8000-0000000000f2",
+            status: "idea_submitted",
+            resumeFrom: null,
+            failureCode: null,
+            llmModel: "model-b",
+            createdAt: NOW_ISO,
+            updatedAt: NOW_ISO,
+          },
+        }),
+    });
+    renderButton({ hasBrief: true, latestStatus: null });
+    const user = userEvent.setup();
+    const select = (await screen.findByLabelText(vi.startRun.model)) as HTMLSelectElement;
+    expect(select.value).toBe("model-a");
+    expect(screen.getByTestId("start-run-estimate").textContent).toContain(vi.startRun.estimate);
+    await user.selectOptions(select, "model-b");
+    await user.click(screen.getByRole("button", { name: vi.startRun.start }));
+    await waitFor(() => expect(api.callsTo(START)).toHaveLength(1));
+    expect(JSON.parse(String(api.callsTo(START)[0]?.[1]?.body))).toEqual({ llmModel: "model-b" });
+  });
+
+  it("P6-15: model claude-code hiện tên Claude Code, value giữ nguyên id", async () => {
+    installFakeApi({
+      "GET /api/llm-models": () =>
+        jsonResponse(200, { defaultModel: "gemini-x", models: ["gemini-x", "claude-code", "claude-code:sonnet"] }),
+    });
+    renderButton({ hasBrief: true, latestStatus: null });
+    const select = (await screen.findByLabelText(vi.startRun.model)) as HTMLSelectElement;
+    const options = [...select.options].map((option) => [option.value, option.textContent]);
+    expect(options).toEqual([
+      ["gemini-x", `gemini-x ${vi.startRun.defaultSuffix}`],
+      ["claude-code", vi.startRun.claudeCodeDefault],
+      ["claude-code:sonnet", `${vi.startRun.claudeCodeAlias} sonnet`],
+    ]);
   });
 });

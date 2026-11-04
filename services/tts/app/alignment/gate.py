@@ -11,11 +11,12 @@ from app.alignment.trailing_silence import (
 )
 
 
-def aligned_word_ratio(words: list[AlignmentWord]) -> float:
+def aligned_word_ratio(words: list[AlignmentWord], repaired: int = 0) -> float:
+    """Tỷ lệ từ có khoảng hợp lệ. Từ được sửa (ADR-012 bổ sung 2026-11-02) không tính là đo được."""
     if not words:
         return 0.0
-    valid = sum(1 for w in words if w.endMs > w.startMs)
-    return valid / len(words)
+    valid = sum(1 for w in words if w.endMs > w.startMs) - repaired
+    return max(valid, 0) / len(words)
 
 
 def evaluate_go_gate(
@@ -23,7 +24,7 @@ def evaluate_go_gate(
     wav_path: Path | None = None,
 ) -> dict[str, object]:
     """Alignment quality gate; optional wav_path required for silence-aware exception."""
-    ratio = aligned_word_ratio(artifact.words)
+    ratio = aligned_word_ratio(artifact.words, artifact.validation.repairedWordCount)
     validation_ok = artifact.validation.ok
     ratio_ok = ratio >= 0.9
     delta = artifact.validation.durationDeltaMs

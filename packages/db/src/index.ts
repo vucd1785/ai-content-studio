@@ -1,4 +1,6 @@
 export * from "./agent-jobs.js";
+export * from "./brand-profiles.js";
+export * from "./motion-assets.js";
 export * from "./db.js";
 export * from "./events.js";
 export * from "./jobs.js";

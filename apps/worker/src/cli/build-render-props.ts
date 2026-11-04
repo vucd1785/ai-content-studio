@@ -1,30 +1,36 @@
 import type { AlignResponse } from "@studio/contracts";
 import {
-  applyCaptionOverride,
+  assignWordsToLines,
   buildCaptionsFromSceneAlignments,
   computeSceneTimingPlan,
-  type CaptionTimingOverride,
+  type LineWordWarning,
+  type RemotionCaption,
   type SceneAlignmentForCaptions,
   type SceneTimingPlan,
-  type Script,
 } from "@studio/contracts";
-import {
-  assertSceneSlotsMatchScript,
-  EDU_VERTICAL_TEMPLATE_ID,
-  EDU_VERTICAL_TEMPLATE_VERSION,
-  type EduVerticalRenderProps,
-  MVP_FPS,
-  MVP_HEIGHT,
-  MVP_WIDTH,
-  parseEduVerticalRenderProps,
-} from "@studio/video/render-props/schema";
+import { MVP_FPS } from "@studio/video/render-props/common";
 import { PipelineError } from "./paths.js";
+
+/** Một câu trong audio cảnh: ai nói, giọng nào, nằm ở đâu (ms tính từ đầu WAV cảnh). */
+export type SceneLineAudio = {
+  lineId: string;
+  speaker: string;
+  voiceId: string;
+  text: string;
+  wavArtifactId: string;
+  startMs: number;
+  endMs: number;
+};
 
 export type SceneMediaArtifacts = {
   sceneId: string;
   wavArtifactId: string;
   measuredDurationMs: number;
   alignment: AlignResponse;
+  /** Câu theo người nói trong cảnh (P6-08). */
+  lines?: SceneLineAudio[];
+  /** `per_line_fallback` khi cả cảnh trượt cổng và đã căn lại theo nhóm câu (ADR-015). */
+  alignmentMode?: "scene" | "per_line_fallback";
 };
 
 export function assertAlignmentAccepted(alignment: AlignResponse, sceneId: string): void {
@@ -52,106 +58,42 @@ export function buildSceneTimingFromArtifacts(scenes: SceneMediaArtifacts[]): Sc
   );
 }
 
-export function buildEduVerticalRenderProps(input: {
-  script: Script;
-  sceneArtifacts: SceneMediaArtifacts[];
-  audioStorageKey: string;
-  totalDurationMs: number;
-  audioSrc?: string;
-  captionOverride?: CaptionTimingOverride;
-}): EduVerticalRenderProps {
-  for (const scene of input.sceneArtifacts) {
+/** Warning của bước chia từ về câu, kèm cảnh; QA đọc `word_clamped_to_line` (05 mục Alignment). */
+export type SceneLineWordWarning = LineWordWarning & { sceneId: string };
+
+/**
+ * Phụ đề của script `2` (ADR-015): từ của mỗi cảnh được chia về câu theo thứ tự token, kẹp vào đoạn
+ * câu nếu lệch quá dung sai, và mang `speaker` của câu. Template tô màu theo `speaker` (P6-09).
+ * Cảnh không có `lines` thì phụ đề không có `speaker`.
+ */
+export function buildSpeakerCaptions(sceneArtifacts: SceneMediaArtifacts[]): {
+  captions: RemotionCaption[];
+  warnings: SceneLineWordWarning[];
+} {
+  for (const scene of sceneArtifacts) {
     assertAlignmentAccepted(scene.alignment, scene.sceneId);
   }
-
-  const plan = buildSceneTimingFromArtifacts(input.sceneArtifacts);
-
-  const alignmentInputs: SceneAlignmentForCaptions[] = input.sceneArtifacts.map((scene, index) => {
+  const plan = buildSceneTimingFromArtifacts(sceneArtifacts);
+  const warnings: SceneLineWordWarning[] = [];
+  const inputs: SceneAlignmentForCaptions[] = sceneArtifacts.map((scene, index) => {
     const timing = plan.scenes[index];
     if (!timing) {
       throw new PipelineError("render_props_invalid", `Missing timing for ${scene.sceneId}`);
     }
-    return {
+    const base = {
       timing,
       measuredDurationMs: scene.measuredDurationMs,
-      words: scene.alignment.words,
       validation: scene.alignment.validation,
       alignmentDurationMs: scene.alignment.durationMs,
     };
-  });
-
-  let captions = buildCaptionsFromSceneAlignments(alignmentInputs);
-
-  if (input.captionOverride) {
-    captions = applyCaptionOverride(captions, input.captionOverride, {
-      scenes: alignmentInputs.map((sceneInput) => ({
-        sceneId: sceneInput.timing.sceneId,
-        fromMs: sceneInput.timing.fromMs,
-        durationMs: sceneInput.timing.durationMs,
-        measuredDurationMs: sceneInput.measuredDurationMs,
-        wordCount: sceneInput.words.length,
-      })),
-    });
-  }
-
-  const scenes: EduVerticalRenderProps["scenes"] = input.script.scenes.map((scene, index) => {
-    const timing = plan.scenes[index];
-    if (!timing) {
-      throw new PipelineError("render_props_invalid", `Missing timing for scene index ${index}`);
+    if (scene.lines === undefined || scene.lines.length === 0) {
+      return { ...base, words: scene.alignment.words };
     }
-    const sceneId = scene.id;
-    const base = {
-      sceneId,
-      fromMs: timing.fromMs,
-      durationMs: timing.durationMs,
-      onScreenText: scene.onScreenText,
-      visualIntent: scene.visualIntent,
-    };
-
-    switch (scene.templateSlot) {
-      case "title":
-        return {
-          ...base,
-          templateSlot: "title",
-          headline: input.script.title,
-          hook: input.script.hook,
-        };
-      case "explain":
-        return { ...base, templateSlot: "explain" };
-      case "code":
-        if (!scene.codeSnippet) {
-          throw new PipelineError("render_props_invalid", `Scene ${scene.id} missing codeSnippet`);
-        }
-        return { ...base, templateSlot: "code", codeSnippet: scene.codeSnippet };
-      case "diagram":
-        if (!scene.diagram) {
-          throw new PipelineError("render_props_invalid", `Scene ${scene.id} missing diagram`);
-        }
-        return { ...base, templateSlot: "diagram", diagram: scene.diagram };
-      case "cta":
-        return { ...base, templateSlot: "cta", ctaText: input.script.cta };
-    }
-    throw new PipelineError("render_props_invalid", `Unsupported slot for ${sceneId}`);
+    const assigned = assignWordsToLines(scene.alignment.words, scene.lines);
+    warnings.push(...assigned.warnings.map((w) => ({ ...w, sceneId: scene.sceneId })));
+    return { ...base, words: assigned.words, speakers: assigned.speakers };
   });
-
-  assertSceneSlotsMatchScript(scenes, input.script.scenes);
-
-  const props: EduVerticalRenderProps = {
-    templateId: EDU_VERTICAL_TEMPLATE_ID,
-    templateVersion: EDU_VERTICAL_TEMPLATE_VERSION,
-    fps: MVP_FPS,
-    width: MVP_WIDTH,
-    height: MVP_HEIGHT,
-    audio: {
-      storageKey: input.audioStorageKey,
-      durationMs: input.totalDurationMs,
-      ...(input.audioSrc ? { src: input.audioSrc } : {}),
-    },
-    scenes,
-    captions,
-  };
-
-  return parseEduVerticalRenderProps(props);
+  return { captions: buildCaptionsFromSceneAlignments(inputs), warnings };
 }
 
 export type { SceneTimingPlan };

@@ -10,10 +10,12 @@ import {
   jobs,
   workflowRuns,
 } from "@studio/db";
+import { Worker } from "bullmq";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   closeQueues,
   createQueues,
+  EXHAUSTED_GRACE_MS,
   type QueueSet,
   reconcileQueues,
   redisConnectionFromUrl,
@@ -158,6 +160,68 @@ describe("queue reconcile (P3-01, Redis + Postgres Compose)", () => {
     // Trạng thái DB không bị đổi bởi reconcile.
     expect((await getJobById(db, queuedId))?.status).toBe("queued");
     expect((await getJobById(db, runningId))?.status).toBe("running");
+    await closeQueues(queues);
+  });
+
+  it("BullMQ hết lượt lúc DB không ghi được: đối chiếu gọi onExhausted sau thời gian chờ, không đẩy lại", async () => {
+    const [row] = await db
+      .insert(jobs)
+      .values({
+        agentRunId,
+        queue: "render",
+        status: "running",
+        maxAttempts: 1,
+        idempotencyKey: `p3-01-test-${randomUUID()}`,
+      })
+      .returning({ id: jobs.id });
+    const jobId = row?.id ?? "";
+    const scope = { jobIds: [jobId] };
+    const queues = createQueues(connection, PREFIX);
+    expect((await reconcileQueues(db, queues, scope)).enqueued).toEqual([jobId]);
+
+    // Worker hết lượt; handler `failed` không ghi được PostgreSQL nên hàng vẫn `running`.
+    const worker = new Worker(
+      "render",
+      async () => {
+        throw new Error("the database system is in recovery mode");
+      },
+      { connection, prefix: PREFIX },
+    );
+    await new Promise<void>((resolve) => worker.once("failed", () => resolve()));
+    await worker.close();
+    const finishedOn = (await queues.render.getJob(jobId))?.finishedOn ?? 0;
+    expect(finishedOn).toBeGreaterThan(0);
+
+    const calls: [string, string][] = [];
+    const onExhausted = async (id: string, reason: string) => {
+      calls.push([id, reason]);
+      return true;
+    };
+    // Trong thời gian chờ: để handler của worker tự ghi.
+    const early = await reconcileQueues(db, queues, scope, {
+      onExhausted,
+      now: () => finishedOn + EXHAUSTED_GRACE_MS - 1,
+    });
+    expect(early.alreadyPresent).toEqual([jobId]);
+    expect(calls).toEqual([]);
+
+    // onExhausted không ghi được (ví dụ DB vẫn lỗi): giữ nguyên, lần sau thử lại.
+    const refused = await reconcileQueues(db, queues, scope, {
+      onExhausted: async () => false,
+      now: () => finishedOn + EXHAUSTED_GRACE_MS,
+    });
+    expect(refused.exhausted).toEqual([]);
+    expect(refused.alreadyPresent).toEqual([jobId]);
+
+    const late = await reconcileQueues(db, queues, scope, {
+      onExhausted,
+      now: () => finishedOn + EXHAUSTED_GRACE_MS,
+    });
+    expect(late.exhausted).toEqual([jobId]);
+    expect(late.enqueued).toEqual([]);
+    expect(calls).toEqual([[jobId, "the database system is in recovery mode"]]);
+    // Không có onExhausted thì như trước: không đổi gì.
+    expect((await reconcileQueues(db, queues, scope)).alreadyPresent).toEqual([jobId]);
     await closeQueues(queues);
   });
 

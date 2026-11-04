@@ -1,18 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  type AlignResponse,
-  audioManifestArtifactSchema,
-  parseScript,
-  type Script,
-  storyboardArtifactSchema,
-} from "@studio/contracts";
+import { type AlignResponse, audioManifestArtifactSchema, type ScriptV2 } from "@studio/contracts";
 import {
   agentRuns,
   artifacts,
+  cancelWorkflowRun,
   createDbConnection,
   createProject,
   deleteProjectCascadeForTests,
@@ -25,9 +19,17 @@ import {
 } from "@studio/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SceneMediaArtifacts } from "../cli/build-render-props.js";
-import { resolveRepoRoot } from "../cli/paths.js";
+import type { MediaStageHooks, VoiceScene } from "../cli/media-stage.js";
+import { PipelineError } from "../cli/paths.js";
 import { writeJsonArtifact } from "../jobs/job-support.js";
-import { closeQueues, createQueues, type QueueSet, reconcileQueues, redisConnectionFromUrl } from "../queue/queues.js";
+import {
+  closeQueues,
+  createQueues,
+  type QueueSet,
+  reconcileQueues,
+  redisConnectionFromUrl,
+} from "../queue/queues.js";
+import { seedVoicedBrand, storyScript } from "../render/flow-fixtures.js";
 import { runVisualJob } from "./visual-job.js";
 import { runVoiceJob } from "./voice-job.js";
 
@@ -41,12 +43,17 @@ let closeDb: () => Promise<void>;
 let dataDir = "";
 const createdProjectIds: string[] = [];
 
-function loadScript(title: string): Script {
-  const raw = JSON.parse(
-    readFileSync(join(resolveRepoRoot(import.meta.url), "fixtures", "script.edu.json"), "utf8"),
-  ) as Record<string, unknown>;
-  return parseScript({ ...raw, title, sources: [{ id: "s", title: "Redis docs" }] });
+/** Phương án 2 khác phương án 1 ở câu đầu, để test biết TTS đọc đúng phương án đã duyệt. */
+function variants(): [ScriptV2, ScriptV2] {
+  const second = storyScript("Hai");
+  const firstLine = second.scenes[0]?.lines[0];
+  if (firstLine !== undefined) {
+    firstLine.text = "Bit ơi, phương án Hai chậm thế?";
+  }
+  return [storyScript("Một"), second];
 }
+const SCENE_COUNT = storyScript("Một").scenes.length;
+const FIRST_SCENE_ID = storyScript("Một").scenes[0]?.id;
 
 function fakeAlignment(sceneId: string, passes = true): AlignResponse {
   return {
@@ -86,24 +93,26 @@ function fakeAlignment(sceneId: string, passes = true): AlignResponse {
   };
 }
 
-/** TTS giả: mỗi cảnh một WAV id giả, duration 2 s; ghi lại script nhận được. */
+/** TTS giả: mỗi cảnh một WAV id giả, duration 2 s; ghi lại các câu nhận được. */
 function fakeMedia(options: { passes?: boolean } = {}) {
-  const calls: Script[] = [];
-  const collectMedia = async (script: Script): Promise<SceneMediaArtifacts[]> => {
-    calls.push(script);
-    return script.scenes.map((scene, index) => ({
-      sceneId: scene.id,
+  const calls: VoiceScene[][] = [];
+  const collectVoiceScenes = async (scenes: VoiceScene[]): Promise<SceneMediaArtifacts[]> => {
+    calls.push(scenes);
+    return scenes.map((scene, index) => ({
+      sceneId: scene.sceneId,
       wavArtifactId: `${index}`.padStart(32, "c"),
       measuredDurationMs: 2000,
-      alignment: fakeAlignment(scene.id, options.passes ?? true),
+      alignment: fakeAlignment(scene.sceneId, options.passes ?? true),
     }));
   };
-  return { collectMedia, calls };
+  return { collectVoiceScenes, calls };
 }
 
 /** Run đang chờ duyệt script, có artifact hai phương án "Một" và "Hai"; Director duyệt `variantIndex`. */
 async function approvedRun(variantIndex: 1 | 2) {
-  const project = await createProject(db, "P3-05 test run");
+  const project = await createProject(db, "P3-05 test run", {
+    brandProfileId: await seedVoicedBrand(db),
+  });
   createdProjectIds.push(project.id);
   const brief = await insertBrief(db, project.id, {
     topic: "Redis",
@@ -121,9 +130,11 @@ async function approvedRun(variantIndex: 1 | 2) {
   if (run === undefined) {
     throw new Error("seed run failed");
   }
-  await db.insert(agentRuns).values({ workflowRunId: run.id, role: "script", status: "waiting_approval" });
+  await db
+    .insert(agentRuns)
+    .values({ workflowRunId: run.id, role: "script", status: "waiting_approval" });
   const key = `artifacts/${run.id}/script-test.json`;
-  const contentHash = await writeJsonArtifact(dataDir, key, { variants: [loadScript("Một"), loadScript("Hai")] });
+  const contentHash = await writeJsonArtifact(dataDir, key, { variants: variants() });
   const [script] = await db
     .insert(artifacts)
     .values({
@@ -131,9 +142,10 @@ async function approvedRun(variantIndex: 1 | 2) {
       workflowRunId: run.id,
       type: "script",
       version: 1,
-      schemaVersion: "1",
+      schemaVersion: "2",
       contentHash,
       storageKey: key,
+      metadata: { formatId: "story", formatVersion: 1, creativeMode: "standard" },
     })
     .returning();
   const { approval } = await recordApproval(db, {
@@ -155,7 +167,8 @@ async function runJobs(runId: string) {
     .map((job) => ({ ...job, role: byId.get(job.agentRunId)?.role }));
 }
 
-const jobOf = async (runId: string, role: string) => (await runJobs(runId)).find((job) => job.role === role);
+const jobOf = async (runId: string, role: string) =>
+  (await runJobs(runId)).find((job) => job.role === role);
 
 beforeAll(async () => {
   const conn = createDbConnection(DATABASE_URL);
@@ -176,24 +189,35 @@ describe("visual và voice sau duyệt script (P3-05)", () => {
   it("duyệt script tạo visual (llm) và voice (media) cùng lúc, run sang producing_assets, chưa có render", async () => {
     const seeded = await approvedRun(2);
     const created = await runJobs(seeded.runId);
-    expect(created.map((job) => [job.role, job.queue, job.status, job.idempotencyKey]).sort()).toEqual([
+    expect(
+      created.map((job) => [job.role, job.queue, job.status, job.idempotencyKey]).sort(),
+    ).toEqual([
       ["visual", "llm", "queued", `visual:${seeded.runId}:approval:${seeded.approvalId}`],
       ["voice", "media", "queued", `voice:${seeded.runId}:approval:${seeded.approvalId}`],
     ]);
-    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe("producing_assets");
+    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe(
+      "producing_assets",
+    );
   });
 
   it("thiếu audio thì không enqueue render; đủ cả hai thì đúng một job render", async () => {
     const seeded = await approvedRun(2);
-    const visual = await runVisualJob(db, (await jobOf(seeded.runId, "visual"))?.id ?? "", { dataDir });
+    const visual = await runVisualJob(db, (await jobOf(seeded.runId, "visual"))?.id ?? "", {
+      dataDir,
+    });
     expect(visual.status).toBe("completed");
 
     // Tiêu chí nghiệm thu: visual xong, voice chưa xong → không có job render.
     expect(await jobOf(seeded.runId, "video")).toBeUndefined();
-    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe("producing_assets");
+    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe(
+      "producing_assets",
+    );
 
     const media = fakeMedia();
-    const voice = await runVoiceJob(db, (await jobOf(seeded.runId, "voice"))?.id ?? "", { dataDir, ...media });
+    const voice = await runVoiceJob(db, (await jobOf(seeded.runId, "voice"))?.id ?? "", {
+      dataDir,
+      ...media,
+    });
     expect(voice.status).toBe("completed");
     const render = (await runJobs(seeded.runId)).filter((job) => job.role === "video");
     expect(render.map((job) => [job.queue, job.status, job.idempotencyKey])).toEqual([
@@ -202,9 +226,15 @@ describe("visual và voice sau duyệt script (P3-05)", () => {
     // Visual/voice không tự đổi status run; preview do job render (P3-06) mở.
     const detail = await getWorkflowRunDetail(db, seeded.runId);
     expect(detail?.workflowRun.status).toBe("producing_assets");
-    const transitions = (await listEventsForRun(db, seeded.runId)).filter((e) => e.type === "workflow.transition");
+    const transitions = (await listEventsForRun(db, seeded.runId)).filter(
+      (e) => e.type === "workflow.transition",
+    );
     expect(transitions.map((e) => e.payload)).toEqual([
-      expect.objectContaining({ from: "waiting_script_approval", to: "producing_assets", cause: "approval" }),
+      expect.objectContaining({
+        from: "waiting_script_approval",
+        to: "producing_assets",
+        cause: "approval",
+      }),
     ]);
   });
 
@@ -222,41 +252,57 @@ describe("visual và voice sau duyệt script (P3-05)", () => {
     expect(media.calls).toHaveLength(1);
   });
 
-  it("dùng đúng phương án đã duyệt: storyboard và TTS là phương án 2, artifact nối về script", async () => {
+  it("dùng đúng phương án đã duyệt: TTS đọc phương án 2 bằng giọng nhân vật, artifact nối về script", async () => {
     const seeded = await approvedRun(2);
     const media = fakeMedia();
     await runVisualJob(db, (await jobOf(seeded.runId, "visual"))?.id ?? "", { dataDir });
     await runVoiceJob(db, (await jobOf(seeded.runId, "voice"))?.id ?? "", { dataDir, ...media });
-    expect(media.calls.map((script) => script.title)).toEqual(["Hai"]);
+    expect(media.calls).toHaveLength(1);
+    expect(media.calls[0]?.[0]?.lines[0]).toMatchObject({
+      speaker: "ti",
+      voiceId: "Hải Đăng",
+      text: "Bit ơi, phương án Hai chậm thế?",
+    });
 
-    const rows = (await db.select().from(artifacts)).filter((row) => row.workflowRunId === seeded.runId);
-    const storyboardRow = rows.find((row) => row.type === "storyboard");
-    const audioRow = rows.find((row) => row.type === "audio");
-    expect(rows.map((row) => row.type).sort()).toEqual(["alignment", "audio", "script", "storyboard"]);
-    const storyboard = storyboardArtifactSchema.parse(
-      JSON.parse(await readFile(join(dataDir, storyboardRow?.storageKey ?? ""), "utf8")),
+    const rows = (await db.select().from(artifacts)).filter(
+      (row) => row.workflowRunId === seeded.runId,
     );
-    expect(storyboard).toMatchObject({ variantIndex: 2, title: "Hai", scriptArtifactId: seeded.scriptArtifactId });
+    const audioRow = rows.find((row) => row.type === "audio");
+    // Visual không tạo artifact: ảnh storyboard đã có từ bước `storyboarding` (P6-17).
+    expect(rows.map((row) => row.type).sort()).toEqual(["alignment", "audio", "script"]);
     const manifest = audioManifestArtifactSchema.parse(
       JSON.parse(await readFile(join(dataDir, audioRow?.storageKey ?? ""), "utf8")),
     );
-    expect(manifest.scenes.map((scene) => scene.measuredDurationMs).every((ms) => ms === 2000)).toBe(true);
+    expect(
+      manifest.scenes.map((scene) => scene.measuredDurationMs).every((ms) => ms === 2000),
+    ).toBe(true);
     expect(audioRow?.metadata).toMatchObject({ variantIndex: 2, approvalId: seeded.approvalId });
   });
 
   it("alignment không qua cổng: voice fail, run failed resume producing_assets, không render, visual bỏ qua", async () => {
     const seeded = await approvedRun(1);
     const media = fakeMedia({ passes: false });
-    const voice = await runVoiceJob(db, (await jobOf(seeded.runId, "voice"))?.id ?? "", { dataDir, ...media });
+    const voice = await runVoiceJob(db, (await jobOf(seeded.runId, "voice"))?.id ?? "", {
+      dataDir,
+      ...media,
+    });
     expect(voice).toEqual({ status: "failed", errorCode: "alignment_gate_failed" });
-    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun).toMatchObject({
+    const detail = await getWorkflowRunDetail(db, seeded.runId);
+    expect(detail?.workflowRun).toMatchObject({
       status: "failed",
       resumeFrom: "producing_assets",
       failureCode: "alignment_gate_failed",
+      failureMessage: expect.stringMatching(/\S/),
     });
-    expect((await runVisualJob(db, (await jobOf(seeded.runId, "visual"))?.id ?? "", { dataDir })).status).toBe(
-      "skipped",
-    );
+    // P3-17: run detail trả mã và chi tiết lỗi của agent.
+    expect(detail?.agentRuns.find((a) => a.role === "voice")).toMatchObject({
+      status: "failed",
+      errorCode: "alignment_gate_failed",
+      errorMessage: expect.stringMatching(/\S/),
+    });
+    expect(
+      (await runVisualJob(db, (await jobOf(seeded.runId, "visual"))?.id ?? "", { dataDir })).status,
+    ).toBe("skipped");
     expect(await jobOf(seeded.runId, "video")).toBeUndefined();
   });
 });
@@ -276,7 +322,9 @@ describe("hàng đợi Redis (P3-05)", () => {
   });
 
   async function waiting(name: keyof QueueSet) {
-    return (await queues[name].getJobs(["waiting", "active", "delayed", "prioritized"])).map((job) => job.data.jobId);
+    return (await queues[name].getJobs(["waiting", "active", "delayed", "prioritized"])).map(
+      (job) => job.data.jobId,
+    );
   }
 
   it("thiếu audio: queue render rỗng sau khi đối chiếu; đủ cả hai: đúng job render vào queue render", async () => {
@@ -303,3 +351,86 @@ describe("hàng đợi Redis (P3-05)", () => {
   });
 });
 
+describe("tiến độ thật và hủy giữa chừng của voice (P3-17)", () => {
+  /** TTS giả đi qua đúng móc của job: hỏi hủy trước mỗi bước, báo tiến độ sau mỗi bước. */
+  function steppingMedia(afterFirstScene?: () => Promise<void>) {
+    const done: string[] = [];
+    const collectVoiceScenes = async (scenes: VoiceScene[], hooks: MediaStageHooks) => {
+      const total = scenes.length * 2;
+      for (const [index, scene] of scenes.entries()) {
+        for (const phase of ["synthesize", "align"] as const) {
+          if (await hooks.isCancelled?.()) {
+            throw new PipelineError("cancelled", `Director đã hủy trước cảnh ${scene.sceneId}`);
+          }
+          done.push(`${scene.sceneId}:${phase}`);
+          await hooks.onStep?.({
+            done: index * 2 + (phase === "synthesize" ? 1 : 2),
+            total,
+            sceneIndex: index + 1,
+            sceneCount: scenes.length,
+            phase,
+            sceneId: scene.sceneId,
+          });
+        }
+        if (index === 0) {
+          await afterFirstScene?.();
+        }
+      }
+      return scenes.map((scene, index) => ({
+        sceneId: scene.sceneId,
+        wavArtifactId: `${index}`.padStart(32, "c"),
+        measuredDurationMs: 2000,
+        alignment: fakeAlignment(scene.sceneId),
+      }));
+    };
+    return { collectVoiceScenes, done };
+  }
+
+  it("ghi job.progress từ 0 tới hết; run detail chỉ trả tiến độ khi agent đang chạy", async () => {
+    const seeded = await approvedRun(1);
+    const voiceId = (await jobOf(seeded.runId, "voice"))?.id ?? "";
+    let midway: unknown = null;
+    const media = steppingMedia(async () => {
+      midway = (await getWorkflowRunDetail(db, seeded.runId))?.agentRuns.find(
+        (a) => a.role === "voice",
+      )?.progress;
+    });
+    expect((await runVoiceJob(db, voiceId, { dataDir, ...media })).status).toBe("completed");
+    const sceneCount = SCENE_COUNT;
+    const progress = (await listEventsForRun(db, seeded.runId))
+      .filter((event) => event.type === "job.progress")
+      .map((event) => (event.payload as { done: number; total: number }).done);
+    expect(progress).toEqual(Array.from({ length: sceneCount * 2 + 1 }, (_, i) => i));
+    expect(midway).toEqual({
+      done: 2,
+      total: sceneCount * 2,
+      unit: "scene_step",
+      sceneIndex: 1,
+      sceneCount,
+      phase: "align",
+    });
+    const voice = (await getWorkflowRunDetail(db, seeded.runId))?.agentRuns.find(
+      (a) => a.role === "voice",
+    );
+    expect(voice?.status).toBe("completed");
+  });
+
+  it("Director hủy sau cảnh 1: job dừng trước cảnh 2, không tạo artifact, run giữ cancelled", async () => {
+    const seeded = await approvedRun(1);
+    const voiceId = (await jobOf(seeded.runId, "voice"))?.id ?? "";
+    const media = steppingMedia(async () => {
+      await cancelWorkflowRun(db, {
+        workflowRunId: seeded.runId,
+        transition: { from: "producing_assets", to: "cancelled" },
+      });
+    });
+    const result = await runVoiceJob(db, voiceId, { dataDir, ...media });
+    expect(result.status).toBe("failed");
+    const firstSceneId = FIRST_SCENE_ID;
+    expect(media.done).toEqual([`${firstSceneId}:synthesize`, `${firstSceneId}:align`]);
+    const detail = await getWorkflowRunDetail(db, seeded.runId);
+    expect(detail?.workflowRun.status).toBe("cancelled");
+    expect(detail?.artifacts.filter((row) => row.type === "audio")).toEqual([]);
+    expect(detail?.agentRuns.find((a) => a.role === "voice")?.status).toBe("cancelled");
+  });
+});

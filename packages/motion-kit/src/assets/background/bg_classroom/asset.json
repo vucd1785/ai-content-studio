@@ -1,0 +1,12 @@
+{
+  "id": "bg_classroom",
+  "kind": "background",
+  "version": "0.1.0",
+  "description": "Lớp học mức chi tiết 2: bảng đen (vùng vẽ sơ đồ, code), bàn giáo viên, địa cầu, đồng hồ, cây.",
+  "tags": ["lớp học", "bảng", "giải thích"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

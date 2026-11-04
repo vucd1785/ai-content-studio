@@ -1,0 +1,12 @@
+{
+  "id": "pose_point",
+  "kind": "pose",
+  "version": "0.1.0",
+  "description": "Giữ tay chỉ sang một bên.",
+  "tags": ["chỉ", "giải thích"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

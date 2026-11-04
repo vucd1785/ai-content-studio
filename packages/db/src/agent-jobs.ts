@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, max, sql } from "drizzle-orm";
 import type { StudioDb } from "./db.js";
-import { type EventInsert, publishEvents } from "./events.js";
+import { appendEvents, type EventInsert, publishEvents } from "./events.js";
 import {
   agentRuns,
   approvals,
@@ -60,8 +60,63 @@ export async function loadJobContext(db: StudioDb, jobId: string) {
 
 export type JobContext = NonNullable<Awaited<ReturnType<typeof loadJobContext>>>;
 
+async function loadJobState(db: StudioDb, jobId: string) {
+  const [row] = await db
+    .select({
+      jobStatus: jobs.status,
+      agentRunId: jobs.agentRunId,
+      workflowRunId: agentRuns.workflowRunId,
+      runStatus: workflowRuns.status,
+    })
+    .from(jobs)
+    .innerJoin(agentRuns, eq(agentRuns.id, jobs.agentRunId))
+    .innerJoin(workflowRuns, eq(workflowRuns.id, agentRuns.workflowRunId))
+    .where(eq(jobs.id, jobId))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Job dài (voice, render) hỏi giữa các bước: Director đã hủy run chưa (P3-17). Hủy thì job dừng ở bước kế tiếp
+ * thay vì chạy hết mọi cảnh rồi mới bị bỏ kết quả.
+ */
+export async function isJobCancelled(db: StudioDb, jobId: string): Promise<boolean> {
+  const state = await loadJobState(db, jobId);
+  return state === null || state.jobStatus === "cancelled" || state.runStatus === "cancelled";
+}
+
+/**
+ * Ghi tiến độ thật của job media thành event `job.progress` (P3-17, ADR-009: chỉ số đếm thật, không phần trăm giả).
+ * Job không còn `running` thì bỏ qua. Trả `true` khi đã ghi.
+ */
+export async function recordJobProgress(
+  db: StudioDb,
+  jobId: string,
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  const state = await loadJobState(db, jobId);
+  if (state === null || state.jobStatus !== "running") {
+    return false;
+  }
+  await appendEvents(db, [
+    {
+      workflowRunId: state.workflowRunId,
+      agentRunId: state.agentRunId,
+      jobId,
+      type: "job.progress",
+      payload,
+    },
+  ]);
+  return true;
+}
+
 async function lockRun(tx: StudioTx, runId: string): Promise<WorkflowRunRow> {
-  const [run] = await tx.select().from(workflowRuns).where(eq(workflowRuns.id, runId)).for("update").limit(1);
+  const [run] = await tx
+    .select()
+    .from(workflowRuns)
+    .where(eq(workflowRuns.id, runId))
+    .for("update")
+    .limit(1);
   if (run === undefined) {
     throw new JobStateError("not_found", "workflow run not found");
   }
@@ -82,8 +137,18 @@ async function lockJob(tx: StudioTx, jobId: string) {
   return row;
 }
 
-function transitionEvent(run: WorkflowRunRow, to: WorkflowRunStatus, cause: string, jobId: string): EventInsert {
-  return { workflowRunId: run.id, jobId, type: "workflow.transition", payload: { from: run.status, to, cause } };
+function transitionEvent(
+  run: WorkflowRunRow,
+  to: WorkflowRunStatus,
+  cause: string,
+  jobId: string,
+): EventInsert {
+  return {
+    workflowRunId: run.id,
+    jobId,
+    type: "workflow.transition",
+    payload: { from: run.status, to, cause },
+  };
 }
 
 function agentStatusEvent(
@@ -93,7 +158,13 @@ function agentStatusEvent(
   role: string,
   status: string,
 ): EventInsert {
-  return { workflowRunId: runId, agentRunId, jobId, type: "agent.status", payload: { role, status } };
+  return {
+    workflowRunId: runId,
+    agentRunId,
+    jobId,
+    type: "agent.status",
+    payload: { role, status },
+  };
 }
 
 /**
@@ -122,7 +193,13 @@ export async function claimJob(
       .returning();
     await tx
       .update(agentRuns)
-      .set({ status: "running", attempt: agentRun.attempt + 1, startedAt: now, errorCode: null, errorMessage: null })
+      .set({
+        status: "running",
+        attempt: agentRun.attempt + 1,
+        startedAt: now,
+        errorCode: null,
+        errorMessage: null,
+      })
       .where(eq(agentRuns.id, agentRun.id));
     const rows: EventInsert[] = [];
     if (input.runTransition !== undefined && run.status === input.runTransition.from) {
@@ -147,7 +224,10 @@ export function scriptJobKeyAfterResearch(workflowRunId: string, researchJobId: 
 }
 
 /** Key job script do lượt `changes_requested` tạo; approval id nằm trong key để job đọc note. */
-export function scriptJobKeyAfterChangesRequested(workflowRunId: string, approvalId: string): string {
+export function scriptJobKeyAfterChangesRequested(
+  workflowRunId: string,
+  approvalId: string,
+): string {
   return `script:${workflowRunId}:changes:${approvalId}`;
 }
 
@@ -161,7 +241,11 @@ export function approvalIdFromScriptJobKey(idempotencyKey: string): string | nul
 export type AssetRole = "visual" | "voice";
 
 /** Key job visual/voice do một approval `script` + `approved` tạo. */
-export function assetJobKeyAfterScriptApproval(role: AssetRole, workflowRunId: string, approvalId: string): string {
+export function assetJobKeyAfterScriptApproval(
+  role: AssetRole,
+  workflowRunId: string,
+  approvalId: string,
+): string {
   return `${role}:${workflowRunId}:approval:${approvalId}`;
 }
 
@@ -210,7 +294,12 @@ export async function insertQueuedJob(tx: StudioTx, workflowRunId: string, next:
   }
   const [job] = await tx
     .insert(jobs)
-    .values({ agentRunId: agentRun.id, queue: next.queue, idempotencyKey: next.idempotencyKey, status: "queued" })
+    .values({
+      agentRunId: agentRun.id,
+      queue: next.queue,
+      idempotencyKey: next.idempotencyKey,
+      status: "queued",
+    })
     .returning();
   if (job === undefined) {
     throw new Error("insert_job_failed");
@@ -293,7 +382,9 @@ export async function completeJob(
       if (child === undefined || parent === undefined) {
         throw new Error("invalid_dependency_index");
       }
-      await tx.insert(artifactDependencies).values({ artifactId: child.id, parentArtifactId: parent.id });
+      await tx
+        .insert(artifactDependencies)
+        .values({ artifactId: child.id, parentArtifactId: parent.id });
     }
     for (const [childIndex, parentArtifactId] of input.parentArtifacts ?? []) {
       const child = inserted[childIndex];
@@ -344,7 +435,9 @@ export async function completeJob(
       const done = input.barrier.requiredJobKeys.every((key) =>
         related.some((row) => row.key === key && row.status === "completed"),
       );
-      const alreadyQueued = related.some((row) => row.key === input.barrier?.nextJob.idempotencyKey);
+      const alreadyQueued = related.some(
+        (row) => row.key === input.barrier?.nextJob.idempotencyKey,
+      );
       if (done && !alreadyQueued) {
         rows.push((await insertQueuedJob(tx, run.id, input.barrier.nextJob)).event);
       }
@@ -434,7 +527,11 @@ export async function findArtifactByIdempotencyKey(
  * Artifact research mới nhất của project có cùng `metadata.inputHash` (P5-01). Artifact chỉ được
  * tạo trong `completeJob`, nên hàng tìm thấy luôn là kết quả của một job đã xong.
  */
-export async function findResearchArtifactByInputHash(db: StudioDb, projectId: string, inputHash: string) {
+export async function findResearchArtifactByInputHash(
+  db: StudioDb,
+  projectId: string,
+  inputHash: string,
+) {
   const [row] = await db
     .select()
     .from(artifacts)
@@ -451,7 +548,11 @@ export async function findResearchArtifactByInputHash(db: StudioDb, projectId: s
 }
 
 /** Artifact mới nhất của run theo loại (version lớn nhất). */
-export async function findLatestRunArtifact(db: StudioDb, workflowRunId: string, type: ArtifactType) {
+export async function findLatestRunArtifact(
+  db: StudioDb,
+  workflowRunId: string,
+  type: ArtifactType,
+) {
   const [row] = await db
     .select()
     .from(artifacts)
@@ -482,4 +583,3 @@ export async function findParentArtifact(db: StudioDb, childId: string, type: Ar
     .limit(1);
   return row?.artifact ?? null;
 }
-

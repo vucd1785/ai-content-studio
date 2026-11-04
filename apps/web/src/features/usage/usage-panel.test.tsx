@@ -50,7 +50,9 @@ const TWO_RECORDS = [
 
 function renderPanel(runId: string | null) {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <UsagePanel runId={runId} />
     </QueryClientProvider>,
   );
@@ -81,17 +83,29 @@ describe("màn usage (P5-02)", () => {
 
   it("đọc số đã lưu: chi phí không tính lại từ token", () => {
     const totals = sumUsage([
-      record("00000000-0000-4000-8000-0000000000d1", { inputTokens: 1_000_000, estimatedCostUsd: "0.000000" }),
-      record("00000000-0000-4000-8000-0000000000d2", { inputTokens: 5, estimatedCostUsd: "1.250001" }),
+      record("00000000-0000-4000-8000-0000000000d1", {
+        inputTokens: 1_000_000,
+        estimatedCostUsd: "0.000000",
+      }),
+      record("00000000-0000-4000-8000-0000000000d2", {
+        inputTokens: 5,
+        estimatedCostUsd: "1.250001",
+      }),
     ] as Parameters<typeof sumUsage>[0]);
     expect(totals.estimatedCostUsd).toBe("1.250001");
     expect(totals.inputTokens).toBe(1_000_005);
   });
 
   it("không hard-code đơn giá trong component", () => {
-    expect(Object.keys(RAW_SOURCES).sort()).toEqual(["./usage-panel.tsx", "./usage-totals.ts", "./use-usage.ts"]);
+    expect(Object.keys(RAW_SOURCES).sort()).toEqual([
+      "./usage-panel.tsx",
+      "./usage-totals.ts",
+      "./use-usage.ts",
+    ]);
     for (const [file, source] of Object.entries(RAW_SOURCES)) {
-      expect(source, file).not.toMatch(/price|pricing|perMillion|per_million|USD_PER|\bTokens\s*\*/i);
+      expect(source, file).not.toMatch(
+        /price|pricing|perMillion|per_million|USD_PER|\bTokens\s*\*/i,
+      );
     }
   });
 

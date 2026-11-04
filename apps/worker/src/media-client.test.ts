@@ -1,7 +1,12 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createLongRunningFetch, DEFAULT_TTS_TIMEOUT_MS, ttsTimeoutMs } from "./media-client.js";
+import {
+  createLongRunningFetch,
+  TtsMediaClient,
+  ttsErrorDetail,
+  ttsTimeoutMs,
+} from "./media-client.js";
 
 let server: Server;
 let base = "";
@@ -15,6 +20,15 @@ beforeAll(async () => {
       body += chunk.toString("utf8");
     });
     req.on("end", () => {
+      if (req.url?.startsWith("/fail/align")) {
+        res.writeHead(503, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: { code: "ALIGNMENT_FAILED", message: "Temporary failure in name resolution" },
+          }),
+        );
+        return;
+      }
       setTimeout(() => {
         res.writeHead(201, { "content-type": "application/json" });
         res.end(JSON.stringify({ method: req.method, body, type: req.headers["content-type"] }));
@@ -53,9 +67,39 @@ describe("fetch cho TTS chạy lâu (P3-11)", () => {
     ).rejects.toThrow(/TTS không trả lời sau 100 ms/);
   });
 
-  it("TTS_TIMEOUT_MS hợp lệ thì dùng, sai thì về mặc định 30 phút", () => {
+  it("TTS_TIMEOUT_MS hợp lệ thì dùng; trống hoặc sai thì không giới hạn (P3-17)", () => {
     expect(ttsTimeoutMs({ TTS_TIMEOUT_MS: "600000" })).toBe(600_000);
-    expect(ttsTimeoutMs({ TTS_TIMEOUT_MS: "abc" })).toBe(DEFAULT_TTS_TIMEOUT_MS);
-    expect(ttsTimeoutMs({})).toBe(30 * 60 * 1000);
+    expect(ttsTimeoutMs({ TTS_TIMEOUT_MS: "abc" })).toBeNull();
+    expect(ttsTimeoutMs({ TTS_TIMEOUT_MS: "0" })).toBeNull();
+    expect(ttsTimeoutMs({})).toBeNull();
+  });
+
+  it("không giới hạn thì vẫn chờ tới khi TTS trả lời", async () => {
+    const fetchNoLimit = createLongRunningFetch(null);
+    const response = await fetchNoLimit(`${base}/synthesize?delay=400`, {
+      method: "POST",
+      body: "{}",
+    });
+    expect(response.status).toBe(201);
+  });
+});
+
+describe("chi tiết lỗi TTS (P3-17)", () => {
+  it("lỗi của service giữ mã và thông điệp, không chỉ mã HTTP", async () => {
+    const client = new TtsMediaClient({
+      baseUrl: `${base}/fail`,
+      fetchImpl: createLongRunningFetch(null),
+    });
+    await expect(
+      client.align({ audioArtifactId: "a".repeat(32), transcript: "Xin chào" }),
+    ).rejects.toThrow("TTS align lỗi 503: ALIGNMENT_FAILED: Temporary failure in name resolution");
+  });
+
+  it("đọc được cả dạng detail của FastAPI", () => {
+    expect(ttsErrorDetail({ detail: "voiceId empty" })).toBe("voiceId empty");
+    expect(
+      ttsErrorDetail({ detail: { code: "TTS_MODEL_UNAVAILABLE", message: "out of memory" } }),
+    ).toBe("TTS_MODEL_UNAVAILABLE: out of memory");
+    expect(ttsErrorDetail("x")).toBeNull();
   });
 });

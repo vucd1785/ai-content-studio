@@ -1,0 +1,12 @@
+{
+  "id": "cam_push_in",
+  "kind": "camera",
+  "version": "0.1.0",
+  "description": "Đẩy máy vào chậm 6% suốt shot.",
+  "tags": ["đẩy vào"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

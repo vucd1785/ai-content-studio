@@ -6,6 +6,8 @@ export const workflowRunStatusEnum = pgEnum("workflow_run_status", [
   "researching",
   "research_ready",
   "scripting",
+  // Phase 6 (P6-10): dựng storyboard ảnh tĩnh của script `2` trước cổng script (ADR-014).
+  "storyboarding",
   "waiting_script_approval",
   "producing_assets",
   "preview_rendering",

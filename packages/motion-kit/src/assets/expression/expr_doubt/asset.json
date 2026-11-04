@@ -1,0 +1,12 @@
+{
+  "id": "expr_doubt",
+  "kind": "expression",
+  "version": "0.1.0",
+  "description": "Biểu cảm nghi ngờ.",
+  "tags": ["nghi ngờ", "suy nghĩ"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

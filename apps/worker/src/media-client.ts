@@ -18,20 +18,54 @@ export type TtsClientOptions = {
   fetchImpl?: typeof fetch;
 };
 
-/** Mặc định 30 phút: TTS và alignment chạy CPU có thể mất nhiều phút cho một cảnh (P3-11). */
-export const DEFAULT_TTS_TIMEOUT_MS = 30 * 60 * 1000;
-
-/** `TTS_TIMEOUT_MS` (số mili giây dương) hoặc mặc định. */
-export function ttsTimeoutMs(env: Record<string, string | undefined> = process.env): number {
+/**
+ * Giới hạn chờ TTS (P3-17, Director 2026-11-01): mặc định **không giới hạn**, vì TTS và alignment trên CPU yếu
+ * có thể mất hàng chục phút một cảnh. Đặt `TTS_TIMEOUT_MS` (số mili giây dương) nếu muốn có giới hạn.
+ * Lỗi thật (TTS trả mã lỗi, mất kết nối) vẫn báo ngay kèm chi tiết.
+ */
+export function ttsTimeoutMs(env: Record<string, string | undefined> = process.env): number | null {
   const raw = Number(env.TTS_TIMEOUT_MS);
-  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_TTS_TIMEOUT_MS;
+  return Number.isInteger(raw) && raw > 0 ? raw : null;
+}
+
+/** Thông điệp lỗi trong body của `services/tts` (`{error: {code, message}}` hoặc `{detail: …}`), cắt 500 ký tự. */
+export function ttsErrorDetail(json: unknown): string | null {
+  if (typeof json !== "object" || json === null) {
+    return null;
+  }
+  const body = json as Record<string, unknown>;
+  const candidate = body.error ?? body.detail;
+  if (typeof candidate === "string") {
+    return candidate.slice(0, 500);
+  }
+  if (typeof candidate === "object" && candidate !== null) {
+    const { code, message } = candidate as Record<string, unknown>;
+    const parts = [code, message].filter(
+      (part): part is string => typeof part === "string" && part !== "",
+    );
+    return parts.length === 0
+      ? JSON.stringify(candidate).slice(0, 500)
+      : parts.join(": ").slice(0, 500);
+  }
+  return null;
+}
+
+async function failureMessage(action: string, response: Response): Promise<string> {
+  let detail: string | null = null;
+  try {
+    detail = ttsErrorDetail(await response.json());
+  } catch {
+    detail = null;
+  }
+  return `TTS ${action} lỗi ${response.status}${detail === null ? "" : `: ${detail}`}`;
 }
 
 /**
  * `fetch` tối giản trên `node:http(s)` cho service TTS nội bộ. `fetch` của Node (undici) bỏ cuộc khi server chưa
- * trả header sau 300 s, ngắn hơn thời gian TTS trên CPU yếu; ở đây chỉ hủy khi socket im lặng quá `timeoutMs`.
+ * trả header sau 300 s, ngắn hơn thời gian TTS trên CPU yếu. Ở đây chỉ hủy khi socket im lặng quá `timeoutMs`;
+ * `null` là chờ đến khi TTS trả lời hoặc kết nối lỗi.
  */
-export function createLongRunningFetch(timeoutMs: number): typeof fetch {
+export function createLongRunningFetch(timeoutMs: number | null): typeof fetch {
   return (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
     const request = url.protocol === "https:" ? httpsRequest : httpRequest;
@@ -56,9 +90,11 @@ export function createLongRunningFetch(timeoutMs: number): typeof fetch {
           );
         },
       );
-      req.setTimeout(timeoutMs, () =>
-        req.destroy(new Error(`TTS không trả lời sau ${timeoutMs} ms`)),
-      );
+      if (timeoutMs !== null) {
+        req.setTimeout(timeoutMs, () =>
+          req.destroy(new Error(`TTS không trả lời sau ${timeoutMs} ms (TTS_TIMEOUT_MS)`)),
+        );
+      }
       req.on("error", reject);
       if (body !== undefined) {
         req.write(body);
@@ -84,10 +120,10 @@ export class TtsMediaClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const json: unknown = await response.json();
     if (!response.ok) {
-      throw new Error(`TTS synthesize failed (${response.status})`);
+      throw new Error(await failureMessage("synthesize", response));
     }
+    const json: unknown = await response.json();
     return synthesizeResponseSchema.parse(json);
   }
 
@@ -98,10 +134,10 @@ export class TtsMediaClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const json: unknown = await response.json();
     if (!response.ok) {
-      throw new Error(`TTS revalidate-gate failed (${response.status})`);
+      throw new Error(await failureMessage("revalidate-gate", response));
     }
+    const json: unknown = await response.json();
     return alignResponseSchema.parse(json);
   }
 
@@ -112,10 +148,10 @@ export class TtsMediaClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const json: unknown = await response.json();
     if (!response.ok) {
-      throw new Error(`TTS align failed (${response.status})`);
+      throw new Error(await failureMessage("align", response));
     }
+    const json: unknown = await response.json();
     return alignResponseSchema.parse(json);
   }
 }

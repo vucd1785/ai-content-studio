@@ -58,8 +58,12 @@ export function UsagePanel({ runId }: { runId: string | null }) {
             {records.map((record) => (
               <tr key={record.id}>
                 <td>{record.model}</td>
-                <td className="text-right tabular-nums">{numberFormat.format(record.inputTokens)}</td>
-                <td className="text-right tabular-nums">{numberFormat.format(record.outputTokens)}</td>
+                <td className="text-right tabular-nums">
+                  {numberFormat.format(record.inputTokens)}
+                </td>
+                <td className="text-right tabular-nums">
+                  {numberFormat.format(record.outputTokens)}
+                </td>
                 <td className="text-right tabular-nums">{record.estimatedCostUsd}</td>
               </tr>
             ))}

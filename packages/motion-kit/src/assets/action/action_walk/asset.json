@@ -1,0 +1,12 @@
+{
+  "id": "action_walk",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Bước đi tại chỗ, chu kỳ hai bước.",
+  "tags": ["đi"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

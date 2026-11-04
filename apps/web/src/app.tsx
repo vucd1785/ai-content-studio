@@ -1,6 +1,6 @@
-import { AppShell } from "@/features/shell/app-shell";
 import { LoginPage } from "@/features/session/login-page";
 import { useSession } from "@/features/session/use-session";
+import { AppShell } from "@/features/shell/app-shell";
 import { vi } from "@/i18n/vi";
 
 export function App() {

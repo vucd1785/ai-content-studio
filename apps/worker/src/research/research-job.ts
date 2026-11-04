@@ -243,7 +243,11 @@ export async function runResearchJob(
       }
       if (error instanceof LlmError) {
         // Lỗi schema sau một lần repair và thiếu cấu hình không retry. Lỗi provider retry tới max_attempts.
-        if (error.code === "schema_invalid" || error.code === "configuration_missing") {
+        if (
+          error.code === "schema_invalid" ||
+          error.code === "configuration_missing" ||
+          error.code === "quota_exhausted"
+        ) {
           return fail(error.code, error.message);
         }
         if (claimed.attempt >= claimed.maxAttempts) {

@@ -1,21 +1,7 @@
 import type { FC } from "react";
 import { Composition } from "remotion";
-import { EduVerticalComposition } from "./compositions/EduVerticalComposition";
 import { SpikeComposition } from "./compositions/SpikeComposition";
-import { EduLightComposition } from "./edu-light/EduLightComposition";
-import {
-  EDU_LIGHT_COMPOSITION_ID,
-  EDU_LIGHT_DEFAULT_PROPS,
-  type EduLightRenderProps,
-} from "./edu-light/edu-light-props";
-import {
-  EDU_VERTICAL_COMPOSITION_ID,
-  EDU_VERTICAL_DEFAULT_PROPS,
-  eduVerticalDurationInFrames,
-  MVP_FPS,
-  MVP_HEIGHT,
-  MVP_WIDTH,
-} from "./edu-vertical-props";
+import { MVP_FPS, MVP_HEIGHT, MVP_WIDTH } from "./render-props/common";
 import {
   P0_05_SPIKE_PROPS,
   SPIKE_COMPOSITION_ID,
@@ -24,7 +10,13 @@ import {
   SPIKE_HEIGHT,
   SPIKE_WIDTH,
 } from "./spike-props";
-import { buildSceneFramePlan, totalDurationInFrames } from "./timing/scene-frame-plan";
+import { StickStoryComposition } from "./stick-story/StickStoryComposition";
+import { STICK_STORY_FIXTURE_PROPS } from "./stick-story/stick-story-fixture";
+import {
+  STICK_STORY_COMPOSITION_ID,
+  type StickStoryRenderProps,
+  stickStoryDurationInFrames,
+} from "./stick-story/stick-story-props";
 
 export const RemotionRoot: FC = () => {
   return (
@@ -38,39 +30,19 @@ export const RemotionRoot: FC = () => {
         height={SPIKE_HEIGHT}
         defaultProps={P0_05_SPIKE_PROPS}
       />
+      {/* P6-09: template nhân vật vẽ bằng motion kit; template duy nhất của studio (ADR-013 bổ sung (2)). */}
       <Composition
-        id={EDU_VERTICAL_COMPOSITION_ID}
-        component={EduVerticalComposition}
-        durationInFrames={eduVerticalDurationInFrames()}
+        id={STICK_STORY_COMPOSITION_ID}
+        component={StickStoryComposition}
+        durationInFrames={stickStoryDurationInFrames(STICK_STORY_FIXTURE_PROPS)}
         fps={MVP_FPS}
         width={MVP_WIDTH}
         height={MVP_HEIGHT}
-        defaultProps={EDU_VERTICAL_DEFAULT_PROPS}
+        defaultProps={STICK_STORY_FIXTURE_PROPS}
         calculateMetadata={({ props }) => {
-          const input = props as typeof EDU_VERTICAL_DEFAULT_PROPS;
+          const input = props as StickStoryRenderProps;
           return {
-            durationInFrames: eduVerticalDurationInFrames(input),
-            fps: input.fps,
-            width: input.width,
-            height: input.height,
-          };
-        }}
-      />
-      {/* P5-03: template thứ hai. EduVertical ở trên giữ nguyên. */}
-      <Composition
-        id={EDU_LIGHT_COMPOSITION_ID}
-        component={EduLightComposition}
-        durationInFrames={totalDurationInFrames(
-          buildSceneFramePlan(EDU_LIGHT_DEFAULT_PROPS.scenes, MVP_FPS),
-        )}
-        fps={MVP_FPS}
-        width={MVP_WIDTH}
-        height={MVP_HEIGHT}
-        defaultProps={EDU_LIGHT_DEFAULT_PROPS}
-        calculateMetadata={({ props }) => {
-          const input = props as EduLightRenderProps;
-          return {
-            durationInFrames: totalDurationInFrames(buildSceneFramePlan(input.scenes, input.fps)),
+            durationInFrames: stickStoryDurationInFrames(input),
             fps: input.fps,
             width: input.width,
             height: input.height,

@@ -1,19 +1,11 @@
 /**
- * Entry cho `@remotion/player` trong `apps/web` (P2-08): composition và props, không có code render
- * (`./render` dùng `@remotion/renderer`, chỉ chạy ở worker). Player không gọi export.
+ * Entry cho `@remotion/player` trong `apps/web` (P2-08, P6-17): composition `StickStory` và props, không có
+ * code render (`./stick-story/render` dùng `@remotion/renderer`, chỉ chạy ở worker). Player không gọi export.
  */
-export { EduVerticalComposition } from "./compositions/EduVerticalComposition";
+export { MVP_FPS, MVP_HEIGHT, MVP_WIDTH, RenderPropsError } from "./render-props/common";
+export { StickStoryComposition } from "./stick-story/StickStoryComposition";
 export {
-  type EduVerticalRenderProps,
-  MVP_FPS,
-  MVP_HEIGHT,
-  MVP_WIDTH,
-  parseEduVerticalRenderProps,
-  RenderPropsError,
-} from "./render-props/schema";
-import type { EduVerticalRenderProps } from "./render-props/schema";
-import { buildSceneFramePlan, totalDurationInFrames } from "./timing/scene-frame-plan";
-
-export function playerDurationInFrames(props: EduVerticalRenderProps): number {
-  return totalDurationInFrames(buildSceneFramePlan(props.scenes, props.fps));
-}
+  parseStickStoryRenderProps,
+  type StickStoryRenderProps,
+  stickStoryDurationInFrames,
+} from "./stick-story/stick-story-props";

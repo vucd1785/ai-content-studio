@@ -4,7 +4,15 @@
  */
 
 /** Bảy vai trò theo 04-AGENT-ORCHESTRATION (enum `agent_run_role`). */
-export const AGENT_ROLES = ["producer", "research", "script", "visual", "voice", "video", "qa"] as const;
+export const AGENT_ROLES = [
+  "producer",
+  "research",
+  "script",
+  "visual",
+  "voice",
+  "video",
+  "qa",
+] as const;
 export type AgentRole = (typeof AGENT_ROLES)[number];
 
 /** Enum `agent_run_status`. */
@@ -28,15 +36,15 @@ export type StatusVisual = {
   approvalSign: boolean;
 };
 
-/** Bảng "Ánh xạ trạng thái" trong 06-3D-UI-DESIGN.md. */
+/** Bảng "Ánh xạ trạng thái" trong 06-3D-UI-DESIGN.md, màu theo token thiết kế (cùng màu với 2D). */
 export const STATUS_VISUALS: Readonly<Record<AgentStatus, StatusVisual>> = {
-  idle: { lightColor: "#3f3f46", lightIntensity: 0, approvalSign: false },
-  queued: { lightColor: "#eab308", lightIntensity: 0.6, approvalSign: false },
-  running: { lightColor: "#38bdf8", lightIntensity: 1.6, approvalSign: false },
-  waiting_approval: { lightColor: "#a855f7", lightIntensity: 1.2, approvalSign: true },
-  completed: { lightColor: "#22c55e", lightIntensity: 0.9, approvalSign: false },
-  failed: { lightColor: "#ef4444", lightIntensity: 1.4, approvalSign: false },
-  cancelled: { lightColor: "#3f3f46", lightIntensity: 0, approvalSign: false },
+  idle: { lightColor: "#4a4f5a", lightIntensity: 0, approvalSign: false },
+  queued: { lightColor: "#e7a33e", lightIntensity: 0.5, approvalSign: false },
+  running: { lightColor: "#5b78ff", lightIntensity: 1.6, approvalSign: false },
+  waiting_approval: { lightColor: "#e7a33e", lightIntensity: 1.2, approvalSign: true },
+  completed: { lightColor: "#3fb27f", lightIntensity: 0.9, approvalSign: false },
+  failed: { lightColor: "#e5534b", lightIntensity: 1.4, approvalSign: false },
+  cancelled: { lightColor: "#4a4f5a", lightIntensity: 0, approvalSign: false },
 };
 
 /** Thứ chọn được trong studio: bàn Director hoặc một vai trò (P4-04). */

@@ -32,7 +32,10 @@ export function groupArtifactVersions(artifacts: readonly ArtifactSummary[]): Ar
   };
   return [...groups.entries()]
     .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
-    .map(([type, versions]) => ({ type, versions: [...versions].sort((a, b) => b.version - a.version) }));
+    .map(([type, versions]) => ({
+      type,
+      versions: [...versions].sort((a, b) => b.version - a.version),
+    }));
 }
 
 /** Mặc định mở render props mới nhất, nếu có. */

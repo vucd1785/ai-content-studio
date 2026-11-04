@@ -1,0 +1,12 @@
+{
+  "id": "bg_room",
+  "kind": "background",
+  "version": "0.1.0",
+  "description": "Phòng phối cảnh một điểm tụ mức chi tiết 2: cửa sổ, kệ sách, tranh, bàn, đèn, chậu cây.",
+  "tags": ["phòng", "trong nhà"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "briefs" ALTER COLUMN "format_id" SET DEFAULT 'story';

@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseScript, type Script, scriptArtifactSchema } from "@studio/contracts";
 import {
   agentRuns,
   artifacts,
@@ -18,9 +16,13 @@ import {
   workflowRuns,
 } from "@studio/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { resolveRepoRoot } from "../cli/paths.js";
-import { encodeScriptVariantsForGeminiResponse } from "../llm/gemini-diagram-transform.js";
-import type { StructuredGenerateClient, StructuredGenerateRequest } from "../llm/structured-output.js";
+import type {
+  StructuredGenerateClient,
+  StructuredGenerateRequest,
+} from "../llm/structured-output.js";
+import { storyFlatJson } from "../render/flow-fixtures.js";
+import type { StoryboardRenderer } from "../render/storyboard-backend.js";
+import { runStoryboardJob } from "../render/storyboard-job.js";
 import { runResearchJob } from "../research/research-job.js";
 import { runScriptJob } from "./script-job.js";
 
@@ -34,19 +36,31 @@ let closeDb: () => Promise<void>;
 let dataDir = "";
 const createdProjectIds: string[] = [];
 
-function loadScript(title: string): Script {
-  const raw = JSON.parse(
-    readFileSync(join(resolveRepoRoot(import.meta.url), "fixtures", "script.edu.json"), "utf8"),
-  ) as Record<string, unknown>;
-  return parseScript({
-    ...raw,
-    title,
-    sources: [{ id: "src-redis-docs", title: "Redis documentation", url: "https://redis.io/docs/" }],
-  });
-}
-
+/** Hai phương án script `2` gói `story`; kênh mặc định của DB test chưa cho Đậu nói. */
 const variantsJson = (label: string) =>
-  JSON.stringify(encodeScriptVariantsForGeminiResponse([loadScript(`${label} A`), loadScript(`${label} B`)]));
+  storyFlatJson([`${label} A`, `${label} B`], { dauSpeaks: false });
+
+/** Ảnh storyboard giả: không mở Chrome. */
+const stillRenderer: StoryboardRenderer = {
+  async renderStill(_props, _frame, outputPath) {
+    const { dirname } = await import("node:path");
+    const { writeFile } = await import("node:fs/promises");
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, "png");
+  },
+};
+
+/** Script `2` dừng ở `storyboarding`; chạy job storyboard để mở cổng script (P6-10). */
+async function toScriptGate(runId: string) {
+  const storyboard = (await runJobs(runId)).find(
+    (job) => job.idempotencyKey.startsWith("storyboard:") && job.status === "queued",
+  );
+  expect(storyboard).toBeDefined();
+  await runStoryboardJob(db, storyboard?.id ?? "", { dataDir, renderer: stillRenderer });
+  expect((await getWorkflowRunDetail(db, runId))?.workflowRun.status).toBe(
+    "waiting_script_approval",
+  );
+}
 
 /**
  * Provider giả ở mức client: adapter Gemini thật (research và script) parse, validate, repair.
@@ -63,14 +77,24 @@ function fakeClient(outcomes: string[]) {
       }
       return {
         jsonText: next,
-        usage: { provider: "gemini", model: request.model, inputTokens: 20, outputTokens: 5, thinkingTokens: 0 },
+        usage: {
+          provider: "gemini",
+          model: request.model,
+          inputTokens: 20,
+          outputTokens: 5,
+          thinkingTokens: 0,
+        },
       };
     },
   };
   return { client, requests };
 }
 
-const geminiConfig = { apiKey: "test-key-not-real", modelScript: "fake-model", thinkingLevelScript: "low" as const };
+const geminiConfig = {
+  apiKey: "test-key-not-real",
+  modelScript: "fake-model",
+  thinkingLevelScript: "low" as const,
+};
 
 async function deps(client: StructuredGenerateClient, extra: { llmCallCeiling?: number } = {}) {
   const { createGeminiAdapter } = await import("../llm/gemini-adapter.js");
@@ -85,7 +109,8 @@ async function deps(client: StructuredGenerateClient, extra: { llmCallCeiling?: 
     script: {
       client,
       dataDir,
-      createLlm: (metered: StructuredGenerateClient) => createGeminiAdapter({ config: geminiConfig, client: metered }),
+      createLlm: (metered: StructuredGenerateClient) =>
+        createGeminiAdapter({ config: geminiConfig, client: metered }),
       ...extra,
     },
   };
@@ -109,14 +134,22 @@ async function seedProject() {
 /** Run mới với agent research + job `queued`, như route tạo run sẽ làm. */
 async function seedResearchRun() {
   const { projectId, briefId } = await seedProject();
-  const [run] = await db.insert(workflowRuns).values({ projectId, briefId, status: "idea_submitted" }).returning();
+  const [run] = await db
+    .insert(workflowRuns)
+    .values({ projectId, briefId, status: "idea_submitted" })
+    .returning();
   const [agent] = await db
     .insert(agentRuns)
     .values({ workflowRunId: run?.id ?? "", role: "research", status: "queued" })
     .returning();
   const [job] = await db
     .insert(jobs)
-    .values({ agentRunId: agent?.id ?? "", queue: "llm", idempotencyKey: `test-p3-04-${run?.id}`, status: "queued" })
+    .values({
+      agentRunId: agent?.id ?? "",
+      queue: "llm",
+      idempotencyKey: `test-p3-04-${run?.id}`,
+      status: "queued",
+    })
     .returning();
   if (run === undefined || job === undefined) {
     throw new Error("seed failed");
@@ -134,7 +167,12 @@ async function seedScriptOnlyRun(status: RunStatus) {
     .returning();
   const [job] = await db
     .insert(jobs)
-    .values({ agentRunId: agent?.id ?? "", queue: "llm", idempotencyKey: `test-p3-04-s-${run?.id}`, status: "queued" })
+    .values({
+      agentRunId: agent?.id ?? "",
+      queue: "llm",
+      idempotencyKey: `test-p3-04-s-${run?.id}`,
+      status: "queued",
+    })
     .returning();
   if (run === undefined || job === undefined) {
     throw new Error("seed failed");
@@ -149,7 +187,11 @@ async function runJobs(runId: string) {
   return (await db.select().from(jobs))
     .filter((job) => agentById.has(job.agentRunId))
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
-    .map((job) => ({ ...job, role: agentById.get(job.agentRunId)?.role, agentStatus: agentById.get(job.agentRunId)?.status }));
+    .map((job) => ({
+      ...job,
+      role: agentById.get(job.agentRunId)?.role,
+      agentStatus: agentById.get(job.agentRunId)?.status,
+    }));
 }
 
 beforeAll(async () => {
@@ -168,12 +210,19 @@ afterAll(async () => {
   await rm(dataDir, { recursive: true, force: true });
 });
 
-const researchJson = JSON.stringify({ summary: "Redis giữ key trong RAM; TTL đặt hạn.", facts: [] });
+const researchJson = JSON.stringify({
+  summary: "Redis giữ key trong RAM; TTL đặt hạn.",
+  facts: [],
+});
 
 describe("job script và cổng (P3-04)", () => {
   it("research → hai phương án → chờ duyệt; changes_requested chạy lại script, job research vẫn là một", async () => {
     const seeded = await seedResearchRun();
-    const { client, requests } = fakeClient([researchJson, variantsJson("Lượt 1"), variantsJson("Lượt 2")]);
+    const { client, requests } = fakeClient([
+      researchJson,
+      variantsJson("Lượt 1"),
+      variantsJson("Lượt 2"),
+    ]);
     const d = await deps(client);
 
     expect((await runResearchJob(db, seeded.researchJobId, d.research)).status).toBe("completed");
@@ -192,14 +241,23 @@ describe("job script và cổng (P3-04)", () => {
     }
     expect(first.directorNote).toBeNull();
     let detail = await getWorkflowRunDetail(db, seeded.runId);
-    expect(detail?.workflowRun.status).toBe("waiting_script_approval");
-    expect(detail?.agentRuns.find((agent) => agent.role === "script")?.status).toBe("waiting_approval");
+    expect(detail?.workflowRun.status).toBe("storyboarding");
+    await toScriptGate(seeded.runId);
+    detail = await getWorkflowRunDetail(db, seeded.runId);
+    expect(detail?.agentRuns.find((agent) => agent.role === "script")?.status).toBe(
+      "waiting_approval",
+    );
     // Không job nào tự ghi approval.
     expect(detail?.approvals).toEqual([]);
 
-    const firstRow = (await db.select().from(artifacts)).find((row) => row.id === first.scriptArtifactId);
-    expect(firstRow).toMatchObject({ type: "script", version: 1, schemaVersion: "1" });
-    const saved = scriptArtifactSchema.parse(JSON.parse(await readFile(join(dataDir, firstRow?.storageKey ?? ""), "utf8")));
+    const firstRow = (await db.select().from(artifacts)).find(
+      (row) => row.id === first.scriptArtifactId,
+    );
+    expect(firstRow).toMatchObject({ type: "script", version: 1, schemaVersion: "2" });
+    expect(firstRow?.metadata).toMatchObject({ formatId: "story", formatVersion: 1 });
+    const saved = JSON.parse(await readFile(join(dataDir, firstRow?.storageKey ?? ""), "utf8")) as {
+      variants: { title: string }[];
+    };
     expect(saved.variants.map((variant) => variant.title)).toEqual(["Lượt 1 A", "Lượt 1 B"]);
     // Prompt script nhận tóm tắt research.
     expect(requests[1]?.userPrompt).toContain("Redis giữ key trong RAM; TTL đặt hạn.");
@@ -217,11 +275,12 @@ describe("job script và cổng (P3-04)", () => {
     expect(afterApproval.map((job) => [job.role, job.status, job.agentStatus])).toEqual([
       ["research", "completed", "completed"],
       ["script", "completed", "completed"],
+      ["visual", "completed", "completed"],
       ["script", "queued", "queued"],
     ]);
     expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe("scripting");
 
-    const second = await runScriptJob(db, afterApproval[2]?.id ?? "", d.script);
+    const second = await runScriptJob(db, afterApproval[3]?.id ?? "", d.script);
     expect(second.status).toBe("completed");
     if (second.status !== "completed") {
       return;
@@ -236,11 +295,20 @@ describe("job script và cổng (P3-04)", () => {
     expect(finalJobs.filter((job) => job.role === "script")).toHaveLength(2);
     expect(requests).toHaveLength(3);
 
+    await toScriptGate(seeded.runId);
     detail = await getWorkflowRunDetail(db, seeded.runId);
     expect(detail?.workflowRun.status).toBe("waiting_script_approval");
     expect(detail?.artifacts.filter((a) => a.type === "research")).toHaveLength(1);
-    expect(detail?.artifacts.filter((a) => a.type === "script").map((a) => a.version).sort()).toEqual([1, 2]);
-    expect((await db.select().from(artifacts)).find((row) => row.id === second.scriptArtifactId)?.metadata).toMatchObject({
+    expect(
+      detail?.artifacts
+        .filter((a) => a.type === "script")
+        .map((a) => a.version)
+        .sort(),
+    ).toEqual([1, 2]);
+    expect(
+      (await db.select().from(artifacts)).find((row) => row.id === second.scriptArtifactId)
+        ?.metadata,
+    ).toMatchObject({
       changesRequestedApprovalId: detail?.approvals[0]?.id,
     });
 
@@ -248,10 +316,22 @@ describe("job script và cổng (P3-04)", () => {
     const usage = await listUsageRecordsForRun(db, seeded.runId);
     expect(usage).toHaveLength(3);
 
-    const types = (await listEventsForRun(db, seeded.runId)).map((event) => [event.type, event.payload]);
-    expect(types).toContainEqual(["workflow.transition", { from: "research_ready", to: "scripting", cause: "job" }]);
+    const types = (await listEventsForRun(db, seeded.runId)).map((event) => [
+      event.type,
+      event.payload,
+    ]);
+    expect(types).toContainEqual([
+      "workflow.transition",
+      { from: "research_ready", to: "scripting", cause: "job" },
+    ]);
     expect(types).toContainEqual(["agent.status", { role: "script", status: "waiting_approval" }]);
-    expect(types.filter(([type, payload]) => type === "agent.status" && (payload as { status: string }).status === "queued")).toHaveLength(2);
+    // Hai job script, hai job storyboard.
+    expect(
+      types.filter(
+        ([type, payload]) =>
+          type === "agent.status" && (payload as { status: string }).status === "queued",
+      ),
+    ).toHaveLength(4);
   });
 
   it("chạy lại job script đã xong không gọi provider; rejected không tạo job mới", async () => {
@@ -261,11 +341,15 @@ describe("job script và cổng (P3-04)", () => {
     await runResearchJob(db, seeded.researchJobId, d.research);
     const scriptJob = (await runJobs(seeded.runId))[1];
     const first = await runScriptJob(db, scriptJob?.id ?? "", d.script);
-    expect(await runScriptJob(db, scriptJob?.id ?? "", d.script)).toEqual({ status: "skipped", reason: "job_completed" });
+    expect(await runScriptJob(db, scriptJob?.id ?? "", d.script)).toEqual({
+      status: "skipped",
+      reason: "job_completed",
+    });
     expect(requests).toHaveLength(2);
     if (first.status !== "completed") {
       throw new Error("phải completed");
     }
+    await toScriptGate(seeded.runId);
     await recordApproval(db, {
       workflowRunId: seeded.runId,
       gate: "script",
@@ -274,10 +358,12 @@ describe("job script và cổng (P3-04)", () => {
       note: "Sai chủ đề",
     });
     const after = await runJobs(seeded.runId);
-    expect(after).toHaveLength(2);
+    expect(after.map((job) => job.role)).toEqual(["research", "script", "visual"]);
     // Rejected giữ cổng; agent script vẫn chờ duyệt.
     expect(after[1]?.agentStatus).toBe("waiting_approval");
-    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe("waiting_script_approval");
+    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe(
+      "waiting_script_approval",
+    );
   });
 
   it("approved: agent script completed, không tạo job script mới; tạo visual và voice (P3-05)", async () => {
@@ -289,6 +375,7 @@ describe("job script và cổng (P3-04)", () => {
     if (first.status !== "completed") {
       throw new Error("phải completed");
     }
+    await toScriptGate(seeded.runId);
     await recordApproval(db, {
       workflowRunId: seeded.runId,
       gate: "script",
@@ -301,10 +388,13 @@ describe("job script và cổng (P3-04)", () => {
     expect(after.map((job) => [job.role, job.agentStatus])).toEqual([
       ["research", "completed"],
       ["script", "completed"],
+      ["visual", "completed"],
       ["visual", "queued"],
       ["voice", "queued"],
     ]);
-    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe("producing_assets");
+    expect((await getWorkflowRunDetail(db, seeded.runId))?.workflowRun.status).toBe(
+      "producing_assets",
+    );
   });
 
   it("không có research: failed research_missing, resume_from scripting, không gọi provider", async () => {

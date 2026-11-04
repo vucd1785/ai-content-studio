@@ -31,7 +31,7 @@ export function StudioWorkspace({ runId, deps }: { runId: string | null; deps?: 
         </Button>
       </div>
       {canvasVisible ? (
-        <div className="h-80 min-h-0" data-testid="studio-canvas">
+        <div className="h-[440px] min-h-0" data-testid="studio-canvas">
           <CanvasBoundary>
             <StudioScene
               statuses={state.statuses}

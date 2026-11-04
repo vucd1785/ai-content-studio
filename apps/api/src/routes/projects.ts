@@ -1,6 +1,9 @@
+import multipart from "@fastify/multipart";
+import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
-  briefWriteBodySchema,
   briefSchema,
+  briefWriteBodySchema,
+  DEFAULT_FORMAT,
   projectCreateBodySchema,
   projectDetailResponseSchema,
   projectIdParamsSchema,
@@ -26,9 +29,7 @@ import {
   listReferences,
   updateProjectTitle,
 } from "@studio/db";
-import multipart from "@fastify/multipart";
 import type { FastifyInstance } from "fastify";
-import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import {
   isPostgresCheckViolation,
   sendNotFound,
@@ -161,7 +162,12 @@ export async function registerProjectRoutes(
         return sendNotFound(reply);
       }
       try {
-        const brief = await insertBrief(deps.db, projectId, request.body);
+        const brief = await insertBrief(deps.db, projectId, {
+          ...request.body,
+          // Không chọn thể loại (ADR-013 bổ sung (2)): mọi brief mới là `story` v1.
+          formatId: DEFAULT_FORMAT.id,
+          formatVersion: DEFAULT_FORMAT.version,
+        });
         return reply.status(201).send(brief);
       } catch (error) {
         if (isPostgresCheckViolation(error)) {
@@ -282,6 +288,9 @@ export async function registerProjectRoutes(
 function displayTitleFromFilename(filename: string): string | null {
   const base = filename.split(/[/\\]/).pop() ?? "";
   // eslint-disable-next-line no-control-regex
-  const cleaned = base.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 200);
+  const cleaned = base
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .trim()
+    .slice(0, 200);
   return cleaned === "" ? null : cleaned;
 }

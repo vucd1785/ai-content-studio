@@ -1,12 +1,18 @@
 import type { ZodTypeProvider } from "@fastify/type-provider-zod";
+import { isClaudeCodeModel, readClaudeCodeEnv } from "@studio/config/claude-code";
+import { readGeminiEnv } from "@studio/config/gemini";
 import {
   applyWorkflowCommand,
   approvalBodySchema,
   approvalCreatedResponseSchema,
+  llmModelsResponseSchema,
   projectIdParamsSchema,
   type ResumeFrom,
   runIdParamsSchema,
+  startWorkflowRunBodySchema,
   usageListResponseSchema,
+  usageSummaryQuerySchema,
+  usageSummaryResponseSchema,
   workflowRunControlResponseSchema,
   workflowRunDetailResponseSchema,
 } from "@studio/contracts";
@@ -19,6 +25,7 @@ import {
   resumeWorkflowRun,
   type StudioDb,
   startWorkflowRun,
+  sumUsageBetween,
   WorkflowControlError,
   workflowRunExists,
 } from "@studio/db";
@@ -33,12 +40,43 @@ import type { EventNotifier } from "./event-stream.js";
 
 export type WorkflowRunRouteDeps = {
   db: StudioDb;
+  /** Volume `data/`. Route sửa kịch bản `1` (P2-12) đã xóa (ADR-013 bổ sung (2)); sửa script `2` thuộc P6-11. */
+  dataDir?: string;
+  /** Model chọn được khi bắt đầu run (P3-12). Mặc định đọc `GEMINI_MODEL_SCRIPT` và `GEMINI_MODELS` của process. */
+  llmModels?: { defaultModel: string; models: string[] };
   /** Báo SSE cùng process sau khi transaction approval đã commit. */
   notifier?: EventNotifier;
 };
 
+/**
+ * Danh sách model chọn theo run (P3-12): model Gemini, cộng model Claude Code khi Director đặt
+ * `CLAUDE_CODE_MODELS` (ADR-007, bổ sung 2026-11-02). Không có `GEMINI_API_KEY` mà có Claude Code thì chỉ
+ * liệt kê Claude Code và mặc định là model Claude Code đầu tiên.
+ */
+export function llmModelsFromEnv(env: Record<string, string | undefined>): {
+  defaultModel: string;
+  models: string[];
+} {
+  const gemini = readGeminiEnv(env);
+  const claudeCode = readClaudeCodeEnv(env).models;
+  const geminiModels = gemini.models ?? [gemini.modelScript];
+  const [firstClaudeCode] = claudeCode;
+  if (gemini.apiKey === undefined && firstClaudeCode !== undefined) {
+    return { defaultModel: firstClaudeCode, models: claudeCode };
+  }
+  return { defaultModel: gemini.modelScript, models: [...geminiModels, ...claudeCode] };
+}
+
 export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRunRouteDeps): void {
   const typed = app.withTypeProvider<ZodTypeProvider>();
+  const llmModels = deps.llmModels ?? llmModelsFromEnv(process.env);
+
+  // P3-12: danh sách model Director chọn khi bắt đầu run. Chỉ đọc cấu hình, không lộ key.
+  typed.get(
+    "/api/llm-models",
+    { schema: { response: { 200: llmModelsResponseSchema } } },
+    async () => llmModels,
+  );
 
   typed.get(
     "/api/workflow-runs/:runId",
@@ -54,6 +92,21 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
         return sendNotFound(reply);
       }
       return detail;
+    },
+  );
+
+  // P5-04: tổng token trong khoảng thời gian (trang dự án hiện tháng này). Chỉ đọc số đã lưu.
+  typed.get(
+    "/api/usage/summary",
+    {
+      schema: {
+        querystring: usageSummaryQuerySchema,
+        response: { 200: usageSummaryResponseSchema },
+      },
+    },
+    async (request) => {
+      const { from, to } = request.query;
+      return { from, to, ...(await sumUsageBetween(deps.db, new Date(from), new Date(to))) };
     },
   );
 
@@ -104,8 +157,22 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
       },
     },
     async (request, reply) => {
+      // Body tùy chọn: nút web cũ gửi POST không body. Có body thì phải đúng schema (không field lạ).
+      const body = startWorkflowRunBodySchema.safeParse(request.body ?? {});
+      if (!body.success) {
+        return sendValidationError(reply);
+      }
+      // Mặc định là Claude Code (không có Gemini) thì ghi rõ lên run, để worker không rơi về client Gemini.
+      const llmModel =
+        body.data.llmModel ??
+        (isClaudeCodeModel(llmModels.defaultModel) ? llmModels.defaultModel : undefined);
+      if (llmModel !== undefined && !llmModels.models.includes(llmModel)) {
+        return sendValidationError(reply, "Model không nằm trong danh sách được phép.");
+      }
       try {
-        const result = await startWorkflowRun(deps.db, request.params.projectId);
+        const result = await startWorkflowRun(deps.db, request.params.projectId, {
+          ...(llmModel === undefined ? {} : { llmModel }),
+        });
         deps.notifier?.notify(result.workflowRun.id);
         return reply.status(201).send({ workflowRun: result.workflowRun });
       } catch (error) {

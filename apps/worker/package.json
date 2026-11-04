@@ -6,15 +6,11 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "pipeline:fixture": "node --import tsx src/cli/run-fixture.ts",
-    "llm:external": "node --import tsx src/llm/run-external-script-cli.ts",
     "queue:reconcile": "node --import tsx src/queue/start-worker.ts",
     "worker": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts",
     "worker:llm": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=llm",
     "worker:media": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=media",
-    "worker:render": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=render",
-    "demo:seed": "node --import tsx src/cli/seed-demo.ts seed",
-    "demo:delete": "node --import tsx src/cli/seed-demo.ts delete"
+    "worker:render": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=render"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
@@ -23,6 +19,7 @@
     "@studio/config": "workspace:*",
     "@studio/contracts": "workspace:*",
     "@studio/db": "workspace:*",
+    "@studio/motion-kit": "workspace:*",
     "@studio/video": "workspace:*",
     "bullmq": "^5.81.5",
     "redis": "^5.8.2",

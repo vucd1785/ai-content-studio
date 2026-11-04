@@ -1,0 +1,12 @@
+{
+  "id": "action_celebrate",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Ăn mừng: ngồi thụp, bật nhảy, tiếp đất co thân, nảy lặp.",
+  "tags": ["ăn mừng", "vui"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

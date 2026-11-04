@@ -8,6 +8,8 @@ export const WORKFLOW_STATUSES = [
   "researching",
   "research_ready",
   "scripting",
+  // Phase 6 (P6-10): dựng storyboard ảnh tĩnh của script `2` trước cổng script (ADR-014).
+  "storyboarding",
   "waiting_script_approval",
   "producing_assets",
   "preview_rendering",
@@ -40,7 +42,10 @@ const ADVANCE_EDGES: Readonly<Record<WorkflowStatus, readonly WorkflowStatus[]>>
   idea_submitted: ["researching"],
   researching: ["research_ready"],
   research_ready: ["scripting"],
-  scripting: ["waiting_script_approval"],
+  // Script `1` đi thẳng tới cổng; script `2` có shot list đi qua `storyboarding` (04 mục Phase 6).
+  scripting: ["waiting_script_approval", "storyboarding"],
+  // Lỗi storyboard không chặn cổng, nên không có cạnh `storyboarding → failed`.
+  storyboarding: ["waiting_script_approval"],
   waiting_script_approval: [],
   producing_assets: ["preview_rendering"],
   preview_rendering: ["qa"],
@@ -76,7 +81,8 @@ const APPROVAL_TARGET: Readonly<Record<WorkflowGate, Record<WorkflowDecision, Wo
   },
   final: {
     approved: "exporting",
-    changes_requested: "producing_assets",
+    // Director chốt 2026-11-01 (P3-14): sửa bản cuối là viết lại kịch bản theo ghi chú rồi duyệt lại.
+    changes_requested: "scripting",
     rejected: "waiting_final_approval",
   },
 };

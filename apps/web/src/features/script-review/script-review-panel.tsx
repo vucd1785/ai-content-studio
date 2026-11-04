@@ -1,111 +1,111 @@
-import { type ApprovalDecision, type Script, scriptArtifactSchema } from "@studio/contracts";
+import { type ApprovalDecision, researchSchema } from "@studio/contracts";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vi } from "@/i18n/vi";
 import { ApiError } from "@/lib/api";
+import { ScriptV2Review } from "./script-v2-review";
 import { useArtifact, useRecordApproval, useWorkflowRun } from "./use-script-review";
 
 const NOTE_MAX = 2000;
 
+type RunArtifact = { id: string; type: string; version: number };
+
+function latestOf(artifacts: RunArtifact[], type: string): RunArtifact | null {
+  return artifacts
+    .filter((artifact) => artifact.type === type)
+    .reduce<RunArtifact | null>(
+      (best, artifact) => (best === null || artifact.version > best.version ? artifact : best),
+      null,
+    );
+}
+
 /**
- * So sánh hai phương án kịch bản và gửi decision ở cổng script (P2-07, ADR-004).
- * Mỗi nút gửi đúng một decision tường minh; không có nút duyệt hàng loạt hay mặc định.
- * Decision đã lưu đọc lại từ `GET /api/workflow-runs/:runId`, nên reload vẫn thấy.
+ * Duyệt kịch bản (P2-07, P2-11, P6-17): research của run, hai phương án script `2` với câu theo người nói và ảnh
+ * storyboard. Mỗi nút gửi đúng một decision tường minh (ADR-004); decision đã lưu đọc lại từ server. Chưa sửa được
+ * kịch bản trên web: màn sửa script `1` (P2-12) đã xóa (ADR-013 bổ sung (2)), sửa script `2` thuộc P6-11.
  */
 export function ScriptReviewPanel({ runId }: { runId: string | null }) {
   const run = useWorkflowRun(runId);
-  const scriptArtifacts = (run.data?.artifacts ?? []).filter((artifact) => artifact.type === "script");
-  const latest = scriptArtifacts.reduce<(typeof scriptArtifacts)[number] | null>(
-    (best, artifact) => (best === null || artifact.version > best.version ? artifact : best),
-    null,
-  );
+  const artifacts = run.data?.artifacts ?? [];
+  const latest = latestOf(artifacts, "script");
   const artifact = useArtifact(latest?.id ?? null);
+  const research = useArtifact(latestOf(artifacts, "research")?.id ?? null);
+  const storyboardRow = latestOf(artifacts, "storyboard");
+  const storyboard = useArtifact(storyboardRow?.id ?? null);
 
-  let body: React.ReactNode;
   if (runId === null) {
-    body = <p className="text-muted-foreground text-sm">{vi.scriptReview.noRun}</p>;
-  } else if (run.isPending || (latest !== null && artifact.isPending)) {
-    body = <p className="text-muted-foreground text-sm">{vi.app.loading}</p>;
-  } else if (run.isError || artifact.isError) {
-    body = <p className="text-destructive text-sm">{vi.scriptReview.loadError}</p>;
-  } else if (latest === null) {
-    body = <p className="text-muted-foreground text-sm">{vi.scriptReview.noScript}</p>;
-  } else {
-    const parsed = scriptArtifactSchema.safeParse(artifact.data?.content);
-    if (!parsed.success) {
-      body = <p className="text-destructive text-sm">{vi.scriptReview.loadError}</p>;
-    } else {
-      const decisions = run.data.approvals.filter((approval) => approval.artifactId === latest.id);
-      body = (
-        <div className="flex flex-col gap-4">
-          <p className="text-muted-foreground text-xs">
-            {vi.scriptReview.version} {latest.version}
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            {parsed.data.variants.map((variant, index) => (
-              <VariantColumn key={index} index={index + 1} script={variant} />
-            ))}
-          </div>
-          {decisions.length > 0 ? (
-            <section aria-label={vi.scriptReview.decisionsHeading} className="flex flex-col gap-1 text-sm">
-              <h4 className="font-medium">{vi.scriptReview.decisionsHeading}</h4>
-              <ul className="flex flex-col gap-1">
-                {decisions.map((decision) => (
-                  <li key={decision.id} data-testid="saved-decision">
-                    {decision.decision === "approved" && decision.variantIndex !== null
-                      ? `${vi.scriptReview.approvedVariant} ${decision.variantIndex}`
-                      : vi.scriptReview.decisions[decision.decision]}
-                    {decision.note === null ? null : `: ${decision.note}`}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-          {run.data.workflowRun.status === "waiting_script_approval" ? (
-            <DecisionForm runId={runId} artifactId={latest.id} />
-          ) : null}
-        </div>
-      );
-    }
+    return <p className="text-muted-foreground text-sm">{vi.scriptReview.noRun}</p>;
   }
+  if (run.isPending || (latest !== null && artifact.isPending)) {
+    return <p className="text-muted-foreground text-sm">{vi.app.loading}</p>;
+  }
+  if (run.isError || artifact.isError) {
+    return <p className="text-destructive text-sm">{vi.scriptReview.loadError}</p>;
+  }
+  if (latest === null) {
+    return <p className="text-muted-foreground text-sm">{vi.scriptReview.noScript}</p>;
+  }
+  if (artifact.data?.artifact.schemaVersion !== "2") {
+    return <p className="text-destructive text-sm">{vi.scriptReview.loadError}</p>;
+  }
+  const status = run.data.workflowRun.status;
+  const waiting = status === "waiting_script_approval";
+  const decisions = run.data.approvals.filter((approval) => approval.artifactId === latest.id);
+  const parsedResearch = researchSchema.safeParse(research.data?.content);
 
   return (
-    <Card className="gap-3 py-4">
-      <CardHeader className="px-4">
-        <CardTitle className="text-sm">{vi.scriptReview.heading}</CardTitle>
-      </CardHeader>
-      <CardContent className="px-4">{body}</CardContent>
-    </Card>
-  );
-}
+    <div className="flex flex-col gap-5">
+      <p className="text-muted-foreground text-xs">
+        {vi.scriptReview.version} {latest.version}
+      </p>
 
-function VariantColumn({ index, script }: { index: number; script: Script }) {
-  return (
-    <article className="flex flex-col gap-2 rounded-md border p-3 text-sm" aria-label={`${vi.scriptReview.variant} ${index}`}>
-      <h4 className="font-semibold">
-        {vi.scriptReview.variant} {index}: {script.title}
-      </h4>
-      <p className="text-muted-foreground">{script.hook}</p>
-      <ol className="flex list-decimal flex-col gap-1 pl-5" aria-label={vi.scriptReview.scenes}>
-        {script.scenes.map((scene) => (
-          <li key={scene.id}>
-            <span className="font-medium">{scene.onScreenText}</span>
-            <span className="text-muted-foreground block text-xs">{scene.narration}</span>
-          </li>
-        ))}
-      </ol>
-      <p>{script.cta}</p>
-      {script.sources.length > 0 ? (
-        <ul className="text-muted-foreground text-xs" aria-label={vi.scriptReview.sources}>
-          {script.sources.map((source) => (
-            <li key={source.id}>{source.url === undefined ? source.title : `${source.title} (${source.url})`}</li>
+      {parsedResearch.success ? (
+        <section
+          aria-label={vi.scriptReview.researchHeading}
+          className="bg-card flex flex-col gap-2 rounded-xl border p-4 text-sm"
+        >
+          <h3 className="font-semibold">{vi.scriptReview.researchHeading}</h3>
+          <p className="text-muted-foreground">{parsedResearch.data.summary}</p>
+          {parsedResearch.data.facts.length === 0 ? (
+            <p className="text-muted-foreground text-xs">{vi.scriptReview.researchNoFacts}</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {parsedResearch.data.facts.map((fact) => (
+                <li key={fact.statement} className="flex gap-2">
+                  <span className="bg-secondary shrink-0 rounded px-1.5 py-0.5 text-[11px]">
+                    {vi.scriptReview.claim[fact.claimStatus]}
+                  </span>
+                  <span>{fact.statement}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
+      <ScriptV2Review
+        content={artifact.data.content}
+        storyboardContent={storyboard.data?.content}
+        storyboardArtifactId={storyboardRow?.id ?? null}
+        storyboarding={status === "storyboarding"}
+      />
+
+      {decisions.length > 0 ? (
+        <ul className="flex flex-col gap-1 text-sm">
+          {decisions.map((decision) => (
+            <li key={decision.id} data-testid="saved-decision">
+              {decision.decision === "approved" && decision.variantIndex !== null
+                ? `${vi.scriptReview.approvedVariant} ${decision.variantIndex}`
+                : vi.scriptReview.decisions[decision.decision]}
+              {decision.note === null ? null : `: ${decision.note}`}
+            </li>
           ))}
         </ul>
       ) : null}
-    </article>
+      {waiting ? <DecisionForm runId={runId} artifactId={latest.id} /> : null}
+    </div>
   );
 }
 
@@ -148,35 +148,53 @@ function DecisionForm({ runId, artifactId }: { runId: string; artifactId: string
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor="script-review-note">{vi.scriptReview.noteLabel}</Label>
-      <Textarea
-        id="script-review-note"
-        value={note}
-        maxLength={NOTE_MAX}
-        onChange={(event) => setNote(event.target.value)}
-        aria-describedby="script-review-note-hint"
-      />
-      <p id="script-review-note-hint" className="text-muted-foreground text-xs">
-        {vi.scriptReview.noteHint}
-      </p>
-      {error === null ? null : (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
+    <div className="bg-surface-raised sticky bottom-0 -mx-1 flex flex-wrap items-end gap-3 rounded-xl border p-4">
+      <div className="flex min-w-72 flex-1 flex-col gap-1.5">
+        <Label htmlFor="script-review-note">{vi.scriptReview.noteLabel}</Label>
+        <Textarea
+          id="script-review-note"
+          value={note}
+          rows={2}
+          maxLength={NOTE_MAX}
+          onChange={(event) => setNote(event.target.value)}
+          aria-describedby="script-review-note-hint"
+        />
+        <p id="script-review-note-hint" className="text-muted-foreground text-xs">
+          {vi.scriptReview.noteHint}
         </p>
-      )}
+        {error === null ? null : (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" disabled={record.isPending} onClick={() => submit("approved", 1)}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={record.isPending}
+          onClick={() => submit("rejected")}
+        >
+          {vi.scriptReview.reject}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={record.isPending}
+          onClick={() => submit("changes_requested")}
+        >
+          {vi.scriptReview.requestChanges}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={record.isPending}
+          onClick={() => submit("approved", 1)}
+        >
           {vi.scriptReview.approveVariant1}
         </Button>
         <Button type="button" disabled={record.isPending} onClick={() => submit("approved", 2)}>
           {vi.scriptReview.approveVariant2}
-        </Button>
-        <Button type="button" variant="outline" disabled={record.isPending} onClick={() => submit("changes_requested")}>
-          {vi.scriptReview.requestChanges}
-        </Button>
-        <Button type="button" variant="secondary" disabled={record.isPending} onClick={() => submit("rejected")}>
-          {vi.scriptReview.reject}
         </Button>
       </div>
     </div>

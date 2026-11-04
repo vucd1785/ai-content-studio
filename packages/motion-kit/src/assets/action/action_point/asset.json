@@ -1,0 +1,12 @@
+{
+  "id": "action_point",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Chỉ tay giải thích: kéo về lấy đà, đẩy ra, nhấn theo nhịp.",
+  "tags": ["chỉ", "giải thích"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

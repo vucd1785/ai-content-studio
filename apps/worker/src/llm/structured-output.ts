@@ -1,7 +1,6 @@
 import type { GeminiThinkingLevel } from "@studio/config/gemini";
 import type { z } from "zod/v4";
 import { LlmError } from "./errors.js";
-import { formatZodIssues } from "./script-schema.js";
 import type { LlmUsage } from "./types.js";
 
 export type StructuredGenerateRequest = {
@@ -125,4 +124,14 @@ export async function generateWithSchemaRepair<T>(
   }
 
   return { data: attempt.data, usage, repairCount };
+}
+
+/** Lỗi Zod gọn một dòng cho lần repair và log. */
+export function formatZodIssues(error: z.ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
 }

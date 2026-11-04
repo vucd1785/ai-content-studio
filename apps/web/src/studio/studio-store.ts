@@ -26,7 +26,11 @@ export type StudioAction =
   | { type: "snapshot"; agentRuns: readonly { role: string; status: string }[] }
   | { type: "event"; id: string; event: string; data: unknown };
 
-export const initialStudioState: StudioState = { statuses: {}, renderProgress: null, lastEventId: null };
+export const initialStudioState: StudioState = {
+  statuses: {},
+  renderProgress: null,
+  lastEventId: null,
+};
 
 function isRole(value: unknown): value is AgentRole {
   return typeof value === "string" && (AGENT_ROLES as readonly string[]).includes(value);

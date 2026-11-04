@@ -1,8 +1,8 @@
 import { Player } from "@remotion/player";
 import {
-  EduVerticalComposition,
-  parseEduVerticalRenderProps,
-  playerDurationInFrames,
+  parseStickStoryRenderProps,
+  StickStoryComposition,
+  stickStoryDurationInFrames,
 } from "@studio/video/player";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -135,15 +135,30 @@ function ArtifactView({ artifactId }: { artifactId: string }) {
 
 function RenderPropsPlayer({ artifactId, content }: { artifactId: string; content: unknown }) {
   const media = useMediaAvailable(artifactId);
-  let parsed: ReturnType<typeof parseEduVerticalRenderProps>;
+  return <StickStoryPlayer artifactId={artifactId} content={content} hasAudio={media.data} />;
+}
+
+/**
+ * Phát render props `StickStory` (P6-17) bằng `@remotion/player`. Có WAV thì player phát tiếng qua route media;
+ * `src` bắt đầu bằng "/" nên composition dùng nguyên URL.
+ */
+function StickStoryPlayer({
+  artifactId,
+  content,
+  hasAudio,
+}: {
+  artifactId: string;
+  content: unknown;
+  hasAudio: boolean | undefined;
+}) {
+  let parsed: ReturnType<typeof parseStickStoryRenderProps>;
   try {
-    parsed = parseEduVerticalRenderProps(content);
+    parsed = parseStickStoryRenderProps(content);
   } catch {
     return <p className="text-destructive text-sm">{vi.preview.invalidProps}</p>;
   }
-  // Có WAV thì player phát tiếng qua route media; `src` bắt đầu bằng "/" nên composition dùng nguyên URL.
   const props =
-    media.data === true
+    hasAudio === true
       ? { ...parsed, audio: { ...parsed.audio, src: artifactMediaUrl(artifactId) } }
       : parsed;
   return (
@@ -154,9 +169,9 @@ function RenderPropsPlayer({ artifactId, content }: { artifactId: string; conten
         className="mx-auto w-full max-w-[16rem]"
       >
         <Player
-          component={EduVerticalComposition}
+          component={StickStoryComposition}
           inputProps={props}
-          durationInFrames={Math.max(1, playerDurationInFrames(props))}
+          durationInFrames={Math.max(1, stickStoryDurationInFrames(props))}
           fps={props.fps}
           compositionWidth={props.width}
           compositionHeight={props.height}
@@ -164,7 +179,7 @@ function RenderPropsPlayer({ artifactId, content }: { artifactId: string; conten
           controls
         />
       </section>
-      {media.data === false ? (
+      {hasAudio === false ? (
         <p className="text-muted-foreground text-xs">{vi.preview.noAudio}</p>
       ) : null}
     </div>

@@ -7,7 +7,7 @@ import struct
 import wave
 from pathlib import Path
 
-GATE_POLICY_VERSION = "2.0.0-silence-aware"
+GATE_POLICY_VERSION = "2.1.0-repair-zero-length"
 STRICT_COVERAGE_MS = 250
 MAX_SILENCE_EXCEPTION_TRAILING_MS = 400
 SILENCE_PEAK_THRESHOLD_DBFS = -40.0

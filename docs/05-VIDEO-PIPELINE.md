@@ -56,11 +56,118 @@ Mỗi scene:
 
 Scene đầu có slot `title`. Scene cuối có slot `cta`.
 
+## Script JSON v2 (Phase 6)
+
+`P6-06` đặt schema này trong `packages/contracts`. Nguồn quyết định: [ADR-013](decisions/ADR-013-brand-kit-and-formats.md), [ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md), [ADR-015](decisions/ADR-015-multi-speaker-voice.md), [ADR-016](decisions/ADR-016-creative-mode-motion-assets.md); hình dạng đã thử ở spike [P6-01](spikes/P6-01-shot-list.md).
+
+Schema phụ thuộc kênh và kho tài sản, nên contracts xuất hàm dựng schema `scriptV2Schema({ cast, assetCatalog, format, mode })` thay vì một hằng số. `cast` là `brand_characters` của kênh; `assetCatalog` là các `motion_assets` được phép dùng (chế độ `standard`: chỉ `approved`).
+
+Gốc:
+
+- `schemaVersion`: `2`
+- `language`: `vi`
+- `formatId`, `formatVersion`: gói thể loại của brief
+- `title`: 1–80 ký tự
+- `scenes`: 3–8 phần tử
+- `sources`: `[{ id, title, url? }]`; bắt buộc ít nhất một source khi gói có nhịp cần nguồn
+- `assetRequests`: chỉ có ở chế độ `creative`, 0–5 phần tử (mục Kho tài sản bên dưới)
+
+Mỗi scene:
+
+- `id`: `^[a-z0-9-]{1,40}$`, duy nhất
+- `beat`: id một nhịp của gói thể loại. Các nhịp xuất hiện theo thứ tự của gói, mỗi nhịp có ít nhất một cảnh
+- `sourceIds[]`: id trong `sources`; không được rỗng khi nhịp có `requiresSource`
+- `lines`: 1–6 câu
+- `shots`: 1–8 shot
+- Không có `board` (code, sơ đồ) và không có chữ phủ màn hình: video `StickStory` chỉ có hoạt hình và phụ đề lời thoại ([ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md), bổ sung 2026-11-03). Ý cần minh họa dùng hành động, biểu cảm, đồ vật, bối cảnh; kho thiếu thì xin tài sản mới ở chế độ `creative`
+
+Mỗi câu (`lines[]`):
+
+- `id`: `^l[0-9]{1,3}$`, duy nhất trong cả script (dùng để sửa câu và cache theo câu)
+- `speaker`: `character_key` của nhân vật có `speaks = true` trong kênh, hoặc `narrator` khi gói cho phép (`allowNarrator`). Zod chặn nhân vật có `speaks = false` và key lạ. Từ bổ sung ADR-013 ngày 2026-11-03, Đậu có lời thoại (câu ngắn, không đưa dữ kiện)
+- `text`: 1–300 ký tự
+- `emotion` tùy chọn: id tài sản kind `expression`; chỉ chọn biểu cảm, không đổi giọng
+
+Mỗi shot (`shots[]`):
+
+- `id`: `^s[0-9]{1,3}$`, duy nhất trong cả script
+- `lineId`: câu trong **cùng cảnh** mà cú cắt neo vào
+- `cutOnWord`: một từ có trong câu đó (so sau chuẩn hóa giống alignment); cảnh cắt trước từ này 2 frame. Shot đầu của cảnh bắt đầu ở đầu cảnh, nhưng `cutOnWord` vẫn bắt buộc để kiểm
+- `background`: id tài sản kind `background`
+- `shotSize`: `wide`, `medium`, `close`, `high`
+- `camera` tùy chọn: id tài sản kind `camera` (chuyển động máy)
+- `focus`: `character_key` của nhân vật được lấy nét
+- `actors`: 1–3 phần tử `{ character, action, expression }`; ba người chỉ ở cỡ `wide`, `high`, còn `medium`, `close` tối đa hai (`MAX_ACTORS_BY_SHOT_SIZE`, bổ sung ADR-013 2026-11-03). `character` là `character_key`; `action` là id kind `action` hoặc `pose`; `expression` là id kind `expression`. **Không có vị trí:** code đặt nhân vật trên khung theo luật liền mạch (nhân vật giữ nguyên bên giữa các shot liền nhau của cùng cảnh), theo đề xuất của P6-01
+- `props[]` tùy chọn: tối đa 3 id kind `prop`
+- `ambience[]` tùy chọn: `vignette`, `dust`, `foreground_blur`, là các yếu tố mức 3 bật theo cảnh ([P6-03](spikes/P6-03-render-cost.md))
+
+Kiểm ngữ nghĩa sau Zod (cùng hàm; lỗi trả kèm đường dẫn để repair):
+
+- mọi `lineId` tồn tại, `cutOnWord` nằm trong câu;
+- hai shot liền nhau, kể cả qua ranh giới cảnh, không cùng `shotSize`;
+- nhân vật trong `actors` và `focus` thuộc kênh;
+- người nói của câu neo có mặt trong `actors` của shot, trừ `narrator`;
+- id tài sản không có trong `assetCatalog` bị từ chối ở cả hai chế độ. Ở `creative`, shot dùng `fallbackAssetId` của yêu cầu tương ứng.
+
+**Script `1` đã xóa** (ADR-013 bổ sung (2) 2026-11-03): không còn schema, prompt, template `EduVertical` hay màn sửa P2-12. Mọi run mới viết script `2`.
+
+**Gửi LLM.** Generation schema theo cách `flat` (xem [04-AGENT-ORCHESTRATION.md](04-AGENT-ORCHESTRATION.md)): `scenes[]`, `lines[]`, `shots[]` cùng cấp trong một phương án, gắn `sceneId`; `actors` thành `actor1`, `actor2`, `actor3`. Adapter chuyển về dạng lồng nhau ở trên rồi mới chạy Zod.
+
+## Gói thể loại (Phase 6)
+
+Định nghĩa có version trong `packages/contracts` ([ADR-013](decisions/ADR-013-brand-kit-and-formats.md)). Thêm gói là thêm dữ liệu.
+
+- `id` (`^[a-z0-9_]{1,32}$`), `version` (integer), `displayName`
+- `beats[]`: `{ id, label, requiresSource }` theo thứ tự
+- `defaultCast[]`: `character_key`
+- `allowNarrator`: boolean
+- `research`: `required`, `optional` hoặc `off`. Gói `off` không được có nhịp `requiresSource`; contracts kiểm khi định nghĩa gói
+- `durationSec`: `{ min, max }`; API kiểm thời lượng brief theo đây
+- `pacing`: `{ cutsPerMinute: { min, max }, maxStaticSec, noSameShotSizeInARow: true }`
+- `qaRules[]`: mã kiểm QA riêng của gói
+
+Lát cắt đầu:
+
+| Gói | Nhịp | Research | Thời lượng | Nhịp cắt |
+|---|---|---|---|---|
+| `story` v1 ("Hoạt hình", gói của mọi brief mới) | `cold_open`, `premise`, `play`, `fact` (cần nguồn), `payoff` | `required` vì có nhịp `fact` | 30–90 s | 20–27 cắt/phút, shot dài nhất 3 s; không có người dẫn |
+| `what_if` v1 ("Nếu như…?", chỉ để đọc run cũ) | `cold_open`, `premise`, `fun`, `fact` (cần nguồn), `twist` | `required` vì có nhịp `fact` | 30–60 s | 20–27 cắt/phút, shot dài nhất 3 s |
+
+Từ ADR-013 bổ sung (2) 2026-11-03: brief không chọn thể loại, luôn dùng `story` v1; gói `explainer` đã xóa vì chỉ chạy được bằng script `1`. Trước đó, Director chốt 2026-11-03: gói giải trí đầu tiên là `what_if`; nhịp của hai gói và số cắt mỗi phút như bảng. Các số lấy từ tài liệu tham khảo của ADR-014 (khoảng 27 cắt/phút ở đoạn mở) và spike P6-01 (19 cắt/phút là quá chậm); Director chốt 2026-11-03: thời lượng `what_if` 30–60 s. P6-06 (Director nghiệm thu 2026-11-03) đổi shot dài nhất của `explainer` từ 3 s thành 5 s: với 3 s mọi video có ít nhất 20 cắt/phút, khoảng 12–20 chỉ còn đúng mức 20. Schema gói chặn gói có `60 / maxStaticSec` lớn hơn `cutsPerMinute.min` ([reports/P6-06.md](../reports/P6-06.md)).
+
+Luật nhịp là hàm thuần trong contracts, chạy trên shot list đã gắn frame (sau alignment):
+
+- số cắt mỗi phút, tính trên toàn video, nằm trong khoảng của gói;
+- không shot nào dài hơn `maxStaticSec`;
+- không hai shot liền nhau cùng `shotSize`.
+
+Vi phạm sửa được bằng code thì sửa: chia shot dài thành hai shot cùng neo, đổi cỡ cảnh của shot sau (`medium` ↔ `close`), giữ nguyên nhân vật và hành động. Không sửa được thì thành warning `pacing_violation` trong QA.
+
+## Kho tài sản trong script (Phase 6)
+
+Chỉ ở chế độ `creative` ([ADR-016](decisions/ADR-016-creative-mode-motion-assets.md)). Mỗi phần tử `assetRequests[]`:
+
+- `id`: `^r[0-9]{1,2}$`, duy nhất trong phương án; thành `request_key` trong `motion_asset_requests`
+- `kind`: một kind của `motion_assets` trừ `character_skin` và `brand_card` (hai loại này Director tự mở task)
+- `description`: 1–300 ký tự, mô tả cần vẽ gì
+- `sceneIds[]`: cảnh cần tài sản này
+- `fallbackAssetId`: id `approved` gần nhất trong kho, cùng kind; shot dùng id này cho đến khi tài sản mới được duyệt
+
+Worker ghi `motion_asset_requests` khi script được duyệt, không ghi lúc LLM vừa trả về.
+
 ## TTS
 
 `services/tts` nhận `{ text, voiceId }` và trả WAV. Bên trong gọi VieNeu-TTS v3 Turbo, profile CPU/ONNX là mặc định. Facade này là hợp đồng của studio. Client TypeScript không gọi thẳng đường dẫn nội bộ của VieNeu.
 
 Độ dài cảnh bằng duration ffprobe của WAV cảnh đó, cộng 200 ms đầu và 200 ms cuối. Tổng frame bằng tổng duration đã đo tại 30 fps. Không ước lượng bằng số từ.
+
+**Phase 6, script `2`** ([ADR-015](decisions/ADR-015-multi-speaker-voice.md), gồm mục Bổ sung 2026-11-02):
+
+- Synthesize từng câu với `voiceId` của người nói: `brand_characters.voice_id`; với `narrator` là `brand_profiles.narrator_voice_id`, null thì `TTS_DEFAULT_VOICE`. Nhân vật nói chưa có giọng thì voice job trượt ngay với `configuration_missing`, không đọc bằng giọng khác.
+- Cache theo `text` + `voice` như hiện tại: sửa một câu chỉ đọc lại câu đó.
+- Voice job ghép các câu của cảnh thành WAV cảnh. Khoảng nghỉ giữa hai câu cùng người nói và khi đổi người nói là hai hằng số trong code; đổi người nói thì nghỉ dài hơn. Ranh giới từng câu (ms) ghi vào metadata artifact `audio` của cảnh.
+- Hợp đồng `POST /synthesize`, `POST /align` của ADR-005 không đổi. WAV ghép phải nằm ở nơi service căn được; nếu cần endpoint mới thì P6-08 báo `blocked`.
+- Âm thanh không lời của nhân vật có `speaks = false` lấy từ kho SFX, không qua TTS.
 
 ## Alignment
 
@@ -77,15 +184,19 @@ Cổng Go của `P0-04`: trên mẫu thoại giáo dục khoảng 45–60 giây,
 
 **P1-06 / ADR-012:** `durationDeltaMs` vẫn là hiệu số thô `durationMs − lastWord.endMs`. Pass cổng khi (1) `|durationDeltaMs| ≤ 250`, hoặc (2) `250 < durationDeltaMs ≤ 400` và PCM đuôi WAV (từ `lastWord.endMs` đến hết file) im lặng liên tục (peak &lt; −40 dBFS / cửa sổ 50 ms). Response gate ghi `coverageAcceptanceReason` (`within_250ms` | `verified_trailing_silence`). Tái đánh giá không Whisper: `POST /align/revalidate-gate`.
 
+**P3-18 / ADR-012 bổ sung 2026-11-02:** trước khi validate, từ có `startMs == endMs` được cho khoảng ước lượng (tối đa 120 ms, tối thiểu 40 ms): dùng khoảng lặng sau từ, rồi khoảng lặng trước từ, nếu không có thì lấy bớt từ từ bên cạnh dài hơn. Thứ tự giữ nguyên, không vượt độ dài file; từ sai thứ tự không sửa. Mỗi từ được sửa có một warning `repaired zero-length interval ...` và tính vào `validation.repairedWordCount`. Tỷ lệ ≥ 90% của cổng trừ các từ này ra, tức là tính trên số từ Whisper đo được thật. `revalidate-gate` sửa và validate lại từ JSON đã lưu rồi ghi đè. `gatePolicyVersion` = `2.1.0-repair-zero-length`; worker gặp cache phiên bản cũ thì gọi revalidate.
+
 **Chấp thuận Director (2026-10-28, chỉ Phase 0 spike):** WAV ffprobe **44.000 s** (`5bf561a3048346639aabb497df357d33.wav`) được coi là đủ bằng chứng khả thi số; không yêu cầu synthesize lại để đạt 45.000 s. Không thay thế QA nghe thử hay yêu cầu chất lượng production.
 
-`captions[]` tương thích `@remotion/captions`: `text`, `startMs`, `endMs`, `timestampMs`. Khoảng trắng nằm ở đầu mỗi từ sau từ đầu tiên, vì `createTikTokStyleCaptions()` ngắt trang theo khoảng trắng. Khi render, phần phụ đề dùng `white-space: pre`.
+`captions[]` tương thích `@remotion/captions`: `text`, `startMs`, `endMs`, `timestampMs`. Từ Phase 6 thêm `speaker` (`character_key` hoặc `narrator`) của câu. Khoảng trắng nằm ở đầu mỗi từ sau từ đầu tiên, vì `createTikTokStyleCaptions()` ngắt trang theo khoảng trắng. Khi render, phần phụ đề dùng `white-space: pre`.
+
+**Phase 6, script `2`:** căn một lần cho cả cảnh với transcript ghép từ các câu; cổng như trên. Từ được chia về câu theo thứ tự token sau chuẩn hóa; ranh giới câu lấy từ vị trí ghép. Từ nằm ngoài đoạn câu quá dung sai (hằng số trong code) bị kẹp về trong đoạn, kèm warning QA `word_clamped_to_line`. Cảnh trượt cổng thì căn lại từng câu vừa và gộp các câu ngắn liền nhau cùng người nói; vẫn trượt thì `alignment_gate_failed`. Kết quả đo: spike [P6-02](spikes/P6-02-short-line-alignment.md).
 
 QA alignment báo lỗi nếu thiếu từ, timestamp chồng nhau, hoặc một khoảng trong cùng câu dài hơn 1,5 giây. Confidence thấp là warning.
 
 ## Sửa timing
 
-Director sửa trên bản copy. Artifact `caption_override` lưu các từ đã sửa. Render đọc override nếu có, và vẫn giữ alignment gốc. Sửa timing không gọi TTS.
+Director sửa trên bản copy. Artifact `caption_override` lưu các từ đã sửa. Render đọc override nếu có, và vẫn giữ alignment gốc. Sửa timing không gọi TTS. Mục này là của `EduVertical` (P1-08) và không còn chạy từ ADR-013 bổ sung (2) 2026-11-03; `StickStory` chưa có sửa phụ đề.
 
 ## Storyboard và render props
 
@@ -93,7 +204,7 @@ Storyboard mô tả hình từng `sceneId`: slot, chữ trên màn hình, code h
 
 `render_props` là input của Remotion:
 
-- `templateId`: `EduVertical`
+- `templateId`: `StickStory` (mục bên dưới), template duy nhất từ ADR-013 bổ sung (2) 2026-11-03. Các mục `scenes[].templateSlot` ở trên mô tả `EduVertical` đã xóa
 - `templateVersion`: chuỗi tăng khi đổi composition
 - `fps`: `30`
 - `width`: `1080`
@@ -106,6 +217,47 @@ Storyboard mô tả hình từng `sceneId`: slot, chữ trên màn hình, code h
 
 Preview và export dùng cùng props. Export dùng CRF thấp hơn preview; hai mức CRF là hằng số trong config. Cùng `content_hash` của props và cùng `templateVersion` thì tái sử dụng MP4.
 
+## Storyboard ảnh tĩnh (Phase 6)
+
+Job storyboard chạy ở trạng thái `storyboarding`, queue `render` ([ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md)). Lúc này chưa có audio nên chưa có timing thật.
+
+- Mỗi cảnh của **cả hai phương án** có một ảnh tĩnh bằng `renderStill()`: shot đầu của cảnh, nhân vật ở tư thế giữ của hành động, phụ đề mẫu là câu đầu cảnh.
+- Ảnh PNG lưu dưới `DATA_DIR`, key tương đối. Số đo P6-03: 1,9–3,6 giây mỗi ảnh, bundle 13–16 giây khi cache ấm; 2 × 12 cảnh khoảng 1 phút.
+- Kiểm tự động bằng code trên hình học đã tính, không phân tích ảnh:
+  - nhân vật trong vùng an toàn, không bị khung phụ đề che (`storyboard_unsafe_area`);
+  - hai nhân vật không chồng nhau (`storyboard_overlap`);
+  - phụ đề không tràn khung (`storyboard_text_overflow`);
+  - tương phản phụ đề/nền đạt 4,5:1 (`storyboard_low_contrast`). Phụ đề là chữ duy nhất trong khung (ADR-014, bổ sung 2026-11-03);
+  - còn tài sản tạm ở chế độ `creative` (`storyboard_placeholder_asset`).
+- Artifact `storyboard`: `{ variants: [{ variantIndex, scenes: [{ sceneId, stillKey, issues[] }] }], errors[] }`. Lỗi render một ảnh ghi vào `errors[]` và không chặn cổng.
+
+Director xem bảng storyboard cạnh lời thoại ở cổng `script`. Không có cổng duyệt mới.
+
+## Template `StickStory` (Phase 6)
+
+Composition trong `apps/video/src/stick-story/`, vẽ bằng `packages/motion-kit` ([ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md)). Template duy nhất của studio (ADR-013 bổ sung (2) 2026-11-03).
+
+`render_props` của `StickStory` gồm các trường chung (`templateId`, `templateVersion`, `fps`, `width`, `height`, `audio`, `captions[]`) cộng:
+
+- `motionKitVersion`: version của package motion kit. `templateVersion` có dạng `<version template>+kit.<version kit>`; cả hai vào `content_hash`, nên đổi kit thì không dùng nhầm MP4 cũ.
+- `brand`: màu, font, id thẻ mở đầu và kết thúc của kênh.
+- `scenes[]`: `sceneId`, `fromMs`, `durationMs`.
+- `shots[]` đã gắn frame: `shotId`, `sceneId`, `fromFrame`, `durationInFrames`, `background`, `shotSize`, `camera`, `props`, `ambience`, và `actors[]`. Không có chữ phủ hay khung bảng (ADR-014, bổ sung 2026-11-03). Mỗi actor có thêm `slot` (`left`, `center`, `right`, do code tính; motion kit 0.2.0 đặt khung: shot hai người có một người `center` thì người đó sang bên trống, shot ba người dùng `trioSlots` giãn hai bên, cỡ rộng, góc cao và cỡ trung lùi camera để đủ cả nhóm, cỡ trung lấy giữa nhóm) và `speakingRanges[]` (khoảng frame nhân vật mở miệng, lấy từ các từ của câu có `speaker` là nhân vật đó).
+- `sfx[]`: `{ assetId, fromFrame }`.
+
+Frame cắt: tìm `cutOnWord` trong các từ alignment của câu neo; frame cắt bằng frame bắt đầu của từ đó trừ 2, không nhỏ hơn đầu cảnh. Không tìm thấy từ thì cắt ở đầu câu, kèm warning `cut_word_not_found`.
+
+Phụ đề tô màu theo `captions[].speaker`: màu nhân vật trong kênh; `narrator` dùng màu chữ mặc định.
+
+Bối cảnh mặc định ở mức chi tiết 2 (Director chốt sau P6-03): khoảng 5,6 giây render mỗi giây video trên máy dev, so với 4,26 của `EduVertical`. Yếu tố mức 3 chỉ bật theo `ambience` của shot.
+
+## SFX và âm lượng (Phase 6)
+
+- SFX gắn với tài sản hành động trong kho, đặt sau từ khóa của cú cắt, không đè lên từ đang đọc.
+- Lời đọc to hơn SFX ít nhất 3 dB tại mọi điểm chồng nhau.
+- Export chuẩn hóa -14 LUFS, true peak dưới -1 dBTP.
+- Mỗi file SFX có nguồn và license trong manifest ([08-SECURITY.md](08-SECURITY.md), mục Media). Nguồn SFX là cổng Director (P6-12).
+
 ## QA trước cổng final
 
 `qa_report.checks[]` có `code`, `severity` (`error`, `warning`), `message`. `passed` là true khi không có error.
@@ -113,5 +265,11 @@ Preview và export dùng cùng props. Export dùng CRF thấp hơn preview; hai 
 Error chặn approval hữu ích: `schema_invalid`, `audio_missing`, `duration_out_of_range`, `caption_gap`, `frame_size_mismatch`.
 
 Warning vẫn cho Director duyệt: `low_alignment_confidence`, `research_stale`, `long_silence`.
+
+Phase 6 thêm:
+
+- error `fact_without_source`: cảnh thuộc nhịp `requiresSource` không có `sourceIds` hợp lệ ([ADR-013](decisions/ADR-013-brand-kit-and-formats.md));
+- error `loudness_out_of_range`: export lệch -14 LUFS quá ±1 LU, hoặc true peak từ -1 dBTP trở lên (P6-12);
+- warning `pacing_violation`, `word_clamped_to_line`, `cut_word_not_found`, `placeholder_asset` (run `creative` còn tài sản tạm).
 
 QA không ghi approval.

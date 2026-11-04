@@ -194,11 +194,69 @@ async function seedMedia(
   return media?.id ?? "";
 }
 
+describe("GET /api/artifacts/:artifactId/stills/:variantIndex/:sceneId (P6-17)", () => {
+  it("trả PNG có tên trong storyboard schema 2; cảnh lạ, khóa ngoài thư mục storyboard, artifact khác thì 404", async () => {
+    const script = await seedArtifact("script", null);
+    const runId = script.workflowRunId;
+    const stillKey = `artifacts/${runId}/storyboard/v1-mo-dau.png`;
+    const png = Buffer.from("PNGDATA");
+    await mkdir(dirname(join(dataDir, stillKey)), { recursive: true });
+    await writeFile(join(dataDir, stillKey), png);
+    const outsideKey = `artifacts/${runId}/script-x.png`;
+    await writeFile(join(dataDir, outsideKey), png);
+    const boardKey = `artifacts/${runId}/storyboard-${randomUUID()}.json`;
+    await writeFile(
+      join(dataDir, boardKey),
+      JSON.stringify({
+        schemaVersion: 2,
+        variants: [
+          {
+            variantIndex: 1,
+            scenes: [
+              { sceneId: "mo-dau", stillKey, issues: [] },
+              { sceneId: "lech", stillKey: outsideKey, issues: [] },
+            ],
+          },
+        ],
+        errors: [],
+      }),
+    );
+    const [board] = await db
+      .insert(artifacts)
+      .values({
+        projectId: script.projectId,
+        workflowRunId: runId,
+        type: "storyboard",
+        version: 1,
+        schemaVersion: "2",
+        contentHash: "e".repeat(64),
+        storageKey: boardKey,
+      })
+      .returning();
+    const { app, cookie } = await authedApp();
+    const get = (url: string) => app.inject({ method: "GET", url, headers: { cookie } });
+    const ok = await get(`/api/artifacts/${board?.id}/stills/1/mo-dau`);
+    expect(ok.statusCode).toBe(200);
+    expect(ok.headers["content-type"]).toBe("image/png");
+    expect(ok.rawPayload.equals(png)).toBe(true);
+    expect((await get(`/api/artifacts/${board?.id}/stills/2/mo-dau`)).statusCode).toBe(404);
+    expect((await get(`/api/artifacts/${board?.id}/stills/1/lech`)).statusCode).toBe(404);
+    expect((await get(`/api/artifacts/${script.id}/stills/1/mo-dau`)).statusCode).toBe(404);
+    expect((await get(`/api/artifacts/${board?.id}/stills/1/..%2F..`)).statusCode).toBe(400);
+    const noSession = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${board?.id}/stills/1/mo-dau`,
+    });
+    expect(noSession.statusCode).toBe(401);
+    await app.close();
+  });
+});
+
 describe("GET /api/artifacts/:artifactId/media", () => {
   const MP4 = Buffer.from("0123456789abcdef");
 
   it("preview: stream MP4 cả file, Range một khoảng trả 206, khoảng ngoài file trả 416", async () => {
-    const key = `render/cache/EduVertical/p2-09-${randomUUID()}.mp4`;
+    const key = `render/cache/StickStory/p2-09-${randomUUID()}.mp4`;
     const id = await seedMedia("preview", key, { [key]: MP4 });
     const { app, cookie } = await authedApp();
     const full = await app.inject({
@@ -245,6 +303,25 @@ describe("GET /api/artifacts/:artifactId/media", () => {
     await app.close();
   });
 
+  it("render_props: khóa audio do worker ghi tương đối với render/public vẫn phát được (player có tiếng)", async () => {
+    const publicKey = `pipeline/edu-${randomUUID().slice(0, 16)}.wav`;
+    const propsKey = `artifacts/p6-17/${randomUUID()}.json`;
+    const id = await seedMedia("render_props", propsKey, {
+      [`render/public/${publicKey}`]: "RIFFpublic",
+      [propsKey]: JSON.stringify({ audio: { storageKey: publicKey, durationMs: 1000 } }),
+    });
+    const { app, cookie } = await authedApp();
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/artifacts/${id}/media`,
+      headers: { cookie },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toBe("audio/wav");
+    expect(response.body).toBe("RIFFpublic");
+    await app.close();
+  });
+
   it("render_props: stream WAV ở audio.storageKey của props", async () => {
     const wavKey = `render/public/p2-09-${randomUUID()}.wav`;
     const propsKey = `artifacts/p2-09/${randomUUID()}.json`;
@@ -281,7 +358,7 @@ describe("GET /api/artifacts/:artifactId/media", () => {
     const script = await seedMedia("script", jsonKey);
     const missing = await seedMedia(
       "export",
-      `render/cache/EduVertical/missing-${randomUUID()}.mp4`,
+      `render/cache/StickStory/missing-${randomUUID()}.mp4`,
     );
     const { app, cookie } = await authedApp();
     for (const id of [notMedia, manifest, propsEscape, script, missing, randomUUID()]) {

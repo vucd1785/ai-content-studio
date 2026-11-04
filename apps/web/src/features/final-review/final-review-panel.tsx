@@ -58,8 +58,9 @@ export function FinalReviewPanel({ runId }: { runId: string | null }) {
         {preview === null ? (
           <p className="text-muted-foreground text-sm">{vi.finalReview.noPreview}</p>
         ) : (
-          <div className="flex flex-col gap-3 md:flex-row">
-            <div className="mx-auto w-full max-w-[14rem] shrink-0">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start">
+            {/* Khung điện thoại 9:16 (06 mục Năm màn hình). */}
+            <div className="mx-auto w-full max-w-[17rem] shrink-0 rounded-[1.75rem] border-8 border-[#22262f] bg-[#0b0d12]">
               {/* biome-ignore lint/a11y/useMediaCaption: phụ đề đã burn vào MP4 */}
               <video
                 aria-label={`${vi.finalReview.preview} ${preview.version}`}
@@ -67,7 +68,7 @@ export function FinalReviewPanel({ runId }: { runId: string | null }) {
                 src={artifactMediaUrl(preview.id)}
                 controls
                 preload="metadata"
-                className="w-full rounded-md"
+                className="w-full rounded-[1.25rem]"
                 style={{ aspectRatio: "1080 / 1920" }}
               />
               <p className="text-muted-foreground mt-1 text-center text-xs">
@@ -215,7 +216,7 @@ function FinalDecisionForm({
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="bg-surface-raised sticky bottom-0 flex flex-col gap-2 rounded-xl border p-4">
       <Label htmlFor="final-review-note">{vi.finalReview.noteLabel}</Label>
       <Textarea
         id="final-review-note"

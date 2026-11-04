@@ -9,6 +9,7 @@ import {
 } from "@studio/contracts";
 import { getArtifactById, type StudioDb } from "@studio/db";
 import type { FastifyInstance } from "fastify";
+import { z } from "zod/v4";
 import { sendNotFound } from "../http/errors.js";
 import { resolveStorageKey } from "../storage/resolve-storage-key.js";
 
@@ -58,7 +59,20 @@ async function mediaStorageKey(
       audio?: { storageKey?: unknown };
     } | null;
     const key = props?.audio?.storageKey;
-    return typeof key === "string" ? key : null;
+    if (typeof key !== "string") {
+      return null;
+    }
+    // Worker ghi khóa audio tương đối với `render/public` (để Remotion `staticFile` đọc được), ví dụ
+    // `pipeline/edu-<sha>.wav`. Khóa cũ của test tương đối với volume vẫn đọc như trước.
+    const target = await resolveStorageKey(dataDir, key);
+    const exists =
+      target === null
+        ? false
+        : await stat(target).then(
+            (i) => i.isFile(),
+            () => false,
+          );
+    return exists ? key : `render/public/${key}`;
   }
   return null;
 }
@@ -172,6 +186,52 @@ export function registerArtifactRoutes(app: FastifyInstance, deps: ArtifactRoute
         .header("content-range", `bytes ${range.start}-${range.end}/${size}`)
         .header("content-length", range.end - range.start + 1)
         .send(createReadStream(target, { start: range.start, end: range.end }));
+    },
+  );
+
+  // Ảnh storyboard (P6-10, P6-17): chỉ file PNG có tên trong artifact `storyboard` schema `2`, nằm trong
+  // thư mục storyboard của đúng run. Không nhận đường dẫn từ client.
+  typed.get(
+    "/api/artifacts/:artifactId/stills/:variantIndex/:sceneId",
+    {
+      schema: {
+        params: artifactIdParamsSchema.extend({
+          variantIndex: z.coerce.number().int().min(1).max(2),
+          sceneId: z.string().regex(/^[a-z0-9-]{1,40}$/),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { artifactId, variantIndex, sceneId } = request.params;
+      const row = await getArtifactById(deps.db, artifactId);
+      if (row === null || row.type !== "storyboard" || row.schemaVersion !== "2") {
+        return sendNotFound(reply);
+      }
+      const board = (await readArtifactJson(deps.dataDir, row.storageKey)) as {
+        variants?: {
+          variantIndex?: unknown;
+          scenes?: { sceneId?: unknown; stillKey?: unknown }[];
+        }[];
+      } | null;
+      const scene = board?.variants
+        ?.find((variant) => variant.variantIndex === variantIndex)
+        ?.scenes?.find((item) => item.sceneId === sceneId);
+      const key = scene?.stillKey;
+      const prefix = `artifacts/${row.workflowRunId}/storyboard/`;
+      if (typeof key !== "string" || !key.startsWith(prefix) || extname(key) !== ".png") {
+        return sendNotFound(reply);
+      }
+      const target = await resolveStorageKey(deps.dataDir, key);
+      const info = target === null ? null : await stat(target).catch(() => null);
+      if (target === null || info === null || !info.isFile()) {
+        return sendNotFound(reply);
+      }
+      return reply
+        .header("content-type", "image/png")
+        .header("content-length", info.size)
+        .header("cache-control", "private, no-cache")
+        .header("x-content-type-options", "nosniff")
+        .send(createReadStream(target));
     },
   );
 }

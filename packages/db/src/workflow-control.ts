@@ -234,7 +234,13 @@ export function researchJobKeyForRun(workflowRunId: string): string {
  * (queue `llm`) trong một transaction. Redis biết job khi worker đối chiếu (ADR-003).
  * Từ chối khi project chưa có brief, hoặc run mới nhất còn đang chạy hay chờ duyệt.
  */
-export async function startWorkflowRun(db: StudioDb, projectId: string) {
+export async function startWorkflowRun(
+  db: StudioDb,
+  projectId: string,
+  /** Model đã được route kiểm trong danh sách cho phép; không có là mặc định của worker (P3-12). */
+  /** `creativeMode` (ADR-016, P6-07): không có là `standard`. */
+  options: { llmModel?: string; creativeMode?: "standard" | "creative" } = {},
+) {
   return db.transaction(async (tx) => {
     // Khóa hàng project: hai request cùng lúc không tạo hai run.
     const [project] = await tx
@@ -266,7 +272,13 @@ export async function startWorkflowRun(db: StudioDb, projectId: string) {
     }
     const [run] = await tx
       .insert(workflowRuns)
-      .values({ projectId, briefId: brief.id, status: "idea_submitted" })
+      .values({
+        projectId,
+        briefId: brief.id,
+        status: "idea_submitted",
+        llmModel: options.llmModel ?? null,
+        creativeMode: options.creativeMode ?? "standard",
+      })
       .returning();
     if (run === undefined) {
       throw new Error("insert_workflow_run_failed");

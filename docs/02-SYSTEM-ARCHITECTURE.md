@@ -34,8 +34,8 @@ flowchart LR
 |---|---|
 | `apps/web` | React 19, Vite, Tailwind CSS v4, shadcn/ui, Zustand, TanStack Query, React Three Fiber 9, Drei 10. |
 | `apps/api` | Fastify 5. Session, CRUD, approval, SSE. Không render video. |
-| `apps/worker` | Ba queue BullMQ: `llm`, `media`, `render`. State machine và gọi provider. |
-| `apps/video` | Composition Remotion và `renderMedia()`. Package riêng, template 2D. |
+| `apps/worker` | Ba queue BullMQ: `llm`, `media`, `render`. State machine và gọi provider (Gemini API, hoặc Claude Code CLI khóa chặt theo [ADR-007](decisions/ADR-007-llm-adapter.md) bổ sung 2026-11-02). Lệnh CLI xuất yêu cầu tài sản cho chế độ sáng tạo. |
+| `apps/video` | Composition Remotion, `renderMedia()` và `renderStill()` (storyboard). Package riêng, template 2D duy nhất `StickStory` (Phase 6). `EduVertical`, `EduLight` đã xóa (ADR-013 bổ sung (2) 2026-11-03). |
 | `services/tts` | FastAPI nội bộ: `POST /synthesize`, `POST /align`. Bọc VieNeu-TTS v3 Turbo. |
 | PostgreSQL 17 | Project, version, approval, job, event, usage. |
 | Redis 7 | Queue và khóa idempotency ngắn hạn. |
@@ -50,6 +50,7 @@ Node image của Phase 0 là `node:24`. `api` và `worker` là hai lệnh của 
 | `packages/contracts` | Zod 4.2+, import `zod/v4`. Schema là hợp đồng giữa API, worker và CLI. |
 | `packages/db` | Drizzle schema, migration, query. |
 | `packages/config` | Đọc environment một lần và dừng process nếu thiếu biến bắt buộc. |
+| `packages/motion-kit` (Phase 6) | Rig 2D, biểu cảm, lớp da nhân vật, tư thế, hành động, bối cảnh, đồ vật, SFX kèm manifest. Mỗi tài sản ở `src/assets/<kind>/<id>/` có component và `asset.json`. Hàm thuần của frame, không mạng, không `Math.random`, không import R3F ([ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md), [ADR-016](decisions/ADR-016-creative-mode-motion-assets.md)). |
 
 `services/tts` là project Python, không nằm trong pnpm workspace.
 
@@ -61,11 +62,20 @@ Node image của Phase 0 là `node:24`. `api` và `worker` là hai lệnh của 
 4. API phát SSE từ hàng `events` và từ `QueueEvents` cho bản ghi đang chạy.
 5. Cổng `script` và `final` dừng workflow cho đến khi API nhận decision của Director.
 
+Phase 6 thêm vào luồng, không thêm process hay cổng duyệt:
+
+- Lần gọi LLM viết kịch bản trả kèm danh sách cảnh (shot list) cho mỗi phương án. Shot list là dữ liệu chỉ trỏ tới id tài sản trong kho.
+- Trước cổng `script`, queue `render` chạy job storyboard: `renderStill()` mỗi cảnh của hai phương án và kiểm tự động ([ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md)).
+- Voice job đọc theo câu với giọng của người nói, ghép thành audio cảnh, căn chữ một lần cho cả cảnh ([ADR-015](decisions/ADR-015-multi-speaker-voice.md)).
+- Chế độ `creative` lưu yêu cầu tài sản mới; tài sản được viết ngoài ứng dụng bằng phiên Claude Code và skill `create-motion-asset`, vào repo, qua Director duyệt rồi mới được bundle. Ứng dụng không thực thi code do LLM sinh lúc chạy ([ADR-016](decisions/ADR-016-creative-mode-motion-assets.md)).
+
 Schema bảng nằm ở [03-DATABASE-DESIGN.md](03-DATABASE-DESIGN.md). Trạng thái hợp lệ nằm ở [04-AGENT-ORCHESTRATION.md](04-AGENT-ORCHESTRATION.md). Props video nằm ở [05-VIDEO-PIPELINE.md](05-VIDEO-PIPELINE.md).
 
 ## Bộ nhớ và hàng đợi
 
-Mất dữ liệu Redis không xóa lịch sử. Lúc khởi động, worker đối chiếu bảng `jobs` và tạo lại job còn `queued` hoặc `running` mà chưa có artifact hoàn tất. Event đã commit vẫn đọc được theo `events.id`.
+Mất dữ liệu Redis không xóa lịch sử. Worker đối chiếu bảng `jobs` lúc khởi động và mỗi 5 giây: job còn `queued` hoặc `running` mà Redis chưa có thì enqueue; job Redis đã kết thúc nhưng hàng PostgreSQL được cập nhật sau đó (resume) thì xóa bản cũ và enqueue lại (P3-11). Event đã commit vẫn đọc được theo `events.id`.
+
+Process worker chạy bằng `pnpm --filter @studio/worker worker` (cả ba queue) hoặc `worker:llm`, `worker:media`, `worker:render`; đọc `.env` ở gốc repo. Mỗi queue concurrency 1.
 
 ## Phiên bản đã kiểm tra lúc chốt kế hoạch
 

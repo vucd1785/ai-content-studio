@@ -9,7 +9,8 @@ function toMicros(value: string): bigint {
     return 0n;
   }
   const [, sign, whole = "0", fraction = ""] = match;
-  const micros = BigInt(whole) * 10n ** BigInt(COST_SCALE) + BigInt(fraction.padEnd(COST_SCALE, "0"));
+  const micros =
+    BigInt(whole) * 10n ** BigInt(COST_SCALE) + BigInt(fraction.padEnd(COST_SCALE, "0"));
   return sign === "-" ? -micros : micros;
 }
 

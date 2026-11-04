@@ -23,6 +23,8 @@ class AlignmentValidation(BaseModel):
     durationDeltaMs: int | None = None
     nonMonotonicWordRatio: float | None = None
     timelineOrderRatio: float | None = None
+    # ADR-012 bổ sung 2026-11-02: số từ độ dài 0 được sửa (khoảng ước lượng, không phải đo được).
+    repairedWordCount: int = 0
 
 
 class AlignmentArtifact(BaseModel):

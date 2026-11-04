@@ -23,7 +23,10 @@ function event(id: number, type: string, data: unknown): StudioAction {
 /** EventSource giả: test tự phát event; không có timer. */
 class FakeEventSource implements StudioEventSource {
   static instances: FakeEventSource[] = [];
-  readonly listeners = new Map<string, ((event: { data: string; lastEventId: string }) => void)[]>();
+  readonly listeners = new Map<
+    string,
+    ((event: { data: string; lastEventId: string }) => void)[]
+  >();
   closed = false;
 
   constructor(readonly url: string) {
@@ -40,7 +43,10 @@ class FakeEventSource implements StudioEventSource {
 
   emit(type: string, id: number, data: unknown) {
     for (const listener of this.listeners.get(type) ?? []) {
-      listener({ data: typeof data === "string" ? data : JSON.stringify(data), lastEventId: String(id) });
+      listener({
+        data: typeof data === "string" ? data : JSON.stringify(data),
+        lastEventId: String(id),
+      });
     }
   }
 }
@@ -93,10 +99,21 @@ describe("studio store reducer (P4-02)", () => {
     expect(state.renderProgress).toBeNull();
     state = studioReducer(state, event(3, "job.progress", { progress: 0.4 }));
     expect(state.renderProgress).toBeNull();
-    state = studioReducer(state, event(4, "job.progress", { renderedFrames: 450, encodedFrames: 400, progress: 0.25 }));
-    expect(state.renderProgress).toEqual({ renderedFrames: 450, encodedFrames: 400, progress: 0.25 });
+    state = studioReducer(
+      state,
+      event(4, "job.progress", { renderedFrames: 450, encodedFrames: 400, progress: 0.25 }),
+    );
+    expect(state.renderProgress).toEqual({
+      renderedFrames: 450,
+      encodedFrames: 400,
+      progress: 0.25,
+    });
     state = studioReducer(state, event(5, "job.progress", { renderedFrames: 900, progress: 0.5 }));
-    expect(state.renderProgress).toEqual({ renderedFrames: 900, encodedFrames: null, progress: 0.5 });
+    expect(state.renderProgress).toEqual({
+      renderedFrames: 900,
+      encodedFrames: null,
+      progress: 0.5,
+    });
     // Video xong thì thanh biến mất.
     state = studioReducer(state, event(6, "agent.status", { role: "video", status: "completed" }));
     expect(state.renderProgress).toBeNull();
@@ -159,7 +176,11 @@ describe("useStudioRun (P4-02)", () => {
       source?.emit("agent.status", 11, { role: "qa", status: "queued" });
       source?.emit("job.progress", 12, "không phải JSON {");
     });
-    expect(result.current.renderProgress).toEqual({ renderedFrames: 300, encodedFrames: null, progress: 0.2 });
+    expect(result.current.renderProgress).toEqual({
+      renderedFrames: 300,
+      encodedFrames: null,
+      progress: 0.2,
+    });
     expect(result.current.statuses.qa).toBe("queued");
     expect(result.current.lastEventId).toBe("11");
 

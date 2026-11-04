@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
-import { briefs, projects, references, workflowRuns } from "./schema/index.js";
 import type { StudioDb } from "./db.js";
+import { briefs, projects, references, workflowRuns } from "./schema/index.js";
 
 export type NewBriefInput = {
   topic: string;
@@ -11,6 +11,9 @@ export type NewBriefInput = {
   tone: string;
   visualStyle: string;
   notes?: string | undefined;
+  /** Gói thể loại (ADR-013); không có là `story` v1 như `DEFAULT_FORMAT` của contracts (bổ sung (2) 2026-11-03). */
+  formatId?: string | undefined;
+  formatVersion?: number | undefined;
 };
 
 export type ProjectRow = typeof projects.$inferSelect;
@@ -28,13 +31,50 @@ export function mapProjectRow(row: ProjectRow) {
   };
 }
 
+/** Danh sách dự án kèm run mới nhất của mỗi dự án (P2-11): trang dự án biết việc nào chờ Director. */
 export async function listProjects(db: StudioDb) {
   const rows = await db.select().from(projects).orderBy(desc(projects.createdAt));
-  return rows.map(mapProjectRow);
+  const runs = await db
+    .select({
+      id: workflowRuns.id,
+      projectId: workflowRuns.projectId,
+      status: workflowRuns.status,
+      updatedAt: workflowRuns.updatedAt,
+    })
+    .from(workflowRuns)
+    .orderBy(desc(workflowRuns.createdAt));
+  const latest = new Map<string, (typeof runs)[number]>();
+  for (const run of runs) {
+    if (!latest.has(run.projectId)) {
+      latest.set(run.projectId, run);
+    }
+  }
+  return rows.map((row) => {
+    const run = latest.get(row.id);
+    return {
+      ...mapProjectRow(row),
+      latestRun:
+        run === undefined
+          ? null
+          : { id: run.id, status: run.status, updatedAt: toIso(run.updatedAt) },
+    };
+  });
 }
 
-export async function createProject(db: StudioDb, title: string) {
-  const [row] = await db.insert(projects).values({ title }).returning();
+/** `brandProfileId` không có thì DB gắn kênh mặc định (P6-07). */
+export async function createProject(
+  db: StudioDb,
+  title: string,
+  options: { brandProfileId?: string } = {},
+) {
+  const [row] = await db
+    .insert(projects)
+    .values(
+      options.brandProfileId === undefined
+        ? { title }
+        : { title, brandProfileId: options.brandProfileId },
+    )
+    .returning();
   if (row === undefined) {
     throw new Error("insert_project_failed");
   }
@@ -76,12 +116,17 @@ export async function getLatestBrief(db: StudioDb, projectId: string) {
     tone: row.tone,
     visualStyle: row.visualStyle,
     notes: row.notes ?? undefined,
+    formatId: row.formatId,
+    formatVersion: row.formatVersion,
     createdAt: toIso(row.createdAt),
   };
 }
 
 export async function countBriefsForProject(db: StudioDb, projectId: string): Promise<number> {
-  const rows = await db.select({ id: briefs.id }).from(briefs).where(eq(briefs.projectId, projectId));
+  const rows = await db
+    .select({ id: briefs.id })
+    .from(briefs)
+    .where(eq(briefs.projectId, projectId));
   return rows.length;
 }
 
@@ -106,6 +151,8 @@ export async function insertBrief(db: StudioDb, projectId: string, body: NewBrie
       tone: body.tone,
       visualStyle: body.visualStyle,
       notes: body.notes ?? null,
+      formatId: body.formatId ?? "story",
+      formatVersion: body.formatVersion ?? 1,
     })
     .returning();
   if (row === undefined) {
@@ -122,6 +169,8 @@ export async function insertBrief(db: StudioDb, projectId: string, body: NewBrie
     tone: row.tone,
     visualStyle: row.visualStyle,
     notes: row.notes ?? undefined,
+    formatId: row.formatId,
+    formatVersion: row.formatVersion,
     createdAt: toIso(row.createdAt),
   };
 }

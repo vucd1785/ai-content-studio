@@ -17,6 +17,10 @@ const EXPECTED_TABLES = [
   "events",
   "usage_records",
   "voice_profiles",
+  "brand_profiles",
+  "brand_characters",
+  "motion_assets",
+  "motion_asset_requests",
 ] as const;
 
 describe("P2-01 schema constraints (Postgres)", () => {
@@ -132,19 +136,36 @@ describe("P2-01 schema constraints (Postgres)", () => {
     expect(rows[0]?.column_default).toBeNull();
   });
 
-  it("từ chối briefs.duration_sec ngoài 30–90", async () => {
+  it("từ chối briefs.duration_sec ngoài giới hạn an toàn 10–600 (P6-07)", async () => {
     await sql.begin(async (tx) => {
       const [project] = await tx<{ id: string }[]>`
         INSERT INTO projects (title) VALUES ('bad-duration') RETURNING id
       `;
+      // Khoảng của gói kiểm ở API; DB chỉ chặn giá trị vô lý.
+      await tx`
+        INSERT INTO briefs (
+          project_id, topic, audience, goal, duration_sec, language, tone, visual_style
+        ) VALUES (
+          ${project!.id}, 't', 'a', 'g', 120, 'vi', 'n', 'v'
+        )
+      `;
       await expect(
-        tx`
+        tx.savepoint((sp) => sp`
           INSERT INTO briefs (
             project_id, topic, audience, goal, duration_sec, language, tone, visual_style
           ) VALUES (
-            ${project!.id}, 't', 'a', 'g', 120, 'vi', 'n', 'v'
+            ${project!.id}, 't', 'a', 'g', 601, 'vi', 'n', 'v'
           )
-        `,
+        `),
+      ).rejects.toThrow();
+      await expect(
+        tx.savepoint((sp) => sp`
+          INSERT INTO briefs (
+            project_id, topic, audience, goal, duration_sec, language, tone, visual_style
+          ) VALUES (
+            ${project!.id}, 't', 'a', 'g', 9, 'vi', 'n', 'v'
+          )
+        `),
       ).rejects.toThrow();
       throw new Error("ROLLBACK");
     }).catch((error: unknown) => {

@@ -19,7 +19,9 @@ function dictionaryValues(node: unknown): string[] {
 
 function renderShell() {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <AppShell />
     </QueryClientProvider>,
   );
@@ -49,11 +51,12 @@ describe("AppShell", () => {
     }
   });
 
-  it("có ba vùng: dự án, studio, chi tiết", () => {
+  it("trang dự án là vùng chính; cột dự án chỉ có khi mở một dự án (P2-11)", async () => {
     renderShell();
-    expect(screen.getByRole("complementary", { name: vi.shell.regionProjects })).toBeTruthy();
-    expect(screen.getByRole("main", { name: vi.shell.regionStudio })).toBeTruthy();
-    expect(screen.getByRole("complementary", { name: vi.shell.regionDetail })).toBeTruthy();
+    expect(screen.getByRole("main", { name: vi.shell.regionWorkspace })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: vi.home.heading })).toBeTruthy();
+    expect(screen.queryByRole("complementary", { name: vi.shell.regionProjects })).toBeNull();
+    expect(screen.getByTestId("worker-status").textContent).toBe(vi.worker.stopped);
   });
 
   it("từ điển vi không chứa từ điều khiển English (trừ tên sản phẩm và thuật ngữ Brief)", () => {

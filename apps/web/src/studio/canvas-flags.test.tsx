@@ -11,7 +11,12 @@ vi.mock("@react-three/fiber", () => ({
     return null;
   },
 }));
-vi.mock("@react-three/drei", () => ({ OrbitControls: () => null, OrthographicCamera: () => null }));
+vi.mock("@react-three/drei", () => ({
+  ContactShadows: () => null,
+  OrbitControls: () => null,
+  OrthographicCamera: () => null,
+  Outlines: () => null,
+}));
 
 type Listener = () => void;
 
@@ -51,7 +56,11 @@ afterEach(() => {
 
 describe("cờ canvas studio (P4-03)", () => {
   it("hàm thuần: reduced motion → dpr 1, tắt shadow, tắt vòng lặp", () => {
-    expect(studioCanvasFlags({ reducedMotion: true })).toEqual({ dpr: 1, shadows: false, frameloop: "demand" });
+    expect(studioCanvasFlags({ reducedMotion: true })).toEqual({
+      dpr: 1,
+      shadows: false,
+      frameloop: "demand",
+    });
     expect(studioCanvasFlags({ reducedMotion: true, lowPower: false })).toEqual({
       dpr: 1,
       shadows: false,
@@ -62,7 +71,11 @@ describe("cờ canvas studio (P4-03)", () => {
       shadows: false,
       frameloop: "always",
     });
-    expect(studioCanvasFlags({ reducedMotion: false })).toEqual({ dpr: [1, 2], shadows: true, frameloop: "always" });
+    expect(studioCanvasFlags({ reducedMotion: false })).toEqual({
+      dpr: [1, 2],
+      shadows: true,
+      frameloop: "always",
+    });
   });
 
   it("prefers-reduced-motion bật thì canvas nhận dpr 1, shadows false, frameloop demand", () => {
