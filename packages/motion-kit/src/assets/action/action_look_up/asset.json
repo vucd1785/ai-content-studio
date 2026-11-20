@@ -1,0 +1,12 @@
+{
+  "id": "action_look_up",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Nhìn lên trời: ngả người ra sau, một tay chỉ lên cao. Dùng khi thấy thứ trên trời (cầu vồng, mây, sét, máy bay).",
+  "tags": ["nhìn lên", "bầu trời", "chỉ lên"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import { type FormatPack, getFormatPack, type Research, researchSchema } from "@studio/contracts";
 import {
   approvalIdFromScriptJobKey,
@@ -14,8 +15,11 @@ import {
   type StudioDb,
   storyboardJobKeyAfterScript,
 } from "@studio/db";
+import { importReferenceImages } from "../assets/images/reference-images.js";
+import { resolveRepoRoot } from "../cli/paths.js";
 import { advanceTransition, readJsonArtifact, writeJsonArtifact } from "../jobs/job-support.js";
 import { loadApprovedAssetCatalog } from "../llm/asset-catalog.js";
+import { selectRelevantAssets } from "../llm/asset-selection.js";
 import { LlmError } from "../llm/errors.js";
 import { createGeminiAdapter } from "../llm/gemini-adapter.js";
 import {
@@ -47,6 +51,14 @@ export type ScriptJobDeps = {
   dataDir: string;
   /** Kho tài sản `approved` theo slug kênh; mặc định đọc manifest motion kit (test thay bản cố định). */
   loadAssetCatalog?: (brandSlug: string) => CatalogEntry[];
+  /**
+   * ADR-030: đưa ảnh Director tải lên vào kho trước khi viết kịch bản; trả id và mô tả. Mặc định đọc file upload và
+   * ghi tài sản vào motion kit (test thay bản giả).
+   */
+  importReferenceImages?: (input: {
+    references: readonly { id: string; kind: string; uri: string; title: string | null }[];
+    brandSlug: string;
+  }) => Promise<{ id: string; description: string }[]>;
 };
 
 export type ScriptJobResult =
@@ -179,7 +191,36 @@ async function runScriptV2(args: ScriptV2Args): Promise<ScriptJobResult> {
   if (brand === null) {
     return fail("configuration_missing", "project has no brand profile");
   }
-  const catalog = (deps.loadAssetCatalog ?? loadApprovedAssetCatalog)(brand.slug);
+  const brief = context.brief;
+  // ADR-030 cách 1: ảnh Director tải lên thành tài sản và luôn có trong danh mục của run.
+  const directorImages = await (
+    deps.importReferenceImages ??
+    ((input) =>
+      importReferenceImages({
+        ...input,
+        dataDir: deps.dataDir,
+        kitSrc: join(resolveRepoRoot(import.meta.url), "packages", "motion-kit", "src"),
+        log: (line) => console.log(line),
+      }))
+  )({ references: context.references, brandSlug: brand.slug });
+  const fullCatalog = (deps.loadAssetCatalog ?? loadApprovedAssetCatalog)(brand.slug);
+  // ADR-017 mục 1: chỉ đưa tài sản khớp brief và research vào prompt, để danh mục không dài theo kho.
+  const { selected } = selectRelevantAssets(fullCatalog, [
+    brief.topic,
+    brief.audience,
+    brief.goal,
+    brief.tone,
+    brief.visualStyle,
+    brief.notes,
+    args.directorNote,
+    researchSummaryText(research),
+  ]);
+  const catalog = [
+    ...selected,
+    ...fullCatalog.filter(
+      (a) => directorImages.some((d) => d.id === a.id) && !selected.some((s) => s.id === a.id),
+    ),
+  ];
   const mode = context.workflowRun.creativeMode === "creative" ? "creative" : "standard";
   const cast = brand.characters.map((c) => ({
     characterKey: c.characterKey,
@@ -189,7 +230,6 @@ async function runScriptV2(args: ScriptV2Args): Promise<ScriptJobResult> {
     personality: c.personality,
     catchphrases: c.catchphrases,
   }));
-  const brief = context.brief;
   let generated: ScriptV2GenerationResult;
   try {
     generated = await llm.generateScriptV2Variants(
@@ -216,6 +256,9 @@ async function runScriptV2(args: ScriptV2Args): Promise<ScriptJobResult> {
           ...(source.url === undefined ? {} : { url: source.url }),
         })),
         ...(args.directorNote === null ? {} : { directorNote: args.directorNote }),
+        ...(directorImages.length === 0
+          ? {}
+          : { directorImageIds: directorImages.map((d) => d.id) }),
       },
       {
         cast: cast.map((c) => ({ characterKey: c.characterKey, speaks: c.speaks })),

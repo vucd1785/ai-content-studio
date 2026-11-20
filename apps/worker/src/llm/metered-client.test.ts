@@ -34,14 +34,24 @@ function scriptedClient(responses: (string | Error)[]) {
       }
       return {
         jsonText: next,
-        usage: { provider: "gemini", model: request.model, inputTokens: 100, outputTokens: 20, thinkingTokens: 5 },
+        usage: {
+          provider: "gemini",
+          model: request.model,
+          inputTokens: 100,
+          outputTokens: 20,
+          thinkingTokens: 5,
+        },
       };
     },
   };
   return { client, calls: () => calls };
 }
 
-const config = { apiKey: "test-key-not-real", modelScript: "test-model", thinkingLevelScript: "low" as const };
+const config = {
+  apiKey: "test-key-not-real",
+  modelScript: "test-model",
+  thinkingLevelScript: "low" as const,
+};
 const brief = {
   topic: "Redis",
   audience: "Dev",
@@ -77,7 +87,9 @@ describe("trần gọi LLM (P3-09)", () => {
     expect(inner.calls()).toBe(2);
 
     // Lần thứ ba: hết trần, provider không bị gọi, không thêm row.
-    await expect(adapter.extractResearch({ brief, documents: [] })).rejects.toBeInstanceOf(CostCeilingError);
+    await expect(adapter.extractResearch({ brief, documents: [] })).rejects.toBeInstanceOf(
+      CostCeilingError,
+    );
     expect(inner.calls()).toBe(2);
     expect(records).toHaveLength(2);
   });
@@ -103,7 +115,12 @@ describe("trần gọi LLM (P3-09)", () => {
     const inner = scriptedClient([new Error("503")]);
     const metered = createMeteredClient(inner.client, { ceiling: 6, store });
     await expect(
-      metered.generateStructured({ systemInstruction: "", userPrompt: "", model: "m", thinkingLevel: "low" }),
+      metered.generateStructured({
+        systemInstruction: "",
+        userPrompt: "",
+        model: "m",
+        thinkingLevel: "low",
+      }),
     ).rejects.toThrow("503");
     expect(records).toEqual([]);
   });

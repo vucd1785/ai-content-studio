@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
+import { type AspectRatio, frameDimensions } from "@studio/video/render-props/common";
 import {
   parseStickStoryRenderProps,
   STICK_STORY_COMPOSITION_ID,
@@ -28,6 +29,8 @@ const STILL_FRAMES = 72;
 export function stillRenderProps(
   spec: StillSpec,
   brand: { fontFamily: string; textColor: string; speakerColors: Record<string, string> },
+  /** Khung của run (ADR-022); ảnh storyboard cùng khung với video. */
+  aspectRatio: AspectRatio = "9:16",
 ): StickStoryRenderProps {
   const words = spec.caption.text.split(/\s+/).filter((w) => w !== "");
   const step = 2000 / Math.max(1, words.length);
@@ -36,8 +39,7 @@ export function stillRenderProps(
     templateVersion: stickStoryTemplateVersion(),
     motionKitVersion: STICK_STORY_MOTION_KIT_VERSION,
     fps: 30,
-    width: 1080,
-    height: 1920,
+    ...frameDimensions(aspectRatio),
     audio: { storageKey: "storyboard/silent.wav", durationMs: STILL_SCENE_MS },
     brand: {
       fontFamily: brand.fontFamily,
@@ -48,6 +50,8 @@ export function stillRenderProps(
       outroAssetId: null,
     },
     scenes: [{ sceneId: "still", fromMs: 0, durationMs: STILL_SCENE_MS }],
+    // Ảnh tĩnh không có thẻ chữ (ADR-021); ghi rõ để Remotion không lấy thẻ của `defaultProps`.
+    cards: {},
     shots: [
       {
         shotId: "s1",
@@ -58,8 +62,11 @@ export function stillRenderProps(
         shotSize: spec.shotSize,
         camera: spec.camera,
         focus: spec.focus,
-        props: [],
+        props: spec.props,
         ambience: [],
+        ...(spec.mood === undefined ? {} : { mood: spec.mood }),
+        ...(spec.effects === undefined ? {} : { effects: spec.effects }),
+        ...(spec.illustration === undefined ? {} : { illustration: spec.illustration }),
         actors: spec.actors.map((a) => ({ ...a, speakingRanges: [] })),
       },
     ],

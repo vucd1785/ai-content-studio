@@ -137,6 +137,14 @@ Yêu cầu tài sản mới từ run `creative` ([ADR-016](decisions/ADR-016-cre
 - Chuyển `fulfilled` chỉ khi tài sản trỏ tới có `status = approved`.
 - Ghi bảng này không phải approval của workflow và không đổi `workflow_runs.status`.
 
+### `youtube_connections` (ADR-031)
+
+Kênh YouTube đã kết nối của một `brand_profile` (unique). `channel_id`, `channel_title`, `channel_thumbnail`, `refresh_token_enc` (AES-256-GCM, khóa `STUDIO_TOKEN_KEY`, không bao giờ lưu dạng thô), `scopes`, `last_error` (ví dụ "Cần kết nối lại"), `connected_at`. Xóa kênh thì xóa theo.
+
+### `youtube_uploads` (ADR-031)
+
+Một hàng cho mỗi lần bấm "Đăng", gắn với đúng một job queue `upload` (`job_id` unique). Giữ các ô Director đã xác nhận (`request` jsonb), `export_artifact_id`, `brand_profile_id`, trạng thái bền để thử lại không đăng trùng (`session_uri` của upload resumable, `video_id`), `thumbnail` (`pending`, `set`, `failed`, `skipped`) kèm lý do, `result_artifact_id` (artifact `youtube_upload`). Enum mới: `job_queue` thêm `upload`, `artifact_type` thêm `youtube_upload` (migration `0008`).
+
 ## Ràng buộc
 
 - Xóa project là thao tác chủ đích sau này. MVP không cần endpoint xóa hàng loạt.

@@ -155,6 +155,7 @@ function flatVariant(title: string, dauSpeaks = false) {
         actor1: a("ti", "action_celebrate", "expr_happy"),
         actor2: a("dau", "action_celebrate", "expr_happy"),
         ambience: ["dust"],
+        mood: "warm",
       },
       {
         sceneId: "su-that",
@@ -693,7 +694,10 @@ describe("chạy trọn script v2 sau khi duyệt (P6-17)", () => {
     if (props?.templateId !== "StickStory") {
       throw new Error(`template ${props?.templateId}`);
     }
-    expect(props.templateVersion).toBe(`1.1.0+kit.${props.motionKitVersion}`);
+    expect(props.templateVersion).toBe(`1.12.0+kit.${props.motionKitVersion}`);
+    // ADR-023: tông ánh sáng của shot đi từ kịch bản tới render props.
+    expect(props.shots.some((s) => s.mood === "warm")).toBe(true);
+    expect(props.shots.filter((s) => s.mood === undefined).length).toBeGreaterThan(0);
     // Từ giả dài 1 giây làm shot quá 3 giây: builder chia shot (`s1b`…) để đúng luật nhịp what_if.
     expect([...new Set(props.shots.map((s) => s.shotId.replace(/[a-z]$/, "")))]).toEqual([
       "s1",

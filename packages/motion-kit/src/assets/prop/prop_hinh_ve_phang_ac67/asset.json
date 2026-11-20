@@ -1,0 +1,19 @@
+{
+  "id": "prop_hinh_ve_phang_ac67",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Cuốn danh bạ dày mở ra, mỗi dòng có một ngôi nhà nhỏ kèm biển số nhà dạng ký hiệu; kính lúp trượt êm từng dòng xuống dưới, làm dòng đang đọc sáng lên, mép trang khẽ phập phồng.",
+  "tags": [
+    "danh bạ",
+    "địa chỉ",
+    "kính lúp",
+    "tra cứu",
+    "DNS",
+    "số nhà"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "e285c0f2-dfd7-4b3b-918f-bcb3546b1435:1:r3",
+  "licenses": []
+}

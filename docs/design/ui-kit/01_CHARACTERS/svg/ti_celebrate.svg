@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="500" viewBox="0 0 420 500" role="img" aria-label="ti celebrate"><title>ti celebrate</title><defs><linearGradient id="screenGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#223a5b"/><stop offset="1" stop-color="#0b1528"/></linearGradient><linearGradient id="orangeGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb36b"/><stop offset="1" stop-color="#f26b3a"/></linearGradient><linearGradient id="beanGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9ee970"/><stop offset="1" stop-color="#2bb3a3"/></linearGradient><linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fe9ff"/><stop offset="1" stop-color="#ffecc8"/></linearGradient><linearGradient id="darkGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#202c48"/><stop offset="1" stop-color="#0b1222"/></linearGradient></defs><g stroke="#0b0d12" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+ <path d="M174 69 Q157 47 178 31 Q180 57 200 67 M204 65 Q222 35 230 55" fill="#3d362d"/>
+ <path d="M173 289 L138 394 M218 291 L257 394" fill="none"/><path d="M139 394 l-17 16 M258 394 l19 14" fill="none"/>
+ <path d="M151 292 Q194 271 233 293 L248 354 Q201 377 133 348 Z" fill="#fff7ee"/>
+ <path d="M134 310 Q94 248 61 185"/><path d="M245 312 Q290 240 325 178"/><path d="M48 172 l-12 -17 M57 176 l-1 -20 M68 172 l13 -12 M311 168 l-12 -18 M321 171 l-1 -21 M334 173 l12 -12"/>
+ <circle cx="192" cy="170" r="111" fill="#fffaf3"/><ellipse cx="117" cy="205" rx="14" ry="9" fill="#ffc5a6" stroke="none"/><ellipse cx="272" cy="204" rx="14" ry="9" fill="#ffc5a6" stroke="none"/>
+ <path d="M153 155 Q168 143 180 157 M217 157 Q231 142 246 154" fill="none" stroke-width="9"/><ellipse cx="200" cy="206" rx="18" ry="22" fill="#fb7965"/>
+ <path d="M153 273 Q192 296 228 272 L240 304 Q198 330 142 304 Z" fill="url(#orangeGrad)"/>
+ <path d="M149 292 L103 346 L126 354 L169 304" fill="#f26b3a"/><path d="M205 309 Q236 321 252 313" fill="none" stroke="#ffe0ad" stroke-width="5"/>
+ </g></svg>

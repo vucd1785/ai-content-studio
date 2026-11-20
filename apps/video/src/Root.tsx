@@ -38,7 +38,9 @@ export const RemotionRoot: FC = () => {
         fps={MVP_FPS}
         width={MVP_WIDTH}
         height={MVP_HEIGHT}
-        defaultProps={STICK_STORY_FIXTURE_PROPS}
+        // Remotion gộp nông `inputProps` lên `defaultProps`: props thiếu `cards` (ảnh storyboard, props cũ) sẽ
+        // nhận nhầm thẻ của fixture. Mặc định không có thẻ; job render luôn truyền `cards` của chính video.
+        defaultProps={{ ...STICK_STORY_FIXTURE_PROPS, cards: {} }}
         calculateMetadata={({ props }) => {
           const input = props as StickStoryRenderProps;
           return {

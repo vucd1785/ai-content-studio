@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_tang_11a4ce",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật: tầng đẩy Falcon 9 đáp xuống bằng bốn chân hạ cánh, lửa và khói bên dưới.",
+  "tags": [
+    "Falcon 9 booster landing",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "4f098ce0-7e52-4d97-bcce-0f13fc1d3773:bfea7520:1:r4",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "en.wikipedia.org",
+      "url": "https://en.wikipedia.org/wiki/File:CRS-8_first_stage_landing_(26326628031).jpg",
+      "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e9/CRS-8_first_stage_landing_%2826326628031%29.jpg/1280px-CRS-8_first_stage_landing_%2826326628031%29.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=thumbnail",
+      "attribution": "Ảnh: File:CRS-8 first stage landing (26326628031).jpg - Wikipedia (https://en.wikipedia.org/wiki/File:CRS-8_first_stage_landing_(26326628031).jpg)"
+    }
+  ]
+}

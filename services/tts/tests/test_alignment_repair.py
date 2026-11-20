@@ -91,7 +91,7 @@ def test_gate_passes_scene_like_s3_with_ratio_before_repair() -> None:
     gate = evaluate_go_gate(_artifact(words, duration))
     assert gate["passesGate"] is True
     assert gate["alignedWordRatio"] == round(24 / 26, 4)
-    assert gate["gatePolicyVersion"] == "2.1.0-repair-zero-length"
+    assert gate["gatePolicyVersion"] == "2.2.0-extend-last-word"
 
 
 def test_gate_still_fails_when_too_many_words_repaired() -> None:

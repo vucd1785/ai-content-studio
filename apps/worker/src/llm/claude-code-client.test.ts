@@ -82,6 +82,17 @@ describe("claudeCodeArgs (P6-15)", () => {
     expect(args).not.toContain("--model");
     expect(claudeCodeArgs(request, "sonnet").slice(-2)).toEqual(["--model", "sonnet"]);
   });
+
+  it("ADR-032: tìm ảnh web chỉ bật đúng WebSearch, vẫn khóa MCP và quyền", () => {
+    const args = claudeCodeArgs(request, "sonnet", true);
+    expect(args[args.indexOf("--tools") + 1]).toBe("WebSearch");
+    expect(args[args.indexOf("--allowedTools") + 1]).toBe("WebSearch");
+    expect(args).not.toContain("WebFetch");
+    expect(args).not.toContain("Bash");
+    expect(args).toContain("--strict-mcp-config");
+    expect(args[args.indexOf("--permission-mode") + 1]).toBe("dontAsk");
+    expect(claudeCodeArgs(request)).not.toContain("--allowedTools");
+  });
 });
 
 describe("createClaudeCodeClient với CLI giả", () => {

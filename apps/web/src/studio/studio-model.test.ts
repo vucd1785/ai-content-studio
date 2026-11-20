@@ -23,9 +23,9 @@ function studioSources(): { file: string; source: string }[] {
 }
 
 describe("studio model (P4-01)", () => {
-  it("tám vị trí: Director ở giữa và bảy vai trò", () => {
+  it("chín vị trí: Director ở giữa và tám vai trò (thêm Đăng bài, ADR-018)", () => {
     const stations = buildStations();
-    expect(stations).toHaveLength(8);
+    expect(stations).toHaveLength(9);
     expect(stations[0]).toMatchObject({ id: "director", position: [0, 0, 0] });
     expect(stations.slice(1).map((s) => s.id)).toEqual([...AGENT_ROLES]);
     const distances = stations.slice(1).map((s) => Math.hypot(s.position[0], s.position[2]));

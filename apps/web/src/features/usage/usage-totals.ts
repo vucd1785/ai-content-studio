@@ -42,3 +42,21 @@ export function sumUsage(records: readonly UsageRecord[]): UsageTotals {
   }
   return { ...totals, estimatedCostUsd: fromMicros(cost) };
 }
+
+/**
+ * Chi phí ước tính để hiển thị (ADR-020): chuỗi micro-USD như "0.000000" khó đọc. 0 là "0 USD", dưới một xu là
+ * "< 0,01 USD", còn lại hai chữ số thập phân theo vi-VN. Chuỗi lạ giữ nguyên.
+ */
+export function formatUsd(value: string): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    return value;
+  }
+  if (n === 0) {
+    return "0 USD";
+  }
+  if (n < 0.01) {
+    return "< 0,01 USD";
+  }
+  return `${n.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+}

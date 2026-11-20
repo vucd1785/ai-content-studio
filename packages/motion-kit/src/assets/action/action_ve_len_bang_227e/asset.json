@@ -1,0 +1,12 @@
+{
+  "id": "action_ve_len_bang_227e",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Nhân vật nghiêng người, quay nửa thân về phía bảng bên phải, giơ tay cầm phấn vẽ các vòng tròn nối tiếp, rồi ngoảnh đầu lại nhìn khán giả và tiếp tục nhịp vẽ lặp lại.",
+  "tags": ["vẽ lên bảng", "cầm phấn", "giảng bài", "vòng tuần hoàn", "quay lại nhìn"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "22bbf597-e917-4885-8694-ef860afdf509:1:r2",
+  "licenses": []
+}

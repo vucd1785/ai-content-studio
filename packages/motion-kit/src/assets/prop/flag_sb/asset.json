@@ -1,0 +1,24 @@
+{
+  "id": "flag_sb",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Solomon Islands bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Solomon Islands.",
+  "tags": [
+    "cờ Solomon Islands",
+    "nước Solomon Islands",
+    "người Solomon Islands",
+    "Solomon Islands",
+    "quốc kỳ Solomon Islands"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

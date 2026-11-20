@@ -1,0 +1,19 @@
+{
+  "id": "bg_phong_lam_mat_d673",
+  "kind": "background",
+  "version": "0.1.0",
+  "description": "Phòng làm mát bằng chất lỏng trong trung tâm dữ liệu: dãy tủ máy chủ tỏa ánh cam ấm, ống nước xanh dương chạy dọc tường và nối vào từng tủ, bồn chứa có ô kính nước gợn sóng, máy bơm có quạt quay và đồng hồ đo nhiệt có kim dao động; nước chảy trong ống, đèn tủ nhấp nháy và ánh cam phập phồng nhẹ.",
+  "tags": [
+    "phòng làm mát",
+    "máy chủ",
+    "trung tâm dữ liệu",
+    "ống nước",
+    "máy bơm",
+    "AI tiêu thụ điện"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "72294a26-3aed-463f-a4da-31c482622c9f:49540158:2:r5",
+  "licenses": []
+}

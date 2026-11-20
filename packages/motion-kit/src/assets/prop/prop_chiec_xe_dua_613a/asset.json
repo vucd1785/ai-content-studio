@@ -1,0 +1,19 @@
+{
+  "id": "prop_chiec_xe_dua_613a",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chiếc xe đua nhỏ màu vàng sáng hướng sang phải, bánh xe quay tít, thân xe rung nhẹ lên xuống, đèn pha nhấp nháy và các vệt gió phía sau lướt liên tục như đang phóng rất nhanh.",
+  "tags": [
+    "xe đua",
+    "ánh sáng",
+    "tốc độ",
+    "xe vàng",
+    "vệt gió",
+    "nhanh"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "acd672de-7d5d-420a-8e03-bf5d00f1d7aa:1:r3",
+  "licenses": []
+}

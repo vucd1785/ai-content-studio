@@ -1,0 +1,19 @@
+{
+  "id": "prop_hinh_ve_phang_2d47",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Cột ăng-ten nhà mạng có khung giàn thép, đèn đỏ trên đỉnh nhấp nháy. Các vòng sóng wifi lần lượt tỏa ra hai bên và sáng lên theo nhịp, cột khẽ đung đưa.",
+  "tags": [
+    "cột ăng-ten",
+    "sóng wifi",
+    "nhà mạng",
+    "internet",
+    "phát sóng",
+    "trạm phát sóng"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "e285c0f2-dfd7-4b3b-918f-bcb3546b1435:1:r4",
+  "licenses": []
+}

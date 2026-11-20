@@ -1,0 +1,19 @@
+{
+  "id": "prop_dong_ho_tron_a4de",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chiếc đồng hồ báo thức tròn màu cam có hình Trái Đất nhỏ ở giữa mặt; hai kim quay vù vù để lại vệt chuyển động mờ, còn cả chiếc đồng hồ khẽ rung và nảy nhẹ như sắp bay đi.",
+  "tags": [
+    "đồng hồ",
+    "thời gian",
+    "Trái Đất",
+    "kim quay nhanh",
+    "tốc độ ánh sáng",
+    "giãn nở thời gian"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "60ce9bee-3e6e-4bca-b85b-f4320c6f60ed:1:r3",
+  "licenses": []
+}

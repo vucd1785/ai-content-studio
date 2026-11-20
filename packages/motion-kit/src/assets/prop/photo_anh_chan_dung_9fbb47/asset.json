@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_chan_dung_9fbb47",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh chân dung thật của Jensen Huang, nhà đồng sáng lập và CEO NVIDIA, đặt trong khung ảnh đơn giản.",
+  "tags": [
+    "Jensen Huang portrait",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": "7c50ffb2-d09c-4285-a8dd-bd6a7f0f6080:70821d45:1:r1",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "fortune.com",
+      "url": "https://fortune.com/ranking/most-powerful-people/2025/jensen-huang",
+      "file": "https://fortune.com/img-assets/wp-content/uploads/2025/07/MPP_092025-Jensen-Huang.jpg",
+      "attribution": "Ảnh: Jensen Huang | 100 Most Powerful People in Business | Fortune (https://fortune.com/ranking/most-powerful-people/2025/jensen-huang)"
+    }
+  ]
+}

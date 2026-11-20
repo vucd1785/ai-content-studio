@@ -1,0 +1,19 @@
+{
+  "id": "prop_hinh_ve_phang_93ac",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Bảng hình vẽ phẳng có các hạt không khí là chấm tròn xanh nhạt; các hạt rung nhẹ và xô vào nhau thành những dải nén đậm hơn, tạo làn sóng chạy từ trái sang phải, phía trên có mũi tên nhấp nháy chỉ hướng sóng.",
+  "tags": [
+    "hạt không khí",
+    "sóng âm",
+    "âm thanh",
+    "lan truyền",
+    "không gian",
+    "vật lý"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "ed6414d9-9b9e-4b67-84f0-696299f759e5:1:r4",
+  "licenses": []
+}

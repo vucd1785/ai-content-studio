@@ -1,0 +1,18 @@
+{
+  "id": "prop_hinh_ve_phang_0e10",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Hai chú đom đóm hoạt hình bay lơ lửng, quay mặt vào nhau, đập cánh nhanh. Bụng hai con thay nhau nháy sáng vàng, con này sáng xong thì con kia sáng đáp lại, kèm vòng sáng lan ra và đốm lấp lánh.",
+  "tags": [
+    "đom đóm",
+    "phát sáng",
+    "côn trùng",
+    "ban đêm",
+    "giao tiếp ánh sáng"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "417e04d5-c4e8-4330-8a82-31c22f29c6d2:1:r4",
+  "licenses": []
+}

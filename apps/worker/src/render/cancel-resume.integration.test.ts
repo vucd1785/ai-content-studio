@@ -1,7 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { VoiceScene } from "../cli/media-stage.js";
 import {
   cancelWorkflowRun,
   createDbConnection,
@@ -17,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AssetJobError } from "../assets/asset-job.js";
 import { runVisualJob } from "../assets/visual-job.js";
 import { runVoiceJob } from "../assets/voice-job.js";
+import type { VoiceScene } from "../cli/media-stage.js";
 import * as fixtures from "./flow-fixtures.js";
 import { collectVoiceScenes, FLOW_TEST_OPTIONS, fakeBackend } from "./flow-fixtures.js";
 import { runQaJob } from "./qa-job.js";

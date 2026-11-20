@@ -10,6 +10,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # Máy ảo Docker thiếu RAM khi TTS đọc giọng: kernel giết tiến trình Postgres làm DB phải recovery và job lỗi.
+    # Hạ điểm OOM để kernel chọn tiến trình khác (TTS lỗi thì worker retry được). Áp dụng khi tạo lại container.
+    oom_score_adj: -900
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U studio -d studio"]
       interval: 5s

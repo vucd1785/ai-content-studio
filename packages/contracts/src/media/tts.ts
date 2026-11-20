@@ -48,6 +48,8 @@ export const alignmentValidationSchema = z.object({
   /** @deprecated Use timelineOrderRatio; kept for spike JSON compatibility */
   nonMonotonicWordRatio: z.number().nullable(),
   timelineOrderRatio: z.number().nullable(),
+  /** ADR-012 bổ sung 2026-11-04: số ms từ cuối được kéo dài theo năng lượng PCM. */
+  lastWordExtendedMs: z.number().int().nonnegative().optional(),
 });
 
 export const coverageAcceptanceReasonSchema = z.enum(["within_250ms", "verified_trailing_silence"]);

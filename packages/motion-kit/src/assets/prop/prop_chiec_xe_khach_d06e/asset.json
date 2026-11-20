@@ -1,0 +1,18 @@
+{
+  "id": "prop_chiec_xe_khach_d06e",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chiếc xe khách hoạt hình màu vàng nhìn ngang, có ba cửa sổ tròn, cửa lên xuống và đèn pha; thân xe nảy nhẹ lên xuống có co giãn, bánh xe quay, đèn pha nhấp nháy và ống xả phả khói nhỏ như đang chạy.",
+  "tags": [
+    "xe khách",
+    "xe buýt",
+    "xe vàng",
+    "phương tiện",
+    "giao thông"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "6d8782dd-f393-4914-bfbe-1e1f1dd21e96:1:r3",
+  "licenses": []
+}

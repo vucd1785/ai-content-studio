@@ -1,6 +1,6 @@
 import { ContactShadows, OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { studioCanvasFlags, usePrefersReducedMotion } from "./canvas-flags";
+import { studioCanvasFlags, usePageVisible, usePrefersReducedMotion } from "./canvas-flags";
 import { DirectorChair, Robot } from "./robot";
 import { studioLabels } from "./studio-labels";
 import {
@@ -54,6 +54,9 @@ export function StudioScene({
     reducedMotion: reducedMotion ?? prefersReducedMotion,
     lowPower,
   });
+  // P7-09: tab bị ẩn thì không vẽ vòng lặp (tiết kiệm CPU khi chạy nền).
+  const pageVisible = usePageVisible();
+  const frameloop = pageVisible ? flags.frameloop : "demand";
   const stations = buildStations(statuses);
   const directorWaiting = stations.some((station) => station.status === "waiting_approval");
   const summary = stations
@@ -74,7 +77,7 @@ export function StudioScene({
       role="img"
       aria-label={`${studioLabels.canvas}. ${summary}${progressLabel}`}
     >
-      <Canvas shadows={flags.shadows} dpr={flags.dpr} frameloop={flags.frameloop}>
+      <Canvas shadows={flags.shadows} dpr={flags.dpr} frameloop={frameloop}>
         <color attach="background" args={["#0b0d12"]} />
         <OrthographicCamera
           makeDefault
@@ -106,7 +109,7 @@ export function StudioScene({
             station={station}
             renderProgress={station.id === "video" ? renderProgress : null}
             selected={station.id === selected}
-            animate={flags.frameloop === "always" && lowPower !== true}
+            animate={frameloop === "always" && lowPower !== true}
             directorWaiting={directorWaiting}
             {...(onSelect === undefined ? {} : { onSelect })}
           />

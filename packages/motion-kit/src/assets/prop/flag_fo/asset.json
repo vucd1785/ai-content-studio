@@ -1,0 +1,24 @@
+{
+  "id": "flag_fo",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Faroe Islands bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Faroe Islands.",
+  "tags": [
+    "cờ Faroe Islands",
+    "nước Faroe Islands",
+    "người Faroe Islands",
+    "Faroe Islands",
+    "quốc kỳ Faroe Islands"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

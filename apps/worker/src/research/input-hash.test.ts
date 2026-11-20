@@ -11,10 +11,20 @@ const brief = {
   tone: "friendly",
   visualStyle: "edu",
 };
-const doc: ResearchDocument = { sourceId: "ref-1", title: "a.md", origin: "user_reference", text: "TTL vô hạn." };
+const doc: ResearchDocument = {
+  sourceId: "ref-1",
+  title: "a.md",
+  origin: "user_reference",
+  text: "TTL vô hạn.",
+};
 const documents = [doc];
 const sources = [{ id: "ref-1", title: "a.md", origin: "user_reference" as const }];
-const urlDoc: ResearchDocument = { sourceId: "url-1", title: "x", origin: "fetched_url", text: "a" };
+const urlDoc: ResearchDocument = {
+  sourceId: "url-1",
+  title: "x",
+  origin: "fetched_url",
+  text: "a",
+};
 
 describe("researchInputHash (P5-01)", () => {
   it("ổn định: cùng nội dung thì cùng hash, kể cả thứ tự key object khác", () => {

@@ -1,0 +1,19 @@
+{
+  "id": "prop_con_chip_gpu_95ff",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Con chip GPU vuông màu xanh lá đậm, chân kim loại xếp quanh bốn cạnh, đứng nhún nhẹ trên sàn; lưới 16 lõi nhỏ trên mặt chip lần lượt sáng xanh như làn sóng, kèm quầng sáng nhịp nhàng và một tia lấp lánh.",
+  "tags": [
+    "chip GPU",
+    "NVIDIA",
+    "bộ xử lý đồ họa",
+    "vi mạch",
+    "lõi xử lý",
+    "công nghệ"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "726356ab-b945-48b0-8e3b-98fd16b1ee9b:1:r1",
+  "licenses": []
+}

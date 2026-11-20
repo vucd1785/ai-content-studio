@@ -55,6 +55,36 @@ describe("bắt đầu lượt chạy (quyết định 5)", () => {
     expect(api.callsTo(START)[0]?.[1]?.body).toBeUndefined();
   });
 
+  it("ADR-022: mặc định khung dọc, không gửi; chọn khung ngang thì gửi aspectRatio 16:9", async () => {
+    const api = installFakeApi({
+      [START]: () =>
+        jsonResponse(201, {
+          workflowRun: {
+            id: "00000000-0000-4000-8000-0000000000f1",
+            projectId: PROJECT_ID,
+            briefId: "00000000-0000-4000-8000-0000000000f2",
+            status: "idea_submitted",
+            resumeFrom: null,
+            failureCode: null,
+            aspectRatio: "16:9",
+            createdAt: NOW_ISO,
+            updatedAt: NOW_ISO,
+          },
+        }),
+    });
+    renderButton({ hasBrief: true, latestStatus: null });
+    const user = userEvent.setup();
+    const vertical = screen.getByRole("radio", {
+      name: (n) => n.startsWith(vi.startRun.aspectVertical),
+    });
+    const wide = screen.getByRole("radio", { name: (n) => n.startsWith(vi.startRun.aspectWide) });
+    expect((vertical as HTMLInputElement).checked).toBe(true);
+    await user.click(wide);
+    await user.click(screen.getByRole("button", { name: vi.startRun.start }));
+    await waitFor(() => expect(api.callsTo(START)).toHaveLength(1));
+    expect(JSON.parse(String(api.callsTo(START)[0]?.[1]?.body))).toEqual({ aspectRatio: "16:9" });
+  });
+
   it("run trước đã hủy: nhãn bắt đầu run mới; server từ chối thì báo lỗi tiếng Việt", async () => {
     installFakeApi({ [START]: () => apiError(409, "conflict") });
     renderButton({ hasBrief: true, latestStatus: "cancelled" });
@@ -95,7 +125,10 @@ describe("bắt đầu lượt chạy (quyết định 5)", () => {
   it("P6-15: model claude-code hiện tên Claude Code, value giữ nguyên id", async () => {
     installFakeApi({
       "GET /api/llm-models": () =>
-        jsonResponse(200, { defaultModel: "gemini-x", models: ["gemini-x", "claude-code", "claude-code:sonnet"] }),
+        jsonResponse(200, {
+          defaultModel: "gemini-x",
+          models: ["gemini-x", "claude-code", "claude-code:sonnet"],
+        }),
     });
     renderButton({ hasBrief: true, latestStatus: null });
     const select = (await screen.findByLabelText(vi.startRun.model)) as HTMLSelectElement;

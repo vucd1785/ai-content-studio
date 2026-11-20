@@ -10,10 +10,16 @@ import {
   assignSlots,
   buildStickStoryRenderProps,
   CUT_LEAD_FRAMES,
+  directCameras,
   fixPacing,
+  groupSlots,
+  planSfx,
+  SFX_MIN_GAP_FRAMES,
+  storyCards,
 } from "./build-stick-story-props.js";
 
 const WHAT_IF = getFormatPack("what_if", 1) as FormatPack;
+const STORY_V2 = getFormatPack("story", 2) as FormatPack;
 const CAST = [
   { characterKey: "ti", skinAssetId: "skin_ti", color: "#ffb08a" },
   { characterKey: "bit", skinAssetId: "skin_bit", color: "#8fe9ff" },
@@ -72,7 +78,7 @@ function media(
         ratioAtLeast90Pct: true,
         validationOk: true,
         passesGate: true,
-        gatePolicyVersion: "2.1.0-repair-zero-length",
+        gatePolicyVersion: "2.2.0-extend-last-word",
         trailingSilenceVerified: false,
         trailingSilenceMs: null,
         coverageAcceptanceReason: "within_250ms",
@@ -209,7 +215,7 @@ describe("dựng render props StickStory từ shot list", () => {
       "ti",
       "ti",
     ]);
-    expect(props.templateVersion).toBe(`1.1.0+kit.${props.motionKitVersion}`);
+    expect(props.templateVersion).toBe(`1.12.0+kit.${props.motionKitVersion}`);
   });
 
   it("không tìm thấy từ cắt: cắt ở đầu câu và có warning cut_word_not_found", () => {
@@ -221,6 +227,29 @@ describe("dựng render props StickStory từ shot list", () => {
       shotId: "s2",
       cutOnWord: "Tí",
     });
+  });
+
+  it("đồ vật: giữ đồ vật có chỗ, bỏ đồ vật ở cỡ cận và đồ vật thừa kèm warning prop_dropped (P6-19)", () => {
+    const s = script();
+    const [s1, s2] = s.scenes[0]?.shots ?? [];
+    const s3 = s.scenes[1]?.shots[0];
+    if (s1 === undefined || s2 === undefined || s3 === undefined) {
+      throw new Error("fixture");
+    }
+    s1.props = ["prop_server_overload", "prop_packets", "prop_shield"];
+    s2.props = ["prop_server"];
+    s3.props = ["prop_shield", "prop_laptop"];
+    const { props, warnings } = build(s);
+    expect(props.shots.map((shot) => shot.props)).toEqual([
+      ["prop_server_overload", "prop_packets"],
+      [],
+      ["prop_shield"],
+    ]);
+    expect(warnings.filter((w) => w.code === "prop_dropped")).toEqual([
+      { code: "prop_dropped", shotId: "s1", propId: "prop_shield" },
+      { code: "prop_dropped", shotId: "s2", propId: "prop_server" },
+      { code: "prop_dropped", shotId: "s3", propId: "prop_laptop" },
+    ]);
   });
 
   it("nhịp ngoài khoảng của gói mà code không sửa được thì warning pacing_violation", () => {
@@ -262,6 +291,93 @@ describe("sửa luật nhịp bằng code", () => {
     ambience: [],
   });
 
+  it("thẻ mở và kết theo cảnh title/outro (ADR-026): chữ trắng là câu nhân vật đọc, phụ đề hai cảnh đó bị ẩn", () => {
+    const line = (text: string) => [{ id: "l1", speaker: "bit", text }];
+    const script = {
+      title: "Vì sao đom đóm phát sáng?",
+      scenes: [
+        { id: "tieu-de", beat: "title", lines: line("Vì sao   đom đóm phát sáng?") },
+        { id: "mo", beat: "cold_open", lines: line("Ơ!") },
+        {
+          id: "ket",
+          beat: "outro",
+          lines: line("Follow chúng mình để biết thêm nhiều kiến thức thú vị nhé!"),
+        },
+      ],
+    } as unknown as Parameters<typeof storyCards>[0];
+    const ranges = [
+      { sceneId: "tieu-de", fromMs: 0, durationMs: 3000, fromFrame: 0, toFrame: 90 },
+      { sceneId: "mo", fromMs: 3000, durationMs: 2000, fromFrame: 90, toFrame: 150 },
+      { sceneId: "ket", fromMs: 5000, durationMs: 4000, fromFrame: 150, toFrame: 270 },
+    ];
+    const { cards, hideCaptionsIn } = storyCards(script, "Kênh Tò Mò", ranges);
+    expect(cards).toEqual({
+      intro: { title: "Vì sao đom đóm phát sáng?", toFrame: 90 },
+      outro: {
+        channel: "Kênh Tò Mò",
+        cta: "Follow chúng mình để biết thêm nhiều kiến thức thú vị nhé!",
+        button: "Follow",
+        fromFrame: 150,
+      },
+    });
+    expect(hideCaptionsIn).toEqual([
+      { fromMs: 0, toMs: 3000 },
+      { fromMs: 5000, toMs: 9000 },
+    ]);
+    // Màu nhấn của kênh tô tên kênh trên thẻ chuyển động; màu không hợp lệ thì bỏ.
+    expect(storyCards(script, "Kênh Tò Mò", ranges, "#f26b3a").cards.outro.accent).toBe("#f26b3a");
+    expect(storyCards(script, "Kênh Tò Mò", ranges, "cam").cards.outro).not.toHaveProperty(
+      "accent",
+    );
+    // ADR-028: avatar kênh đi kèm thẻ mời theo dõi.
+    expect(
+      storyCards(script, "Tí Hay Hỏi", ranges, "#f26b3a", "brand/kenh-a/avatar-0123456789ab.webp")
+        .cards.outro.avatar,
+    ).toBe("brand/kenh-a/avatar-0123456789ab.webp");
+    // Gói cũ (không có title/outro): thẻ như ADR-021, giữ mọi phụ đề.
+    const old = storyCards(
+      { ...script, scenes: [script.scenes[1]] } as typeof script,
+      null,
+      ranges,
+    );
+    expect(old.cards.intro).toEqual({ title: "Vì sao đom đóm phát sáng?" });
+    expect(old.cards.outro).toEqual({ channel: null, cta: "Theo dõi để xem tiếp nhé!" });
+    expect(old.hideCaptionsIn).toEqual([]);
+  });
+
+  it("ảnh kết mời theo dõi (ADR-026): người cao nhất đứng giữa, hai người còn lại hai bên", () => {
+    const heights: Record<string, number> = { dau: 300, ti: 520, bit: 430 };
+    const shots = [{ actors: [{ character: "dau" }, { character: "ti" }, { character: "bit" }] }];
+    expect(Object.fromEntries(groupSlots(shots, (c) => heights[c] ?? 0))).toEqual({
+      dau: "left",
+      bit: "right",
+      ti: "center",
+    });
+    // Hai người thì giữ luật thường.
+    expect(
+      Object.fromEntries(
+        groupSlots([{ actors: [{ character: "ti" }, { character: "bit" }] }], () => 1),
+      ),
+    ).toEqual({
+      ti: "left",
+      bit: "right",
+    });
+  });
+
+  it("cảnh mời theo dõi (ADR-026) giữ một shot: không chia, không đổi cỡ, máy không bị đổi", () => {
+    const outro = { ...shot("s9", 60, 200, "wide"), sceneId: "ket", camera: "cam_push_in" };
+    const hold = new Set(["ket"]);
+    const { shots, warnings } = fixPacing([shot("s1", 0, 60, "wide"), outro], WHAT_IF, 30, hold);
+    expect(shots.map((s) => [s.shotId, s.durationInFrames, s.shotSize])).toEqual([
+      ["s1", 60, "wide"],
+      ["s9", 200, "wide"],
+    ]);
+    expect(warnings).toEqual([]);
+    expect(directCameras(shots, () => true, hold).at(-1)?.camera).toBe("cam_push_in");
+    // Không giữ thì vẫn chia như mọi shot.
+    expect(fixPacing([outro], WHAT_IF, 30).shots.length).toBeGreaterThan(1);
+  });
+
   it("shot dài hơn 3 giây được chia, các phần xen cỡ cảnh", () => {
     const { shots, warnings } = fixPacing(
       [shot("s1", 0, 200, "medium"), shot("s2", 200, 60, "wide")],
@@ -277,6 +393,60 @@ describe("sửa luật nhịp bằng code", () => {
     expect(warnings).toEqual([
       { code: "pacing_fixed", shotId: "s1", action: "split" },
       { code: "pacing_fixed", shotId: "s1b", action: "shot_size_changed" },
+    ]);
+  });
+
+  it("shot hai nhân vật bị chia: phần lẻ cắt sang người nghe, người nói vẫn mở miệng (ADR-024)", () => {
+    const two = {
+      ...shot("s1", 0, 315, "medium"),
+      actors: [
+        ...shot("s1", 0, 315, "medium").actors,
+        {
+          character: "bit",
+          skin: "skin_bit",
+          action: "pose_stand",
+          expression: "expr_surprised",
+          slot: "right" as const,
+          speakingRanges: [],
+        },
+      ],
+    };
+    const { shots } = fixPacing([two], getFormatPack("story", 3) as FormatPack, 30);
+    // 3,5 giây là 105 frame: 315 frame thành ba phần.
+    expect(shots.map((s) => [s.shotId, s.durationInFrames, s.focus])).toEqual([
+      ["s1", 105, "ti"],
+      ["s1b", 105, "bit"],
+      ["s1c", 105, "ti"],
+    ]);
+    // Hai phần liền nhau không trùng cỡ cảnh, nhân vật và hành động giữ nguyên.
+    expect(shots[1]?.shotSize).not.toBe(shots[0]?.shotSize);
+    expect(shots[1]?.actors).toEqual(two.actors);
+    // Hiệu ứng đầu shot (ADR-025) chỉ ở phần đầu khi shot bị chia.
+    const withFx = fixPacing(
+      [{ ...two, effects: ["impact" as const] }],
+      getFormatPack("story", 3) as FormatPack,
+      30,
+    );
+    expect(withFx.shots.map((s) => s.effects)).toEqual([["impact"], undefined, undefined]);
+    // Shot một nhân vật không có ai để cắt sang.
+    const solo = fixPacing(
+      [shot("s9", 0, 220, "medium")],
+      getFormatPack("story", 3) as FormatPack,
+      30,
+    );
+    expect(solo.shots.map((s) => s.focus)).toEqual(["ti", "ti", "ti"]);
+  });
+
+  it("story v2: shot tới 5 giây giữ nguyên, dài hơn thì chia (ADR-013 bổ sung 2026-11-09)", () => {
+    const { shots } = fixPacing(
+      [shot("s1", 0, 150, "medium"), shot("s2", 150, 210, "wide")],
+      STORY_V2,
+      30,
+    );
+    expect(shots.map((s) => [s.shotId, s.fromFrame, s.durationInFrames])).toEqual([
+      ["s1", 0, 150],
+      ["s2", 150, 105],
+      ["s2b", 255, 105],
     ]);
   });
 
@@ -314,5 +484,82 @@ describe("sửa luật nhịp bằng code", () => {
       ["ti", "right"],
       ["dau", "center"],
     ]);
+  });
+});
+
+describe("âm thanh và máy quay theo luật (ADR-019, ADR-014 bổ sung 2026-11-12)", () => {
+  type Shot = Parameters<typeof planSfx>[0][number];
+  const shot = (over: Partial<Shot> & { action?: string; expression?: string }): Shot => {
+    const { action = "pose_stand", expression = "expr_happy", ...rest } = over;
+    return {
+      shotId: "s1",
+      sceneId: "a",
+      fromFrame: 0,
+      durationInFrames: 60,
+      background: "bg_room",
+      shotSize: "medium",
+      camera: "cam_static",
+      focus: "ti",
+      props: [],
+      ambience: [],
+      actors: [
+        { character: "ti", skin: "skin_ti", action, expression, slot: "left", speakingRanges: [] },
+      ],
+      ...rest,
+    };
+  };
+
+  it("SFX: vút qua khi sang cảnh, bật ra khi có bong bóng, bùng nhún khi hoảng; bỏ phần chia thêm", () => {
+    const cues = planSfx([
+      shot({ shotId: "s1", sceneId: "a", fromFrame: 0, action: "action_panic" }),
+      shot({ shotId: "s1b", sceneId: "a", fromFrame: 60, action: "action_panic" }),
+      shot({
+        shotId: "s2",
+        sceneId: "b",
+        fromFrame: 120,
+        shotSize: "wide",
+        illustration: { style: "bubble", owner: "ti", items: ["prop_laptop"] },
+      }),
+      shot({ shotId: "s3", sceneId: "b", fromFrame: 200, action: "action_celebrate" }),
+    ]);
+    expect(cues).toEqual([
+      { assetId: "sfx_boing", fromFrame: 3 },
+      { assetId: "sfx_whoosh", fromFrame: 116 },
+      { assetId: "sfx_sparkle", fromFrame: 205 },
+    ]);
+    // Bong bóng ở frame 124 sát tiếng vút (116): giữ tiếng sang cảnh, bỏ tiếng bong bóng.
+    expect(124 - 116).toBeLessThan(SFX_MIN_GAP_FRAMES);
+    // Phản ứng ngay trước tiếng sang cảnh nhường chỗ cho tiếng sang cảnh.
+    const near = planSfx([
+      shot({ shotId: "s1", sceneId: "a", fromFrame: 100, action: "action_panic" }),
+      shot({ shotId: "s2", sceneId: "b", fromFrame: 110 }),
+    ]);
+    expect(near).toEqual([{ assetId: "sfx_whoosh", fromFrame: 106 }]);
+  });
+
+  it("máy quay: giật máy khi hoảng, lùi máy mở cảnh rộng, đổi kiểu khi lặp ba lần", () => {
+    const out = directCameras([
+      shot({ shotId: "s1", shotSize: "wide" }),
+      shot({ shotId: "s2", camera: "cam_push_in", shotSize: "close", expression: "expr_panic" }),
+      shot({ shotId: "s3", camera: "cam_push_in", shotSize: "close" }),
+      shot({ shotId: "s4", camera: "cam_push_in", shotSize: "close" }),
+      shot({ shotId: "s5", camera: "cam_push_in", shotSize: "close" }),
+    ]);
+    expect(out.map((s) => s.camera)).toEqual([
+      "cam_pull_out",
+      "cam_bump",
+      "cam_push_in",
+      "cam_push_in",
+      "cam_static",
+    ]);
+    // Không giật máy hai lần trong ba shot liền; ngạc nhiên chỉ giật ở cỡ cận.
+    const calm = directCameras([
+      shot({ shotId: "s1", expression: "expr_panic" }),
+      shot({ shotId: "s2", expression: "expr_panic" }),
+      shot({ shotId: "s3", expression: "expr_surprised" }),
+    ]);
+    expect(calm.map((s) => s.camera)).toEqual(["cam_bump", "cam_static", "cam_static"]);
+    // Kênh chưa có camera mới thì giữ nguyên.
+    expect(directCameras([shot({ shotSize: "wide" })], () => false)[0]?.camera).toBe("cam_static");
   });
 });

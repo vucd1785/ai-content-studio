@@ -1,0 +1,12 @@
+{
+  "id": "prop_router_infected",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Router bị nhiễm mã độc: mắt đỏ phát sáng, con bọ bò trên nắp (máy trong botnet).",
+  "tags": ["router", "mã độc", "botnet", "thiết bị"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

@@ -1,0 +1,1 @@
+Font khuyến nghị: Be Vietnam Pro (Google Fonts, nguồn chính thức). Không phân phối file font trong bộ này. Tài nguyên SVG trong bộ được tạo mới phục vụ dự án. Ba ảnh tham khảo chỉ phục vụ moodboard, không xuất thành sản phẩm giao diện và có thể có text sai dấu.

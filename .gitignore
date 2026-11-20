@@ -15,8 +15,14 @@ __pycache__/
 
 *.mp4
 *.wav
+# ADR-019: thư viện âm thanh tự tạo là mã nguồn của kênh, được commit.
+!packages/audio-kit/assets/*.wav
 *.webm
 preview/
 export/
 # Mẫu preview/ ở trên dành cho output render; panel preview của web là mã nguồn (P2-08).
 !apps/web/src/features/preview/
+
+# Playwright (P7-10): kết quả chạy E2E, không commit.
+test-results/
+playwright-report/

@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_chip_423d1d",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật chip GPU NVIDIA dùng cho trung tâm dữ liệu, chụp cận, không có logo lớn.",
+  "tags": [
+    "NVIDIA GPU chip",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "9ea0d0e7-7391-4db0-b0ff-72ac4a6fa0aa:08644792:2:r3",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "tomshardware.com",
+      "url": "https://www.tomshardware.com/news/nvidia-hopper-h100-sxm5-pictured",
+      "file": "https://cdn.mos.cms.futurecdn.net/LyDiT8auxq3sJNZFZXV7V9-1280-80.png",
+      "attribution": "Ảnh: Nvidia's Hopper H100 SXM5 Pictured: Monstrous GPU Has Brutal VRM Config (https://www.tomshardware.com/news/nvidia-hopper-h100-sxm5-pictured)"
+    }
+  ]
+}

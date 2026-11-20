@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_ten_8157a8",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật tên lửa Falcon 9 cất cánh ban đêm, lửa cam và khói trắng.",
+  "tags": [
+    "Falcon 9 night launch",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "6c1fda1a-03e7-4ad8-a2af-577c9125413d:acb986ca:2:r4",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "space.com",
+      "url": "https://www.space.com/spacex-starlink-launch-vandenberg-july-2023",
+      "file": "https://cdn.mos.cms.futurecdn.net/yQkMf65AymCFQGSZpkbt24-1920-80.jpeg",
+      "attribution": "Ảnh: See SpaceX launch picture-perfect nighttime Starlink mission (photos) (https://www.space.com/spacex-starlink-launch-vandenberg-july-2023)"
+    }
+  ]
+}

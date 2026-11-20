@@ -80,8 +80,8 @@ export type FormatBeat = z.infer<typeof formatBeatSchema>;
 export type FormatPack = z.infer<typeof formatPackSchema>;
 
 /**
- * `story` v1 "Hoạt hình": gói chung cho mọi chủ đề (ADR-013 bổ sung (2) 2026-11-03). Brief mới luôn dùng gói này;
- * giao diện không có ô chọn thể loại. Không có người dẫn: Tí, Bit, Đậu nói hết lời thoại.
+ * `story` v1 "Hoạt hình": gói chung cho mọi chủ đề (ADR-013 bổ sung (2) 2026-11-03), 30–90 giây, 20–27 cắt mỗi phút.
+ * Từ 2026-11-09 chỉ giữ để đọc brief và run cũ; brief mới dùng `story` v2.
  */
 const STORY_V1: FormatPack = formatPackSchema.parse({
   id: "story",
@@ -125,10 +125,58 @@ const WHAT_IF_V1: FormatPack = formatPackSchema.parse({
   qaRules: [],
 });
 
-export const FORMAT_PACKS: readonly FormatPack[] = [STORY_V1, WHAT_IF_V1];
+/**
+ * `story` v2 "Hoạt hình" (ADR-013 bổ sung 2026-11-09): như v1, nhưng video dài tới 3 phút và nhịp chậm hơn
+ * (12–18 cắt mỗi phút, shot đứng yên tối đa 5 giây) để kịp nhìn hình và đọc phụ đề. Giao diện không có ô chọn
+ * thể loại. Không có người dẫn: Tí, Bit, Đậu nói hết lời thoại.
+ */
+const STORY_V2: FormatPack = formatPackSchema.parse({
+  ...STORY_V1,
+  version: 2,
+  durationSec: { min: 30, max: 180 },
+  pacing: { cutsPerMinute: { min: 12, max: 18 }, maxStaticSec: 5, noSameShotSizeInARow: true },
+});
+
+/**
+ * `story` v3 "Hoạt hình, nhịp nhanh" (ADR-024): như v2, nhưng dựng nhanh như phim hoạt hình ngắn: 18–26 cắt mỗi
+ * phút, shot đứng yên tối đa 3,5 giây. Phụ đề đi theo lời, không theo shot, nên cắt nhanh không làm khó đọc.
+ * Brief cũ giữ gói đã ghi.
+ */
+const STORY_V3: FormatPack = formatPackSchema.parse({
+  ...STORY_V2,
+  version: 3,
+  pacing: { cutsPerMinute: { min: 18, max: 26 }, maxStaticSec: 3.5, noSameShotSizeInARow: true },
+});
+
+/** Nhịp mở đầu: một nhân vật đọc tiêu đề video trên hình tượng trưng cho chủ đề (ADR-026). */
+export const TITLE_BEAT = "title";
+/** Nhịp kết: cả dàn nhân vật mời người xem theo dõi kênh; code dựng hình cố định (ADR-026). */
+export const OUTRO_BEAT = "outro";
+
+/**
+ * `story` v4 "Hoạt hình, có mở và kết" (ADR-026): như v3, thêm nhịp `title` ở đầu (đọc tiêu đề, hình tượng trưng)
+ * và nhịp `outro` ở cuối (ba nhân vật mời theo dõi). Brief cũ giữ gói đã ghi.
+ */
+const STORY_V4: FormatPack = formatPackSchema.parse({
+  ...STORY_V3,
+  version: 4,
+  beats: [
+    { id: TITLE_BEAT, label: "Đọc tiêu đề, hình tượng trưng", requiresSource: false },
+    ...STORY_V3.beats,
+    { id: OUTRO_BEAT, label: "Mời theo dõi kênh", requiresSource: false },
+  ],
+});
+
+export const FORMAT_PACKS: readonly FormatPack[] = [
+  STORY_V1,
+  STORY_V2,
+  STORY_V3,
+  STORY_V4,
+  WHAT_IF_V1,
+];
 
 /** Gói của mọi brief mới. */
-export const DEFAULT_FORMAT = { id: "story", version: 1 } as const;
+export const DEFAULT_FORMAT = { id: "story", version: 4 } as const;
 
 /** Gói theo id và version của brief; không có thì `undefined`. */
 export function getFormatPack(id: string, version: number): FormatPack | undefined {

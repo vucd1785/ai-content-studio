@@ -10,6 +10,7 @@ Mục tiêu là chứng minh mạch dữ liệu và các cổng dừng, không p
 | Tích hợp | Vitest + Compose | API approval, repository Drizzle, một job worker với provider giả. |
 | Media | Lệnh spike và ffprobe | WAV thật, alignment, MP4 đúng kích thước. Chạy khi task media yêu cầu, không chặn mọi unit test. |
 | Giao diện | Playwright từ Phase 2 | Đăng nhập, gửi brief, duyệt kịch bản, thấy trạng thái sau reload. |
+| Giao diện (P7-10) | Playwright `apps/web/e2e`, `pnpm --dir apps/web e2e` | API giả bằng `page.route` (dữ liệu mẫu ghi "(mẫu)"); tổng quan sáng/tối ở 1440, 1280, tablet; đang chạy bình thường và lỗi; worker tắt; hộp thoại hủy (focus, Esc); Cổng 1 có tài sản mới; Cổng 2 QA đạt và lỗi; usage, kho, nhận diện; chế độ Tập trung và Giám sát; bàn phím và viền focus. Ảnh ghi vào `data/ui-screens/`. |
 
 Test tích hợp chạy trên DB riêng `studio_test` (P3-13): vitest của `api`, `worker`, `db` đặt `DATABASE_URL` từ `TEST_DATABASE_URL` (mặc định `.../studio_test`) và từ chối DB không kết thúc bằng `_test`. Tạo và migrate: `pnpm --filter @studio/db db:test:prepare`. Worker thật đọc DB `studio` nên không bao giờ nhận job của test (lý do: sự cố 2026-10-31, P3-11 mục 6). Queue BullMQ của test dùng prefix riêng.
 

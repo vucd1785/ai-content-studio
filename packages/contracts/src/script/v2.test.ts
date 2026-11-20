@@ -20,6 +20,7 @@ import { normalizedWords, tokenizeWords } from "./words.js";
 
 const WHAT_IF = getFormatPack("what_if", 1) as FormatPack;
 const STORY = getFormatPack("story", 1) as FormatPack;
+const STORY_V2 = getFormatPack("story", 2) as FormatPack;
 /** Gói chỉ dùng trong test: có người dẫn, nhịp chậm (thay `explainer` đã xóa theo ADR-013 bổ sung (2)). */
 const NARRATED: FormatPack = formatPackSchema.parse({
   id: "narrated_test",
@@ -65,6 +66,7 @@ const CATALOG: CatalogAsset[] = [
   { id: "bg_classroom", kind: "background" },
   { id: "cam_static", kind: "camera" },
   { id: "cam_push_in", kind: "camera" },
+  { id: "prop_laptop", kind: "prop" },
 ];
 
 const OPTS: ScriptV2SchemaOptions = {
@@ -209,8 +211,14 @@ describe("gói thể loại", () => {
     for (const pack of FORMAT_PACKS) {
       expect(formatPackSchema.safeParse(pack).success).toBe(true);
     }
-    expect(FORMAT_PACKS.map((p) => p.id)).toEqual(["story", "what_if"]);
-    expect(DEFAULT_FORMAT).toEqual({ id: "story", version: 1 });
+    expect(FORMAT_PACKS.map((p) => `${p.id}@${p.version}`)).toEqual([
+      "story@1",
+      "story@2",
+      "story@3",
+      "story@4",
+      "what_if@1",
+    ]);
+    expect(DEFAULT_FORMAT).toEqual({ id: "story", version: 4 });
     expect(STORY.durationSec).toEqual({ min: 30, max: 90 });
     expect(STORY.allowNarrator).toBe(false);
     expect(STORY.beats.map((b) => b.id)).toEqual([
@@ -234,6 +242,21 @@ describe("gói thể loại", () => {
     expect(getFormatPack("what_if", 2)).toBeUndefined();
   });
 
+  it("story v2: dài tới 3 phút, nhịp chậm hơn, cùng khung nhịp với v1 (ADR-013 bổ sung 2026-11-09)", () => {
+    expect(STORY_V2.durationSec).toEqual({ min: 30, max: 180 });
+    expect(STORY_V2.pacing).toEqual({
+      cutsPerMinute: { min: 12, max: 18 },
+      maxStaticSec: 5,
+      noSameShotSizeInARow: true,
+    });
+    expect(STORY_V2.beats).toEqual(STORY.beats);
+    expect(STORY_V2.defaultCast).toEqual(STORY.defaultCast);
+    expect(STORY_V2.allowNarrator).toBe(false);
+    expect(STORY_V2.research).toBe(STORY.research);
+    // v1 không đổi để đọc run cũ.
+    expect(STORY.pacing.maxStaticSec).toBe(3);
+  });
+
   it.each([
     [WHAT_IF, 29, false],
     [WHAT_IF, 30, true],
@@ -242,8 +265,33 @@ describe("gói thể loại", () => {
     [STORY, 29, false],
     [STORY, 90, true],
     [STORY, 91, false],
+    [STORY_V2, 29, false],
+    [STORY_V2, 180, true],
+    [STORY_V2, 181, false],
   ])("thời lượng brief: %s.id %i giây → %s", (pack, sec, ok) => {
     expect(isDurationAllowed(pack, sec)).toBe(ok);
+  });
+
+  it("story v3 là gói của brief mới: như v2 nhưng nhịp nhanh, shot tối đa 3,5 giây (ADR-024)", () => {
+    const v3 = getFormatPack("story", 3) as FormatPack;
+    expect(v3.pacing).toEqual({
+      cutsPerMinute: { min: 18, max: 26 },
+      maxStaticSec: 3.5,
+      noSameShotSizeInARow: true,
+    });
+    expect(v3.durationSec).toEqual(STORY_V2.durationSec);
+    expect(v3.beats).toEqual(STORY_V2.beats);
+    // Video 60 giây: 18 đến 26 shot.
+    expect(shotsNeededForDuration(v3, 60)).toEqual({ min: 18, max: 26 });
+  });
+
+  it("story v4 là gói của brief mới: như v3, thêm nhịp title ở đầu và outro ở cuối (ADR-026)", () => {
+    const v3 = getFormatPack("story", 3) as FormatPack;
+    const v4 = getFormatPack("story", 4) as FormatPack;
+    expect(v4.pacing).toEqual(v3.pacing);
+    expect(v4.durationSec).toEqual(v3.durationSec);
+    expect(v4.beats.map((b) => b.id)).toEqual(["title", ...v3.beats.map((b) => b.id), "outro"]);
+    expect(v4.beats.filter((b) => b.requiresSource).map((b) => b.id)).toEqual(["fact"]);
   });
 
   it("chặn gói không research mà có nhịp cần nguồn", () => {
@@ -409,6 +457,39 @@ describe("scriptV2Schema", () => {
     expect(scriptV2Schema(OPTS).safeParse(withBoard).success).toBe(false);
   });
 
+  it("minh họa bong bóng hoặc bảng: chỉ hình đồ vật, owner trong shot, không ở cỡ close (ADR-014 bổ sung 2026-11-11)", () => {
+    const ok = validScript();
+    (ok.scenes[0]?.shots[0] as Record<string, unknown>).illustration = {
+      style: "bubble",
+      owner: "ti",
+      items: ["prop_laptop"],
+    };
+    const parsed = scriptV2Schema(OPTS).safeParse(ok);
+    expect(parsed.success).toBe(true);
+    const bad = validScript();
+    (bad.scenes[0]?.shots[1] as Record<string, unknown>).illustration = {
+      style: "board",
+      owner: "ti",
+      items: ["bg_room"],
+    };
+    const r = scriptV2Schema(OPTS).safeParse(bad);
+    expect(messages(r)).toEqual(
+      expect.arrayContaining([
+        "scenes.0.shots.1.illustration.style: Minh họa không dùng ở cỡ close (đầu nhân vật chiếm khung)",
+        "scenes.0.shots.1.illustration.owner: owner ti phải là nhân vật trong shot",
+        "scenes.0.shots.1.illustration.items.0: Tài sản bg_room là background, cần prop",
+      ]),
+    );
+    const withText = validScript();
+    (withText.scenes[0]?.shots[0] as Record<string, unknown>).illustration = {
+      style: "board",
+      owner: "ti",
+      items: ["prop_laptop"],
+      text: "E = mc²",
+    };
+    expect(scriptV2Schema(OPTS).safeParse(withText).success).toBe(false);
+  });
+
   it("ba nhân vật chỉ ở cỡ wide, high; Đậu nói khi kênh cho speaks (ADR-013 bổ sung 2026-11-03)", () => {
     const dau = { character: "dau", action: "pose_stand", expression: "expr_happy" };
     const three = validScript();
@@ -441,6 +522,68 @@ describe("scriptV2Schema", () => {
   it("standard không nhận assetRequests", () => {
     const r = scriptV2Schema(OPTS).safeParse({ ...validScript(), assetRequests: [] });
     expect(r.success).toBe(false);
+  });
+
+  it("creative: minh họa nêu id yêu cầu kind prop; standard hoặc kind khác bị chặn (ADR-014 bổ sung 2026-11-12)", () => {
+    const creative = { ...OPTS, mode: "creative" as const };
+    const script = validScript();
+    (script.scenes[0]?.shots[0] as Record<string, unknown>).illustration = {
+      style: "bubble",
+      owner: "ti",
+      items: ["r1", "prop_laptop"],
+    };
+    const prop = {
+      id: "r1",
+      kind: "prop",
+      description: "Đám mây trắng tròn, trôi nhẹ",
+      sceneIds: [script.scenes[0]?.id as string],
+      fallbackAssetId: "prop_laptop",
+    };
+    expect(
+      messages(scriptV2Schema(creative).safeParse({ ...script, assetRequests: [prop] })),
+    ).toEqual([]);
+    expect(
+      messages(
+        scriptV2Schema(creative).safeParse({
+          ...script,
+          assetRequests: [{ ...prop, kind: "action", fallbackAssetId: "action_walk" }],
+        }),
+      ),
+    ).toContain(
+      "scenes.0.shots.0.illustration.items.0: r1 trong minh họa phải là một yêu cầu tài sản kind prop (chế độ creative)",
+    );
+    expect(messages(scriptV2Schema(OPTS).safeParse(script))).toContain(
+      "scenes.0.shots.0.illustration.items.0: r1 trong minh họa phải là một yêu cầu tài sản kind prop (chế độ creative)",
+    );
+  });
+
+  it("hiệu ứng của shot: tối đa hai, trong danh sách (ADR-025)", () => {
+    const withFx = (effects: string[]) => {
+      const script = validScript();
+      const shot = script.scenes[0]?.shots[0] as { effects?: string[] };
+      shot.effects = effects;
+      return script;
+    };
+    expect(scriptV2Schema(OPTS).safeParse(withFx(["flash", "impact"])).success).toBe(true);
+    expect(scriptV2Schema(OPTS).safeParse(withFx(["flash", "impact", "idea"])).success).toBe(false);
+    expect(scriptV2Schema(OPTS).safeParse(withFx(["explosion"])).success).toBe(false);
+  });
+
+  it("tông ánh sáng của shot là một giá trị trong danh sách (ADR-023)", () => {
+    const withMood = (mood: string) => {
+      const script = validScript();
+      const shot = script.scenes[0]?.shots[0] as { mood?: string };
+      shot.mood = mood;
+      return script;
+    };
+    expect(scriptV2Schema(OPTS).safeParse(validScript()).success).toBe(true);
+    expect(scriptV2Schema(OPTS).safeParse(withMood("night")).success).toBe(true);
+    expect(scriptV2Schema(OPTS).safeParse(withMood("neon")).success).toBe(false);
+  });
+
+  it("nhạc nền là một không khí trong thư viện âm thanh (ADR-019)", () => {
+    expect(scriptV2Schema(OPTS).safeParse({ ...validScript(), music: "to_mo" }).success).toBe(true);
+    expect(scriptV2Schema(OPTS).safeParse({ ...validScript(), music: "rock" }).success).toBe(false);
   });
 
   it("creative: yêu cầu tài sản hợp lệ, fallback phải có trong kho và cùng kind", () => {

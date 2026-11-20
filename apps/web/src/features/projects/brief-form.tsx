@@ -24,6 +24,10 @@ type FormValues = Record<TextField | "notes" | "durationSec", string>;
 const PACK = getFormatPack(DEFAULT_FORMAT.id, DEFAULT_FORMAT.version) as FormatPack;
 type FieldErrors = Partial<Record<FieldName, string>>;
 
+/** Giới hạn của `briefWriteBodySchema` (contracts `api/project.ts`). */
+const TEXT_MAX = 2000;
+const NOTES_MAX = 8000;
+
 function initialValues(brief: Brief | null): FormValues {
   return {
     topic: brief?.topic ?? "",
@@ -38,7 +42,7 @@ function initialValues(brief: Brief | null): FormValues {
 
 /**
  * Validate bằng đúng schema hợp đồng (`briefWriteBodySchema`). Sai thì không gửi request.
- * `durationSec` rỗng hoặc ngoài khoảng của gói `story` (30–90 giây) → lỗi tiếng Việt.
+ * `durationSec` rỗng hoặc ngoài khoảng của gói `story` v3 (30–180 giây) → lỗi tiếng Việt.
  */
 export function validateBrief(
   values: FormValues,
@@ -110,48 +114,82 @@ export function BriefForm({ projectId, brief }: { projectId: string; brief: Brie
     ...(errors[field] !== undefined ? { "aria-describedby": `${fieldId(field)}-error` } : {}),
   });
 
+  /** Ô văn bản nhiều dòng tự giãn theo nội dung, có gợi ý và bộ đếm ký tự. */
+  const textField = (field: TextField | "notes", rows: number) => {
+    const max = field === "notes" ? NOTES_MAX : TEXT_MAX;
+    const length = values[field].length;
+    return (
+      <div key={field} className="flex flex-col gap-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <Label htmlFor={fieldId(field)}>{vi.brief[field]}</Label>
+          <span
+            className={`text-xs tabular-nums ${length > max ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            {length.toLocaleString("vi-VN")}/{max.toLocaleString("vi-VN")}
+          </span>
+        </div>
+        <Textarea
+          {...ariaFor(field)}
+          rows={rows}
+          className="resize-y leading-relaxed"
+          placeholder={vi.brief.placeholders[field]}
+          value={values[field]}
+          onChange={(event) => setField(field, event.target.value)}
+        />
+        {errorFor(field)}
+      </div>
+    );
+  };
+
   return (
     <form
-      className="flex flex-col gap-3"
+      className="bg-card @container flex flex-col gap-5 rounded-2xl border p-5"
       onSubmit={onSubmit}
       noValidate
       aria-label={vi.brief.heading}
     >
-      <h3 className="text-sm font-semibold">{vi.brief.heading}</h3>
-      {TEXT_FIELDS.map((field) => (
-        <div key={field} className="flex flex-col gap-1">
-          <Label htmlFor={fieldId(field)}>{vi.brief[field]}</Label>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-semibold">{vi.brief.heading}</h2>
+        <p className="text-muted-foreground text-sm">{vi.brief.intro}</p>
+      </div>
+      <fieldset className="flex flex-col gap-4">
+        <legend className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+          {vi.brief.sectionContent}
+        </legend>
+        {textField("topic", 2)}
+        {textField("goal", 3)}
+      </fieldset>
+      <fieldset className="grid gap-4 @lg:grid-cols-2">
+        <legend className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+          {vi.brief.sectionStyle}
+        </legend>
+        {textField("audience", 2)}
+        {textField("tone", 2)}
+        {textField("visualStyle", 3)}
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={fieldId("durationSec")}>{vi.brief.durationSec}</Label>
           <Input
-            {...ariaFor(field)}
-            value={values[field]}
-            onChange={(event) => setField(field, event.target.value)}
+            {...ariaFor("durationSec")}
+            type="number"
+            inputMode="numeric"
+            min={PACK.durationSec.min}
+            max={PACK.durationSec.max}
+            step={1}
+            value={values.durationSec}
+            onChange={(event) => setField("durationSec", event.target.value)}
           />
-          {errorFor(field)}
+          <p className="text-muted-foreground text-xs">
+            {vi.brief.durationHint(PACK.durationSec.min, PACK.durationSec.max)}
+          </p>
+          {errorFor("durationSec")}
         </div>
-      ))}
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={fieldId("durationSec")}>{vi.brief.durationSec}</Label>
-        <Input
-          {...ariaFor("durationSec")}
-          type="number"
-          inputMode="numeric"
-          min={PACK.durationSec.min}
-          max={PACK.durationSec.max}
-          step={1}
-          value={values.durationSec}
-          onChange={(event) => setField("durationSec", event.target.value)}
-        />
-        {errorFor("durationSec")}
-      </div>
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={fieldId("notes")}>{vi.brief.notes}</Label>
-        <Textarea
-          {...ariaFor("notes")}
-          value={values.notes}
-          onChange={(event) => setField("notes", event.target.value)}
-        />
-        {errorFor("notes")}
-      </div>
+      </fieldset>
+      <fieldset className="flex flex-col gap-4">
+        <legend className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+          {vi.brief.sectionNotes}
+        </legend>
+        {textField("notes", 10)}
+      </fieldset>
       {serverError !== null ? (
         <p role="alert" className="text-destructive text-sm">
           {serverError}
@@ -162,9 +200,11 @@ export function BriefForm({ projectId, brief }: { projectId: string; brief: Brie
           {vi.brief.saved}
         </p>
       ) : null}
-      <Button type="submit" disabled={save.isPending}>
-        {save.isPending ? vi.brief.saving : vi.brief.save}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={save.isPending} className="min-w-32">
+          {save.isPending ? vi.brief.saving : vi.brief.save}
+        </Button>
+      </div>
     </form>
   );
 }

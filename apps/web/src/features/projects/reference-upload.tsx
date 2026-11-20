@@ -1,17 +1,18 @@
-import type { ReferenceResponse } from "@studio/contracts";
+import { type ReferenceResponse, referenceJsonBodySchema } from "@studio/contracts";
 import { type FormEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { vi } from "@/i18n/vi";
 import { ApiError } from "@/lib/api";
-import { useUploadReference } from "./use-projects";
+import { useAddReferenceUrl, useUploadReference } from "./use-projects";
 
 /** Cùng trần với server (P2-03): 10 × 1024 × 1024 byte. */
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = ["md", "txt", "pdf"];
+// ADR-030: ảnh PNG, JPEG, WebP được đưa vào video như hình minh họa thật.
+const ALLOWED_EXTENSIONS = ["md", "txt", "pdf", "png", "jpg", "jpeg", "webp"];
 
-/** Kiểm trước khi gửi: đuôi md/txt/pdf và ≤ 10 MiB. Server vẫn sniff nội dung. */
+/** Kiểm trước khi gửi: đuôi md/txt/pdf hoặc ảnh png/jpg/webp, ≤ 10 MiB. Server vẫn sniff nội dung. */
 export function validateUploadFile(file: File | undefined): string | null {
   if (file === undefined) return vi.references.noFile;
   const dot = file.name.lastIndexOf(".");
@@ -61,8 +62,11 @@ export function ReferenceUpload({
   const errorText = localError ?? (upload.isError ? uploadErrorMessage(upload.error) : null);
 
   return (
-    <section className="flex flex-col gap-3" aria-label={vi.references.heading}>
-      <h3 className="text-sm font-semibold">{vi.references.heading}</h3>
+    <section
+      className="bg-card flex flex-col gap-3 rounded-2xl border p-5"
+      aria-label={vi.references.heading}
+    >
+      <h2 className="text-lg font-semibold">{vi.references.heading}</h2>
       {references.length === 0 ? (
         <p className="text-muted-foreground text-sm">{vi.references.empty}</p>
       ) : (
@@ -73,8 +77,16 @@ export function ReferenceUpload({
         </ul>
       )}
       <form className="flex flex-col gap-2" onSubmit={onSubmit} noValidate>
-        <Label htmlFor={inputId}>{vi.references.fileLabel}</Label>
-        <Input id={inputId} ref={inputRef} type="file" accept=".md,.txt,.pdf" />
+        <Label htmlFor={inputId} className="leading-snug">
+          {vi.references.fileLabel}
+        </Label>
+        <Input
+          id={inputId}
+          ref={inputRef}
+          type="file"
+          accept=".md,.txt,.pdf,.png,.jpg,.jpeg,.webp"
+        />
+        <p className="text-muted-foreground text-xs">{vi.references.imageHint}</p>
         {errorText !== null ? (
           <p role="alert" className="text-destructive text-sm">
             {errorText}
@@ -89,6 +101,54 @@ export function ReferenceUpload({
           {upload.isPending ? vi.references.uploading : vi.references.upload}
         </Button>
       </form>
+      <UrlReferenceForm projectId={projectId} />
     </section>
+  );
+}
+
+function UrlReferenceForm({ projectId }: { projectId: string }) {
+  const [url, setUrl] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
+  const add = useAddReferenceUrl(projectId);
+  const inputId = `reference-url-${projectId}`;
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const parsed = referenceJsonBodySchema.safeParse({ url: url.trim() });
+    if (!parsed.success) {
+      setLocalError(vi.references.badUrl);
+      add.reset();
+      return;
+    }
+    setLocalError(null);
+    add.mutate(parsed.data.url, { onSuccess: () => setUrl("") });
+  };
+  const errorText = localError ?? (add.isError ? vi.references.urlServerError : null);
+  return (
+    <form className="flex flex-col gap-2 border-t pt-3" onSubmit={onSubmit} noValidate>
+      <Label htmlFor={inputId} className="leading-snug">
+        {vi.references.urlLabel}
+      </Label>
+      <Input
+        id={inputId}
+        type="url"
+        inputMode="url"
+        value={url}
+        onChange={(event) => setUrl(event.target.value)}
+        aria-invalid={errorText !== null}
+      />
+      {errorText !== null ? (
+        <p role="alert" className="text-destructive text-sm">
+          {errorText}
+        </p>
+      ) : null}
+      {add.isSuccess ? (
+        <p role="status" className="text-sm">
+          {vi.references.urlAdded}
+        </p>
+      ) : null}
+      <Button type="submit" variant="secondary" disabled={add.isPending}>
+        {add.isPending ? vi.references.addingUrl : vi.references.addUrl}
+      </Button>
+    </form>
   );
 }

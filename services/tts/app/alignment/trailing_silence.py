@@ -7,7 +7,7 @@ import struct
 import wave
 from pathlib import Path
 
-GATE_POLICY_VERSION = "2.1.0-repair-zero-length"
+GATE_POLICY_VERSION = "2.2.0-extend-last-word"
 STRICT_COVERAGE_MS = 250
 MAX_SILENCE_EXCEPTION_TRAILING_MS = 400
 SILENCE_PEAK_THRESHOLD_DBFS = -40.0
@@ -19,6 +19,41 @@ def _peak_dbfs(samples: list[int]) -> float:
         return float("-inf")
     peak = max(abs(s) for s in samples)
     return 20 * math.log10(peak / 32768.0 + 1e-12)
+
+
+def read_mono_pcm16(
+    wav_path: Path,
+) -> tuple[tuple[tuple[int, ...], int, int] | None, str | None]:
+    """Đọc WAV PCM 16-bit, lấy kênh đầu. Trả ((samples, rate, nframes), None) hoặc (None, lý do)."""
+    if not wav_path.is_file():
+        return None, "wav_missing"
+    try:
+        with wave.open(str(wav_path), "rb") as wf:
+            rate = wf.getframerate()
+            nch = wf.getnchannels()
+            sw = wf.getsampwidth()
+            if sw != 2 or rate <= 0:
+                return None, "unsupported_wav_format"
+            nframes = wf.getnframes()
+            raw = wf.readframes(nframes)
+    except (OSError, wave.Error) as exc:
+        return None, f"wav_read_failed:{exc}"
+    if len(raw) < 2:
+        return None, "empty_pcm"
+    samples = struct.unpack("<" + "h" * (len(raw) // 2), raw)
+    if nch > 1:
+        samples = samples[::nch]
+    return (samples, rate, nframes), None
+
+
+def window_peak_dbfs(samples: tuple[int, ...], rate: int, start_ms: int, end_ms: int) -> float | None:
+    """Peak dBFS của đoạn [start_ms, end_ms); None nếu đoạn rỗng."""
+    s0 = int(start_ms / 1000 * rate)
+    s1 = max(s0 + 1, int(end_ms / 1000 * rate))
+    seg = samples[s0:s1]
+    if not seg:
+        return None
+    return _peak_dbfs(list(seg))
 
 
 def verify_trailing_silence(
@@ -42,24 +77,10 @@ def verify_trailing_silence(
     if trailing_ms > MAX_SILENCE_EXCEPTION_TRAILING_MS:
         return False, "trailing_exceeds_max_exception"
 
-    try:
-        with wave.open(str(wav_path), "rb") as wf:
-            rate = wf.getframerate()
-            nch = wf.getnchannels()
-            sw = wf.getsampwidth()
-            if sw != 2 or rate <= 0:
-                return False, "unsupported_wav_format"
-            nframes = wf.getnframes()
-            raw = wf.readframes(nframes)
-    except (OSError, wave.Error) as exc:
-        return False, f"wav_read_failed:{exc}"
-
-    if len(raw) < 2:
-        return False, "empty_pcm"
-
-    samples = struct.unpack("<" + "h" * (len(raw) // 2), raw)
-    if nch > 1:
-        samples = samples[::nch]
+    pcm, reason = read_mono_pcm16(wav_path)
+    if pcm is None:
+        return False, reason
+    samples, rate, nframes = pcm
 
     file_duration_ms = int(round(nframes / rate * 1000))
     if abs(file_duration_ms - duration_ms) > 2:

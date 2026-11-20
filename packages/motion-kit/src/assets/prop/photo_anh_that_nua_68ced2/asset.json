@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_nua_68ced2",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật nửa nắp mũi tên lửa Falcon 9 bung dù hoặc được vớt lên tàu.",
+  "tags": [
+    "Falcon 9 fairing recovery",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "d2086fde-170a-441c-acb4-a57a668bb938:2:r3",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "space.com",
+      "url": "https://www.space.com/spacex-fairing-catching-ship-port-photos.html",
+      "file": "https://cdn.mos.cms.futurecdn.net/uA9SR5JyPRAg5SoypThf2C-1022-80.jpeg",
+      "attribution": "Ảnh: SpaceX Fairing-Snagging Ship Returns to Shore with Epic Catch (Photos) (https://www.space.com/spacex-fairing-catching-ship-port-photos.html)"
+    }
+  ]
+}

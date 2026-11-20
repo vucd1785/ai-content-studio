@@ -1,0 +1,12 @@
+{
+  "id": "prop_laptop",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Laptop trên bàn nhỏ, màn hình sáng, ba chấm tải chạy lần lượt (người dùng, khách truy cập).",
+  "tags": ["máy tính", "người dùng", "làm việc"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

@@ -1,0 +1,19 @@
+{
+  "id": "prop_day_nha_nho_ebc6",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Một dãy bốn ngôi nhà nhỏ nhiều màu, vẽ phẳng, đứng thành hàng; cửa sổ lần lượt bật đèn vàng ấm, đèn bừng sáng, đèn hắt quầng nhấp nháy nhẹ, rồi tắt và lặp lại, khói từ ống khói bay lên chầm chậm.",
+  "tags": [
+    "dãy nhà",
+    "khu phố",
+    "bật đèn",
+    "cửa sổ sáng",
+    "tiêu thụ điện",
+    "thành phố"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "72294a26-3aed-463f-a4da-31c482622c9f:49540158:1:r4",
+  "licenses": []
+}

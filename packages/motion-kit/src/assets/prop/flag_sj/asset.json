@@ -1,0 +1,24 @@
+{
+  "id": "flag_sj",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Svalbard and Jan Mayen bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Svalbard and Jan Mayen.",
+  "tags": [
+    "cờ Svalbard and Jan Mayen",
+    "nước Svalbard and Jan Mayen",
+    "người Svalbard and Jan Mayen",
+    "Svalbard and Jan Mayen",
+    "quốc kỳ Svalbard and Jan Mayen"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

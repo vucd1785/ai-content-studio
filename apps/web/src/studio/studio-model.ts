@@ -12,6 +12,8 @@ export const AGENT_ROLES = [
   "voice",
   "video",
   "qa",
+  // ADR-018: bộ đăng bài chạy sau khi xuất video.
+  "publish",
 ] as const;
 export type AgentRole = (typeof AGENT_ROLES)[number];
 
@@ -39,11 +41,11 @@ export type StatusVisual = {
 /** Bảng "Ánh xạ trạng thái" trong 06-3D-UI-DESIGN.md, màu theo token thiết kế (cùng màu với 2D). */
 export const STATUS_VISUALS: Readonly<Record<AgentStatus, StatusVisual>> = {
   idle: { lightColor: "#4a4f5a", lightIntensity: 0, approvalSign: false },
-  queued: { lightColor: "#e7a33e", lightIntensity: 0.5, approvalSign: false },
-  running: { lightColor: "#5b78ff", lightIntensity: 1.6, approvalSign: false },
-  waiting_approval: { lightColor: "#e7a33e", lightIntensity: 1.2, approvalSign: true },
-  completed: { lightColor: "#3fb27f", lightIntensity: 0.9, approvalSign: false },
-  failed: { lightColor: "#e5534b", lightIntensity: 1.4, approvalSign: false },
+  queued: { lightColor: "#f5b83d", lightIntensity: 0.5, approvalSign: false },
+  running: { lightColor: "#8fe9ff", lightIntensity: 1.6, approvalSign: false },
+  waiting_approval: { lightColor: "#f5b83d", lightIntensity: 1.2, approvalSign: true },
+  completed: { lightColor: "#4cd07d", lightIntensity: 0.9, approvalSign: false },
+  failed: { lightColor: "#e5484d", lightIntensity: 1.4, approvalSign: false },
   cancelled: { lightColor: "#4a4f5a", lightIntensity: 0, approvalSign: false },
 };
 

@@ -1,0 +1,19 @@
+{
+  "id": "prop_huan_luyen_vien_90c7",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Một huấn luyện viên người que đội mũ lưỡi trai, đeo còi, cầm bảng chiến thuật đứng cạnh ba cầu thủ người que mặc áo xanh lá. Các cầu thủ bật nhảy dang tay khởi động lệch nhịp nhau, có co giãn khi tiếp đất. Huấn luyện viên khẽ gật đầu, bảng chiến thuật nhấp nhô và đường mũi tên trên bảng nhấp nháy.",
+  "tags": [
+    "huấn luyện viên",
+    "cầu thủ",
+    "khởi động",
+    "bảng chiến thuật",
+    "đội bóng",
+    "người que"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "5bd0ed4b-e18e-491f-a349-b614fb4b2e92:2:r5",
+  "licenses": []
+}

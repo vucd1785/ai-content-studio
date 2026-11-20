@@ -1,6 +1,13 @@
-import { and, asc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { StudioDb } from "./db.js";
-import { motionAssetRequests, motionAssets } from "./schema/index.js";
+import {
+  artifacts,
+  motionAssetRequests,
+  motionAssets,
+  projects,
+  workflowRuns,
+} from "./schema/index.js";
+import type { StudioTx } from "./workflow.js";
 
 /**
  * Kho tài sản và yêu cầu tài sản (ADR-016, P6-07).
@@ -218,4 +225,103 @@ export async function resolveMotionAssetRequest(
     }
     return updated;
   });
+}
+
+/**
+ * ADR-017 mục 2: tài sản worker vừa tạo (hoặc dùng lại) là `candidate`; yêu cầu được đóng ngay để cảnh dùng
+ * tài sản mới ở storyboard. Tài sản thành `approved` khi Director duyệt phương án ở Cổng 1.
+ */
+export async function fulfillMotionAssetRequestWithAsset(
+  db: StudioDb,
+  requestId: string,
+  assetId: string,
+): Promise<void> {
+  await db
+    .update(motionAssetRequests)
+    .set({ status: "fulfilled", fulfilledAssetId: assetId, updatedAt: new Date() })
+    .where(and(eq(motionAssetRequests.id, requestId), eq(motionAssetRequests.status, "open")));
+}
+
+/** Yêu cầu tài sản của một artifact script (mọi phương án), theo thứ tự ghi. */
+export async function listMotionAssetRequestsForScript(db: StudioDb, scriptArtifactId: string) {
+  return db
+    .select()
+    .from(motionAssetRequests)
+    .where(eq(motionAssetRequests.scriptArtifactId, scriptArtifactId))
+    .orderBy(asc(motionAssetRequests.variantIndex), asc(motionAssetRequests.requestKey));
+}
+
+/**
+ * Duyệt phương án ở Cổng 1 (ADR-017 mục 3): tài sản `candidate` mà phương án đó dùng thành `approved`.
+ * Gọi trong cùng giao dịch với approval; trả id tài sản vừa đổi để worker cập nhật `asset.json`.
+ */
+export async function approveCandidateAssetsForVariant(
+  db: StudioDb | StudioTx,
+  target: { scriptArtifactId: string; variantIndex: number },
+): Promise<string[]> {
+  const requests = await db
+    .select({ assetId: motionAssetRequests.fulfilledAssetId })
+    .from(motionAssetRequests)
+    .where(
+      and(
+        eq(motionAssetRequests.scriptArtifactId, target.scriptArtifactId),
+        eq(motionAssetRequests.variantIndex, target.variantIndex),
+        eq(motionAssetRequests.status, "fulfilled"),
+      ),
+    );
+  const ids = [...new Set(requests.map((r) => r.assetId).filter((id): id is string => !!id))];
+  if (ids.length === 0) {
+    return [];
+  }
+  const updated = await db
+    .update(motionAssets)
+    .set({ status: "approved", syncedAt: sql`now()` })
+    .where(and(inArray(motionAssets.assetId, ids), eq(motionAssets.status, "candidate")))
+    .returning({ assetId: motionAssets.assetId });
+  return updated.map((r) => r.assetId);
+}
+
+/** Chỉ cho test tích hợp: xóa yêu cầu của các run và các tài sản đã tạo trong test. */
+export async function deleteMotionAssetRowsForTests(
+  db: StudioDb,
+  target: { workflowRunIds: string[]; assetIds: string[] },
+): Promise<void> {
+  if (target.workflowRunIds.length > 0) {
+    await db
+      .delete(motionAssetRequests)
+      .where(inArray(motionAssetRequests.workflowRunId, target.workflowRunIds));
+  }
+  if (target.assetIds.length > 0) {
+    await db.delete(motionAssets).where(inArray(motionAssets.assetId, target.assetIds));
+  }
+}
+
+/**
+ * `render_props` mới nhất của mỗi run kèm dự án (lọc "dùng trong video nào" ở Kho, ADR-021).
+ * API đọc file props để biết tài sản nào có trong video.
+ */
+export async function listLatestRenderPropsByRun(db: StudioDb) {
+  const rows = await db
+    .select({
+      workflowRunId: artifacts.workflowRunId,
+      projectId: projects.id,
+      projectName: projects.title,
+      runStatus: workflowRuns.status,
+      storageKey: artifacts.storageKey,
+      version: artifacts.version,
+      createdAt: artifacts.createdAt,
+    })
+    .from(artifacts)
+    .innerJoin(workflowRuns, eq(workflowRuns.id, artifacts.workflowRunId))
+    .innerJoin(projects, eq(projects.id, workflowRuns.projectId))
+    .where(eq(artifacts.type, "render_props"))
+    .orderBy(asc(artifacts.createdAt));
+  const latest = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    const prev = latest.get(row.workflowRunId);
+    if (prev === undefined || row.version > prev.version) {
+      latest.set(row.workflowRunId, row);
+    }
+  }
+  return [...latest.values()];
 }

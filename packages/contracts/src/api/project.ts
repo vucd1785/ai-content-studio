@@ -47,8 +47,8 @@ const briefFieldsSchema = z.object({
 });
 
 /**
- * Body ghi brief. Client không chọn thể loại (ADR-013 bổ sung (2)): API luôn ghi `DEFAULT_FORMAT` (`story` v1),
- * nên thời lượng kiểm theo gói đó (30–90 giây). Trường lạ như `formatId` bị bỏ qua.
+ * Body ghi brief. Client không chọn thể loại (ADR-013 bổ sung (2)): API luôn ghi `DEFAULT_FORMAT` (`story` v4, ADR-026),
+ * nên thời lượng kiểm theo gói đó (30–180 giây). Trường lạ như `formatId` bị bỏ qua.
  */
 export const briefWriteBodySchema = briefFieldsSchema.superRefine((body, ctx) => {
   const pack = getFormatPack(DEFAULT_FORMAT.id, DEFAULT_FORMAT.version);
@@ -66,7 +66,7 @@ export const briefWriteBodySchema = briefFieldsSchema.superRefine((body, ctx) =>
 
 export type BriefWriteBody = z.infer<typeof briefWriteBodySchema>;
 
-/** Brief đã lưu: brief cũ có thể là gói `what_if`; brief mới là `story`. */
+/** Brief đã lưu: brief cũ có thể là gói `what_if`; brief mới là `story` v3. */
 export const briefSchema = briefFieldsSchema.extend({
   formatId: z.string().min(1),
   formatVersion: z.number().int().min(1).default(1),

@@ -34,26 +34,40 @@ export type ClaudeCodeClientOptions = {
   /** Alias cho `--model`; không đặt thì dùng model mặc định của tài khoản. */
   model?: string;
   timeoutMs: number;
+  /**
+   * ADR-032: chỉ lần gọi tìm ảnh trên web bật `WebSearch` (tìm kiếm chạy phía Anthropic, không đọc máy). Mặc định
+   * không công cụ nào.
+   */
+  webSearch?: boolean;
 };
+
+/** Số lượt tối đa khi có tìm kiếm web: vài lần tìm rồi trả JSON. */
+const WEB_SEARCH_MAX_TURNS = "8";
 
 /**
  * Cờ khóa chặt: không nạp cấu hình người dùng, không công cụ, không MCP, không lưu phiên,
  * system prompt của app. Không dùng `--bare` vì `--bare` bỏ qua đăng nhập gói thuê bao.
+ * `webSearch` (ADR-032) chỉ bật đúng công cụ `WebSearch`, không `WebFetch`, Bash hay file.
  */
-export function claudeCodeArgs(request: StructuredGenerateRequest, model?: string): string[] {
+export function claudeCodeArgs(
+  request: StructuredGenerateRequest,
+  model?: string,
+  webSearch = false,
+): string[] {
   return [
     "-p",
     "--output-format",
     "json",
     "--safe-mode",
     "--tools",
-    "",
+    webSearch ? "WebSearch" : "",
+    ...(webSearch ? ["--allowedTools", "WebSearch"] : []),
     "--strict-mcp-config",
     "--permission-mode",
     "dontAsk",
     "--no-session-persistence",
     "--max-turns",
-    "3",
+    webSearch ? WEB_SEARCH_MAX_TURNS : "3",
     "--system-prompt",
     request.systemInstruction,
     ...(request.responseJsonSchema
@@ -94,7 +108,10 @@ export function createClaudeCodeClient(options: ClaudeCodeClientOptions): Struct
       try {
         stdout = await runCli(
           options,
-          [...(options.binArgs ?? []), ...claudeCodeArgs(request, options.model)],
+          [
+            ...(options.binArgs ?? []),
+            ...claudeCodeArgs(request, options.model, options.webSearch === true),
+          ],
           request.userPrompt,
           cwd,
         );

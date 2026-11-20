@@ -1,0 +1,19 @@
+{
+  "id": "prop_quay_tu_thanh_dd70",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Quầy tự thanh toán ở siêu thị vẽ phẳng, có màn hình cảm ứng, máy quét có tia laser đỏ quét lên xuống, khay đặt hàng có hộp hàng; đèn trạng thái nhấp nháy, nút thanh toán trên màn hình sáng theo nhịp, gợn sóng khi chạm tay lan ra rồi tắt dần, hộp hàng nảy nhẹ.",
+  "tags": [
+    "quầy tự thanh toán",
+    "siêu thị",
+    "máy quét mã",
+    "màn hình cảm ứng",
+    "tự động hóa",
+    "máy móc"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "c5835454-59d6-494f-b58a-66387295c94f:1:r3",
+  "licenses": []
+}

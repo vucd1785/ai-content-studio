@@ -1,6 +1,11 @@
 {
   "fonts": [
     {
+      "name": "Be Vietnam Pro",
+      "source": "bundled: apps/video/src/fonts (Bold, ExtraBold), from github.com/google/fonts ofl/bevietnampro",
+      "license": "SIL Open Font License 1.1 (apps/video/src/fonts/OFL.txt)"
+    },
+    {
       "name": "Segoe UI",
       "source": "system",
       "license": "Proprietary (Windows system font); not redistributed in this package"

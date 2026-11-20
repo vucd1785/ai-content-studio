@@ -1,8 +1,7 @@
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const databaseUrl =
-  process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
+const databaseUrl = process.env.DATABASE_URL ?? "postgresql://studio:studio@localhost:5432/studio";
 
 const EXPECTED_TABLES = [
   "projects",
@@ -57,73 +56,77 @@ describe("P2-01 schema constraints (Postgres)", () => {
   });
 
   it("từ chối jobs.idempotency_key trùng", async () => {
-    await sql.begin(async (tx) => {
-      const [project] = await tx<{ id: string }[]>`
+    await sql
+      .begin(async (tx) => {
+        const [project] = await tx<{ id: string }[]>`
         INSERT INTO projects (title) VALUES ('constraint-test') RETURNING id
       `;
-      if (!project) {
-        throw new Error("project insert failed");
-      }
-      const [brief] = await tx<{ id: string }[]>`
+        if (!project) {
+          throw new Error("project insert failed");
+        }
+        const [brief] = await tx<{ id: string }[]>`
         INSERT INTO briefs (
           project_id, topic, audience, goal, duration_sec, language, tone, visual_style
         ) VALUES (
           ${project.id}, 't', 'a', 'g', 60, 'vi', 'neutral', 'flat'
         ) RETURNING id
       `;
-      const [run] = await tx<{ id: string }[]>`
+        const [run] = await tx<{ id: string }[]>`
         INSERT INTO workflow_runs (project_id, brief_id, status)
         VALUES (${project.id}, ${brief!.id}, 'idea_submitted') RETURNING id
       `;
-      const [agent] = await tx<{ id: string }[]>`
+        const [agent] = await tx<{ id: string }[]>`
         INSERT INTO agent_runs (workflow_run_id, role, status)
         VALUES (${run!.id}, 'producer', 'idle') RETURNING id
       `;
-      const key = "dup-key-" + crypto.randomUUID();
-      await tx`
+        const key = "dup-key-" + crypto.randomUUID();
+        await tx`
         INSERT INTO jobs (agent_run_id, queue, idempotency_key, status)
         VALUES (${agent!.id}, 'llm', ${key}, 'queued')
       `;
-      await expect(
-        tx`
+        await expect(
+          tx`
           INSERT INTO jobs (agent_run_id, queue, idempotency_key, status)
           VALUES (${agent!.id}, 'llm', ${key}, 'queued')
         `,
-      ).rejects.toThrow();
-      throw new Error("ROLLBACK");
-    }).catch((error: unknown) => {
-      if (error instanceof Error && error.message === "ROLLBACK") {
-        return;
-      }
-      throw error;
-    });
+        ).rejects.toThrow();
+        throw new Error("ROLLBACK");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.message === "ROLLBACK") {
+          return;
+        }
+        throw error;
+      });
   });
 
   it("từ chối workflow_runs.status không hợp lệ", async () => {
-    await sql.begin(async (tx) => {
-      const [project] = await tx<{ id: string }[]>`
+    await sql
+      .begin(async (tx) => {
+        const [project] = await tx<{ id: string }[]>`
         INSERT INTO projects (title) VALUES ('bad-status') RETURNING id
       `;
-      const [brief] = await tx<{ id: string }[]>`
+        const [brief] = await tx<{ id: string }[]>`
         INSERT INTO briefs (
           project_id, topic, audience, goal, duration_sec, language, tone, visual_style
         ) VALUES (
           ${project!.id}, 't', 'a', 'g', 45, 'vi', 'n', 'v'
         ) RETURNING id
       `;
-      await expect(
-        tx`
+        await expect(
+          tx`
           INSERT INTO workflow_runs (project_id, brief_id, status)
           VALUES (${project!.id}, ${brief!.id}, 'not_a_real_status')
         `,
-      ).rejects.toThrow();
-      throw new Error("ROLLBACK");
-    }).catch((error: unknown) => {
-      if (error instanceof Error && error.message === "ROLLBACK") {
-        return;
-      }
-      throw error;
-    });
+        ).rejects.toThrow();
+        throw new Error("ROLLBACK");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.message === "ROLLBACK") {
+          return;
+        }
+        throw error;
+      });
   });
 
   it("approvals.decision NOT NULL — không có default approved", async () => {
@@ -137,42 +140,48 @@ describe("P2-01 schema constraints (Postgres)", () => {
   });
 
   it("từ chối briefs.duration_sec ngoài giới hạn an toàn 10–600 (P6-07)", async () => {
-    await sql.begin(async (tx) => {
-      const [project] = await tx<{ id: string }[]>`
+    await sql
+      .begin(async (tx) => {
+        const [project] = await tx<{ id: string }[]>`
         INSERT INTO projects (title) VALUES ('bad-duration') RETURNING id
       `;
-      // Khoảng của gói kiểm ở API; DB chỉ chặn giá trị vô lý.
-      await tx`
+        // Khoảng của gói kiểm ở API; DB chỉ chặn giá trị vô lý.
+        await tx`
         INSERT INTO briefs (
           project_id, topic, audience, goal, duration_sec, language, tone, visual_style
         ) VALUES (
           ${project!.id}, 't', 'a', 'g', 120, 'vi', 'n', 'v'
         )
       `;
-      await expect(
-        tx.savepoint((sp) => sp`
+        await expect(
+          tx.savepoint(
+            (sp) => sp`
           INSERT INTO briefs (
             project_id, topic, audience, goal, duration_sec, language, tone, visual_style
           ) VALUES (
             ${project!.id}, 't', 'a', 'g', 601, 'vi', 'n', 'v'
           )
-        `),
-      ).rejects.toThrow();
-      await expect(
-        tx.savepoint((sp) => sp`
+        `,
+          ),
+        ).rejects.toThrow();
+        await expect(
+          tx.savepoint(
+            (sp) => sp`
           INSERT INTO briefs (
             project_id, topic, audience, goal, duration_sec, language, tone, visual_style
           ) VALUES (
             ${project!.id}, 't', 'a', 'g', 9, 'vi', 'n', 'v'
           )
-        `),
-      ).rejects.toThrow();
-      throw new Error("ROLLBACK");
-    }).catch((error: unknown) => {
-      if (error instanceof Error && error.message === "ROLLBACK") {
-        return;
-      }
-      throw error;
-    });
+        `,
+          ),
+        ).rejects.toThrow();
+        throw new Error("ROLLBACK");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.message === "ROLLBACK") {
+          return;
+        }
+        throw error;
+      });
   });
 });

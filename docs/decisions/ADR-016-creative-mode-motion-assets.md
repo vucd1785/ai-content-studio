@@ -1,6 +1,7 @@
 # ADR-016: Chế độ sáng tạo và kho tài sản hình động
 
 - Trạng thái: Accepted (Director duyệt 2026-11-02)
+- Thay một phần bởi [ADR-017](ADR-017-auto-asset-generation.md) (2026-11-10): tạo tài sản tự động bằng Claude Code headless; tài sản `candidate` duyệt ở Cổng 1 thay vì màn Kho hình động.
 - Ngày: 2026-11-02
 
 ## Bối cảnh

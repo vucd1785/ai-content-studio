@@ -36,38 +36,52 @@ export function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>
-            <h1>{vi.login.title}</h1>
-          </CardTitle>
-          <CardDescription>{vi.login.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="studio-password">{vi.login.passwordLabel}</Label>
-              <Input
-                id="studio-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                aria-invalid={errorText !== null}
-                aria-describedby={errorText !== null ? "studio-login-error" : undefined}
-              />
+      <div className="bg-card grid w-full max-w-4xl overflow-hidden rounded-3xl border shadow-sm md:grid-cols-[1.1fr_1fr]">
+        <div className="bg-muted hidden flex-col items-center justify-center gap-4 p-8 md:flex">
+          <img src="/assets/illustrations/login.svg" alt="" className="w-full max-w-sm" />
+          <p className="text-muted-foreground text-center text-sm">{vi.greeting.body}</p>
+        </div>
+        <Card className="rounded-none border-0 shadow-none">
+          <CardHeader>
+            <div className="mb-2 flex items-center gap-2.5">
+              <img src="/assets/brand/logo_mark.svg" alt="" className="size-9" />
+              <span className="text-lg font-semibold">{vi.app.name}</span>
             </div>
-            {errorText !== null ? (
-              <p id="studio-login-error" role="alert" className="text-destructive text-sm">
-                {errorText}
-              </p>
-            ) : null}
-            <Button type="submit" disabled={login.isPending}>
-              {login.isPending ? vi.login.submitting : vi.login.submit}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            <CardTitle>
+              <h1 className="text-2xl">{vi.login.title}</h1>
+            </CardTitle>
+            <CardDescription>{vi.login.description}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="studio-password">{vi.login.passwordLabel}</Label>
+                <Input
+                  id="studio-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  aria-invalid={errorText !== null}
+                  aria-describedby={errorText !== null ? "studio-login-error" : undefined}
+                />
+              </div>
+              {errorText !== null ? (
+                <p
+                  id="studio-login-error"
+                  role="alert"
+                  className="bg-destructive-bg text-destructive rounded-lg px-3 py-2 text-sm"
+                >
+                  {errorText}
+                </p>
+              ) : null}
+              <Button type="submit" size="lg" disabled={login.isPending}>
+                {login.isPending ? vi.login.submitting : vi.login.submit}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

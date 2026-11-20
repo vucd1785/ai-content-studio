@@ -1,0 +1,12 @@
+{
+  "id": "action_listen",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Lắng nghe: hơi chồm tới, gật gù theo nhịp. Dùng cho người nghe khi người kia đang nói.",
+  "tags": ["nghe", "gật đầu", "đồng ý"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

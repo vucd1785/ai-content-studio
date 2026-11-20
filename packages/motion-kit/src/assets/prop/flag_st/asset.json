@@ -1,0 +1,24 @@
+{
+  "id": "flag_st",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Sao Tome and Principe bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Sao Tome and Principe.",
+  "tags": [
+    "cờ Sao Tome and Principe",
+    "nước Sao Tome and Principe",
+    "người Sao Tome and Principe",
+    "Sao Tome and Principe",
+    "quốc kỳ Sao Tome and Principe"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

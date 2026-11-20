@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_mot_b07b63",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật một con chip GPU trung tâm dữ liệu của NVIDIA, không có logo nổi bật, nền tối.",
+  "tags": [
+    "NVIDIA GPU chip",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": "5bd0ed4b-e18e-491f-a349-b614fb4b2e92:7bee71b6:1:r2",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "wccftech.com",
+      "url": "https://wccftech.com/nvidia-hopper-h100-gpu-pictured-worlds-first-4nm-hbm3-chip-for-datacenters/",
+      "file": "https://cdn.wccftech.com/wp-content/uploads/2022/05/20220429-nvidia-h100-hopper-ai-gpu-02-low_res-scale-4_00x-Custom-Custom-1920x1280.png",
+      "attribution": "Ảnh: NVIDIA Hopper H100 GPU Pictured In All Its Glory: The World's Fastest 4nm GPU & World's First With HBM3 Memory (https://wccftech.com/nvidia-hopper-h100-gpu-pictured-worlds-first-4nm-hbm3-chip-for-datacenters/)"
+    }
+  ]
+}

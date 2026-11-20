@@ -3,10 +3,12 @@ import { type GeminiEnvConfig, readGeminiEnv } from "@studio/config/gemini";
 import { type JobPayload, jobPayloadSchema, type QueueName } from "@studio/contracts";
 import {
   failJob,
+  isDatabaseUnavailableError,
   isStoryboardJobKey,
   type JobContext,
   loadJobContext,
   type StudioDb,
+  waitForDatabase,
 } from "@studio/db";
 import { type ConnectionOptions, type Job, Worker } from "bullmq";
 import { runVisualJob } from "../assets/visual-job.js";
@@ -15,10 +17,11 @@ import { LlmError } from "../llm/errors.js";
 import { createGeminiAdapter } from "../llm/gemini-adapter.js";
 import { createGeminiResearchAdapter } from "../llm/gemini-research-adapter.js";
 import type { StructuredGenerateClient } from "../llm/structured-output.js";
+import { type PublishJobDeps, runPublishJob } from "../publish/publish-job.js";
 import { runExportJob } from "../render/export-job.js";
 import { runQaJob } from "../render/qa-job.js";
 import { createDefaultRenderBackend, type RenderBackend } from "../render/render-backend.js";
-import { runRenderJob } from "../render/render-job.js";
+import { type RenderJobDeps, runRenderJob } from "../render/render-job.js";
 import {
   finishStoryboardAfterCrash,
   runStoryboardJob,
@@ -26,6 +29,7 @@ import {
 } from "../render/storyboard-job.js";
 import { type ResearchJobDeps, runResearchJob } from "../research/research-job.js";
 import { runScriptJob, type ScriptJobDeps } from "../script/script-job.js";
+import { runYoutubeUploadJob, type YoutubeJobDeps } from "../youtube/youtube-upload-job.js";
 import { closeQueues, createQueues, type QueueSet, reconcileQueues } from "./queues.js";
 
 /**
@@ -33,7 +37,8 @@ import { closeQueues, createQueues, type QueueSet, reconcileQueues } from "./que
  * và tự chạy theo role của agent:
  * - `llm`: research, script (Gemini, hoặc Claude Code khi run chọn model `claude-code…`), visual (code);
  * - `media`: voice (TTS + alignment qua `services/tts`), qa;
- * - `render`: video, gồm render preview (key `render:`) và export (key `export:`).
+ * - `render`: video, gồm render preview (key `render:`) và export (key `export:`);
+ * - `upload`: đăng YouTube sau khi Director xác nhận (ADR-031).
  *
  * Job ném lỗi để BullMQ retry tới `max_attempts`. Lỗi bất ngờ mà job không kịp ghi thì `failStuckJob` ghi
  * `failed` khi BullMQ hết lượt, để run không kẹt ở trạng thái làm việc.
@@ -50,12 +55,21 @@ export type ConsumerDeps = {
   gemini?: GeminiEnvConfig;
   research?: Pick<ResearchJobDeps, "createLlm" | "fetchUrl">;
   script?: Pick<ScriptJobDeps, "createLlm" | "loadAssetCatalog">;
+  /** Test thay client hoặc model của job bộ đăng bài (ADR-018). */
+  publish?: Partial<Pick<PublishJobDeps, "client" | "model">>;
   /** Test thay renderer ảnh tĩnh và kho tài sản của job storyboard (P6-10). */
-  storyboard?: Pick<StoryboardJobDeps, "renderer" | "loadAssetCatalog">;
+  storyboard?: Pick<
+    StoryboardJobDeps,
+    "renderer" | "loadAssetCatalog" | "resolveAssets" | "kitSrc"
+  >;
   /** TTS và alignment theo câu; mặc định gọi `TTS_BASE_URL`. */
   voice?: Pick<VoiceJobDeps, "collectVoiceScenes" | "voiceId">;
   /** ffmpeg + Remotion; mặc định `createDefaultRenderBackend(dataDir)`, dựng khi job đầu tiên cần. */
   backend?: RenderBackend;
+  /** Tạo lại một hình ở Cổng 2 (ADR-021); thiếu thì lần làm lại báo lỗi, video giữ hình cũ. */
+  regenerateAsset?: RenderJobDeps["regenerateAsset"];
+  /** ADR-031: cấu hình YouTube của worker (null là chưa cấu hình) và Google giả cho test. */
+  youtube?: Omit<YoutubeJobDeps, "dataDir">;
 };
 
 export type JobOutcome = { role: string; status: string; detail?: string };
@@ -77,6 +91,42 @@ function detail(result: { status: string; reason?: string; errorCode?: string })
 }
 
 /** Chạy một job theo role của agent. */
+/** Số lần tối đa một job đợi PostgreSQL sống lại rồi chạy lại (mỗi lần đợi tối đa 10 phút). */
+export const MAX_DB_OUTAGES_PER_JOB = 10;
+
+/**
+ * Chạy job; nếu PostgreSQL sập giữa chừng (thiếu RAM, recovery, khởi động lại) thì đợi DB trả lời rồi chạy lại
+ * chính job đó ngay trong lần xử lý này, không tốn lượt retry của BullMQ. Chạy lại an toàn vì `claimJob` nhận lại
+ * job `running` và các bước lưu kết quả theo khóa nội dung. Lỗi khác ném ra như cũ để BullMQ retry.
+ */
+export async function processJobSurvivingDbOutage(
+  deps: ConsumerDeps,
+  jobId: string,
+  options: {
+    maxOutages?: number;
+    wait?: (db: StudioDb) => Promise<boolean>;
+    onOutage?: (jobId: string, outage: number, error: unknown) => void;
+    run?: (deps: ConsumerDeps, jobId: string) => Promise<JobOutcome>;
+  } = {},
+): Promise<JobOutcome> {
+  const maxOutages = options.maxOutages ?? MAX_DB_OUTAGES_PER_JOB;
+  const wait = options.wait ?? ((db: StudioDb) => waitForDatabase(db));
+  const run = options.run ?? processJob;
+  for (let outage = 1; ; outage += 1) {
+    try {
+      return await run(deps, jobId);
+    } catch (error) {
+      if (!isDatabaseUnavailableError(error) || outage > maxOutages) {
+        throw error;
+      }
+      options.onOutage?.(jobId, outage, error);
+      if (!(await wait(deps.db))) {
+        throw error;
+      }
+    }
+  }
+}
+
 export async function processJob(deps: ConsumerDeps, jobId: string): Promise<JobOutcome> {
   const context = await loadJobContext(deps.db, jobId);
   if (context === null) {
@@ -147,7 +197,30 @@ export async function processJob(deps: ConsumerDeps, jobId: string): Promise<Job
     case "video":
       result = context.job.idempotencyKey.startsWith("export:")
         ? await runExportJob(db, jobId, { dataDir, backend: backend() })
-        : await runRenderJob(db, jobId, { dataDir, backend: backend() });
+        : await runRenderJob(db, jobId, {
+            dataDir,
+            backend: backend(),
+            ...(deps.regenerateAsset === undefined
+              ? {}
+              : { regenerateAsset: deps.regenerateAsset }),
+          });
+      break;
+    case "publish":
+      // ADR-031: job queue `upload` đăng YouTube; job queue `llm` viết bộ đăng bài (ADR-018).
+      if (context.job.queue === "upload") {
+        result = await runYoutubeUploadJob(db, jobId, {
+          dataDir,
+          ...(deps.youtube ?? { youtube: null }),
+        });
+        break;
+      }
+      // ADR-018: cùng provider và model với kịch bản của run.
+      result = await runPublishJob(db, jobId, {
+        dataDir,
+        client: llm(),
+        model: runModel ?? (deps.gemini ?? readGeminiEnv(process.env)).modelScript,
+        ...deps.publish,
+      });
       break;
     default:
       return { role, status: "skipped", detail: "no_processor_for_role" };
@@ -197,6 +270,19 @@ export async function failStuckJob(
   if (context !== null && isStoryboardJobKey(context.job.idempotencyKey)) {
     return dataDir === undefined ? false : finishStoryboardAfterCrash(db, jobId, dataDir, error);
   }
+  // Job bộ đăng bài (ADR-018) lỗi không đổi trạng thái run đã xuất.
+  if (
+    context !== null &&
+    context.agentRun.role === "publish" &&
+    ["queued", "running"].includes(context.job.status)
+  ) {
+    await failJob(db, {
+      jobId,
+      errorCode: "worker_error",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    return true;
+  }
   const stage = context === null ? null : workingStage(context);
   if (context === null || stage === null || !["queued", "running"].includes(context.job.status)) {
     return false;
@@ -232,13 +318,18 @@ export function createConsumer(
     reconcileScope?: () => Promise<{ jobIds: string[] }>;
     onOutcome?: (jobId: string, outcome: JobOutcome) => void;
     onError?: (jobId: string, error: unknown, final: boolean) => void;
+    /** PostgreSQL sập giữa chừng: job đợi DB sống lại rồi tự chạy lại, không tốn lượt retry. */
+    onDbOutage?: (jobId: string, outage: number, error: unknown) => void;
   },
 ): Consumer {
   const queues = createQueues(options.connection, options.prefix);
   const workers = options.queues.map((name) => {
     const worker = new Worker<JobPayload, JobOutcome>(
       name,
-      async (job: Job<JobPayload>) => processJob(deps, jobPayloadSchema.parse(job.data).jobId),
+      async (job: Job<JobPayload>) =>
+        processJobSurvivingDbOutage(deps, jobPayloadSchema.parse(job.data).jobId, {
+          ...(options.onDbOutage === undefined ? {} : { onOutage: options.onDbOutage }),
+        }),
       {
         connection: options.connection,
         concurrency: 1,

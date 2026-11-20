@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_chan_dung_843640",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh chân dung thật của Elon Musk, người lập ra SpaceX.",
+  "tags": [
+    "Elon Musk portrait",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "6c1fda1a-03e7-4ad8-a2af-577c9125413d:acb986ca:1:r1",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "en.wikipedia.org",
+      "url": "https://en.wikipedia.org/wiki/Elon_Musk",
+      "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Elon_Musk_-_54820081119_%283x4_cropped%2C_Rule_of_thirds%29.jpg/960px-Elon_Musk_-_54820081119_%283x4_cropped%2C_Rule_of_thirds%29.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=thumbnail",
+      "attribution": "Ảnh: Elon Musk - Wikipedia (https://en.wikipedia.org/wiki/Elon_Musk)"
+    }
+  ]
+}

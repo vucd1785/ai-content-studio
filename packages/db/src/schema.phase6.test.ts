@@ -10,7 +10,7 @@ import {
   insertMotionAssetRequests,
   listMotionAssetRequests,
   listMotionAssets,
-  MotionAssetRequestError,
+  type MotionAssetRequestError,
   resolveMotionAssetRequest,
   upsertMotionAssetFromManifest,
 } from "./motion-assets.js";

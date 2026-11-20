@@ -1,0 +1,19 @@
+{
+  "id": "action_dau_cam_cay_b7bb",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Đậu cầm cây chổi nhỏ, hai tay hạ thấp phía trước, lấy đà rồi quét qua trái, quét sang phải đều đặn, người nhún nhảy và nghiêng đầu theo từng nhịp quét.",
+  "tags": [
+    "quét dọn",
+    "cầm chổi",
+    "lao công",
+    "nhún nhảy",
+    "dọn não",
+    "Đậu"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:2:r1",
+  "licenses": []
+}

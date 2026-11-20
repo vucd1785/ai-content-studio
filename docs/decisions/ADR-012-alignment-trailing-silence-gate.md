@@ -49,3 +49,31 @@ Director duyệt sau run `ba4dc84c` (2026-11-02). Cảnh s3 trượt cổng ch�
 - `GATE_POLICY_VERSION` lên `2.1.0-repair-zero-length` ở service và worker.
 
 **Hệ quả.** Phụ đề của từ được sửa là ước lượng (dài khoảng 120 ms), không phải thời điểm đo được. Cổng ADR-011/012 về độ lệch cuối và im lặng đuôi không đổi.
+
+## Bổ sung 2026-11-04 — kéo dài từ cuối theo năng lượng PCM
+
+Director duyệt ngày 2026-11-04 ("Duyệt và làm"), sau review ở [reports/P6-20.md](../../reports/P6-20.md).
+
+**Bối cảnh.** Run DDoS, cảnh c3 trượt cổng ở câu cảm thán "Chật quá!".
+- 28/28 từ căn được, nhưng Whisper cắt từ cuối kéo dài ("quááá") sớm khoảng 300 ms.
+- `durationDeltaMs` là 460 ms (WAV câu) và 470 ms (WAV cả cảnh). Đoạn đuôi không im lặng: còn tiếng nói tới khoảng 300 ms sau `endMs`.
+
+**Quyết định.** Mục 5 ("không sửa timestamp Whisper") có thêm một ngoại lệ hẹp, làm trong service trước khi validate:
+
+- **Phạm vi.** Chỉ từ cuối của transcript, và chỉ khi `durationMs − endMs > 250`.
+- **Tìm điểm dừng.**
+  - Quét PCM từ `endMs` theo cửa sổ 50 ms.
+  - Điểm dừng là cuối cửa sổ cuối cùng có peak ≥ −40 dBFS, cùng ngưỡng với lối B.
+- **Chỉ sửa khi đủ cả hai điều kiện:**
+  - mọi cửa sổ từ `endMs` tới điểm dừng đều có tiếng (năng lượng liền mạch). Có cửa sổ im lặng ở giữa thì không sửa, vì đó có thể là từ bị sót;
+  - đoạn kéo dài không quá `MAX_LAST_WORD_EXTENSION_MS` = 500 ms.
+- **Cách sửa.** Dời `endMs` của từ cuối tới điểm dừng, rồi validate. Cổng vẫn chấm theo lối A hoặc B; ngưỡng 250 và 400 ms không đổi.
+- **Ghi rõ đã sửa.** `validation.lastWordExtendedMs` và một warning. `alignedWordRatio` không đổi, vì từ đó đã căn được trước khi sửa.
+- **Fail closed.** Thiếu WAV hoặc PCM hỏng thì không sửa.
+- **Revalidate** (`POST /align/revalidate-gate`) áp dụng cùng phép sửa.
+- **Version.** `GATE_POLICY_VERSION` lên `2.2.0-extend-last-word` ở service và worker.
+
+**Hệ quả.**
+- Phụ đề từ cuối kéo theo giọng thật.
+- Từ cuối bị Whisper bỏ hẳn vẫn trượt cổng qua số từ và tỷ lệ từ.
+- Khoảng lặng đầu (leading silence) vẫn ngoài cổng này.

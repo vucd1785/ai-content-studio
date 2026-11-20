@@ -1,0 +1,18 @@
+{
+  "id": "prop_cai_kep_giay_426b",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chiếc kẹp giấy kim loại được kẹp đứng trong một ê-tô nhỏ, nửa trên bị bẻ qua lại liên tục, chỗ gập đỏ dần lên theo nhịp, tóe tia lửa nhỏ và hiện ra vết nứt.",
+  "tags": [
+    "kẹp giấy",
+    "mỏi kim loại",
+    "bẻ cong",
+    "vết nứt",
+    "kim loại nóng đỏ"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "6d8782dd-f393-4914-bfbe-1e1f1dd21e96:1:r4",
+  "licenses": []
+}

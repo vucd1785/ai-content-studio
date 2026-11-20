@@ -1,0 +1,19 @@
+{
+  "id": "action_bit_cam_cay_04f7",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Bit lấy đà rồi cầm chổi quét qua lại ba nhịp, người nghiêng theo từng đường chổi để gom mẩu rác vào sọt, sau đó ôm cuốn sách trước ngực, với tay đẩy vào ngăn kéo bên phải và lặp lại động tác đẩy khép ngăn kéo cho chắc.",
+  "tags": [
+    "quét dọn",
+    "cầm chổi",
+    "cất sách",
+    "ngăn kéo",
+    "não dọn dẹp",
+    "Bit"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:1:r3",
+  "licenses": []
+}

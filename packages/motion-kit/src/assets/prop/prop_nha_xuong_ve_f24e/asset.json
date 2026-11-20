@@ -1,0 +1,19 @@
+{
+  "id": "prop_nha_xuong_ve_f24e",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Nhà xưởng vẽ phẳng có mái răng cưa: bánh răng lớn trên tường quay chậm, cánh tay máy nhẹ nhàng đưa lên đưa xuống để lắp thân tên lửa trắng, đầu kẹp lóe tia lửa hàn và đèn báo nhấp nháy theo nhịp.",
+  "tags": [
+    "nhà xưởng",
+    "nhà máy tên lửa",
+    "cánh tay robot",
+    "bánh răng",
+    "lắp ráp tên lửa",
+    "SpaceX"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "6c1fda1a-03e7-4ad8-a2af-577c9125413d:1:r3",
+  "licenses": []
+}

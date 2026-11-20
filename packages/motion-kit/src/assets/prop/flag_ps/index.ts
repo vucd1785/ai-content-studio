@@ -1,0 +1,4 @@
+import { flagProp } from "../../../stage/flag.js";
+
+/** Cờ State of Palestine (flag-icons 7.5.0, MIT). Sinh bởi scripts/import-flags.mts, không sửa tay. */
+export const asset = flagProp("ps", "<svg xmlns=\"http://www.w3.org/2000/svg\" xml:space=\"preserve\" id=\"flag-icons-ps\" viewBox=\"0 0 640 480\"> <path fill=\"#009639\" d=\"M0 0h640v480H0z\"/> <path fill=\"#fff\" d=\"M0 0h640v320H0z\"/> <path d=\"M0 0h640v160H0z\"/> <path fill=\"#ed2e38\" d=\"m0 0 320 240L0 480Z\"/> </svg>");

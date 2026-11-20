@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_dong_58df02",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật động cơ tên lửa Merlin do SpaceX tự chế tạo.",
+  "tags": [
+    "SpaceX Merlin engine",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "6c1fda1a-03e7-4ad8-a2af-577c9125413d:acb986ca:1:r3",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "en.wikipedia.org",
+      "url": "https://en.wikipedia.org/wiki/SpaceX_Merlin",
+      "file": "https://upload.wikimedia.org/wikipedia/commons/4/44/SpaceX_Testing_Merlin_1D_Engine_In_Texas.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=thumbnail_unscaled",
+      "attribution": "Ảnh: SpaceX Merlin - Wikipedia (https://en.wikipedia.org/wiki/SpaceX_Merlin)"
+    }
+  ]
+}

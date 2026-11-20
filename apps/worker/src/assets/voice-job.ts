@@ -9,7 +9,7 @@ import {
   voiceStepTotal,
 } from "../cli/media-stage.js";
 import { PipelineError } from "../cli/paths.js";
-import { writeJsonArtifact } from "../jobs/job-support.js";
+import { readRedoRequest, writeJsonArtifact } from "../jobs/job-support.js";
 import { TtsMediaClient } from "../media-client.js";
 import { AssetJobError, type AssetJobResult, runAssetJob } from "./asset-job.js";
 
@@ -26,6 +26,7 @@ export type VoiceJobDeps = {
   collectVoiceScenes?: (
     voiceScenes: VoiceScene[],
     hooks: MediaStageHooks,
+    options?: { forceSceneIds?: ReadonlySet<string> },
   ) => Promise<SceneMediaArtifacts[]>;
 };
 
@@ -75,11 +76,23 @@ export function resolveLineVoices(
 }
 
 function defaultCollectVoiceScenes(dataDir: string) {
-  return async (voiceScenes: VoiceScene[], hooks: MediaStageHooks) => {
+  return async (
+    voiceScenes: VoiceScene[],
+    hooks: MediaStageHooks,
+    options?: { forceSceneIds?: ReadonlySet<string> },
+  ) => {
     const ttsClient = new TtsMediaClient({
       baseUrl: process.env.TTS_BASE_URL ?? "http://127.0.0.1:8000",
     });
-    return (await collectSceneMediaArtifacts({ voiceScenes, dataDir, ttsClient, hooks })).scenes;
+    return (
+      await collectSceneMediaArtifacts({
+        voiceScenes,
+        dataDir,
+        ttsClient,
+        hooks,
+        ...(options?.forceSceneIds === undefined ? {} : { forceSceneIds: options.forceSceneIds }),
+      })
+    ).scenes;
   };
 }
 
@@ -144,10 +157,25 @@ export function runVoiceJob(
       phase: "synthesize",
       sceneId: plan[0]?.sceneId ?? "",
     });
+    // Đọc lại một cảnh ở Cổng 2 (ADR-021): chỉ cảnh đó bỏ cache, cảnh khác dùng lại bản đọc cũ.
+    const redo = await readRedoRequest(
+      deps.dataDir,
+      context.workflowRun.id,
+      context.job.idempotencyKey,
+    );
+    if (redo === "unreadable") {
+      return { ok: false, errorCode: "schema_invalid", message: "redo request file is unreadable" };
+    }
+    const forceSceneIds =
+      redo?.request.kind === "revoice" ? new Set([redo.request.sceneId]) : undefined;
+    if (forceSceneIds !== undefined && !plan.some((scene) => forceSceneIds.has(scene.sceneId))) {
+      return { ok: false, errorCode: "schema_invalid", message: "redo scene is not in the script" };
+    }
     try {
       scenes = await (deps.collectVoiceScenes ?? defaultCollectVoiceScenes(deps.dataDir))(
         plan,
         hooks,
+        forceSceneIds === undefined ? undefined : { forceSceneIds },
       );
       for (const scene of scenes) {
         assertAlignmentAccepted(scene.alignment, scene.sceneId);

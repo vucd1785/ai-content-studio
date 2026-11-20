@@ -1,0 +1,24 @@
+{
+  "id": "flag_sn",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Senegal bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Senegal.",
+  "tags": [
+    "cờ Senegal",
+    "nước Senegal",
+    "người Senegal",
+    "Senegal",
+    "quốc kỳ Senegal"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

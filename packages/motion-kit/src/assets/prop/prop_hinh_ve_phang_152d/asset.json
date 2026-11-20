@@ -1,0 +1,12 @@
+{
+  "id": "prop_hinh_ve_phang_152d",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Mặt trời vàng tròn kiểu hình vẽ phẳng, gắn trên một cột đế nhỏ, có viền đậm và các tia sáng ngắn xoay chậm quanh tâm, quầng sáng nhấp nháy nhẹ.",
+  "tags": ["mặt trời", "tia nắng", "cầu vồng", "thời tiết", "ánh sáng"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "ecb5311d-9b5b-47b7-b1a3-07faea63816f:1:r3",
+  "licenses": []
+}

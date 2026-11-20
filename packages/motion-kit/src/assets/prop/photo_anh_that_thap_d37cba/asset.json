@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_thap_d37cba",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật tháp phóng Starship dùng hai cánh tay cơ khí bắt gọn tầng đẩy Super Heavy đang hạ xuống, lửa cam dưới đáy.",
+  "tags": [
+    "Starship booster tower catch",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "a73a195c-7bc3-4bb2-83c7-aa5d2c7e207e:4936e856:1:r2",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "supercluster.com",
+      "url": "https://supercluster.com/editorial/in-photos-spacex-dazzles-the-world-with-unreal-booster-catch",
+      "file": "https://cdn.sanity.io/images/2vtv415l/production/883fff90f8ca976191e6852183c335710edca45e-4500x2250.jpg",
+      "attribution": "Ảnh: In Photos: SpaceX Dazzles the World With Unreal Booster Catch (https://supercluster.com/editorial/in-photos-spacex-dazzles-the-world-with-unreal-booster-catch)"
+    }
+  ]
+}

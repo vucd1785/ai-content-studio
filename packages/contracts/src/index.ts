@@ -5,6 +5,19 @@ export {
   apiErrorCodeSchema,
 } from "./api/error.js";
 export {
+  assetIdsInRenderProps,
+  type MotionAsset,
+  type MotionAssetUsageResponse,
+  motionAssetIdParamsSchema,
+  motionAssetListQuerySchema,
+  motionAssetListResponseSchema,
+  motionAssetSchema,
+  motionAssetUsageResponseSchema,
+  type RunAssetRequest,
+  runAssetRequestListResponseSchema,
+  runAssetRequestSchema,
+} from "./api/motion-assets.js";
+export {
   type Brief,
   type BriefWriteBody,
   briefSchema,
@@ -27,11 +40,49 @@ export {
   workflowRunSummarySchema,
 } from "./api/project.js";
 export {
+  type BrandContact,
+  brandContactSchema,
+  brandContactUpdateSchema,
+  CHANNEL_NAME_MAX,
+  isChannelNameSet,
+  PLACEHOLDER_CHANNEL_NAME,
+  PUBLISH_PLATFORMS,
+  type PublishCopy,
+  type PublishKit,
+  type PublishPlatform,
+  publishCopySchema,
+  publishKitRequestResponseSchema,
+  publishKitSchema,
+} from "./api/publish.js";
+export {
+  REDO_REGENERATABLE_KINDS,
+  type RedoBody,
+  type RedoKind,
+  type RedoRequestFile,
+  type RedoResponse,
+  type RedoResultFile,
+  redoBodySchema,
+  redoRequestFileSchema,
+  redoResponseSchema,
+  redoResultFileSchema,
+  redoResultStorageKey,
+  redoStorageKey,
+  redoTarget,
+} from "./api/redo.js";
+export {
+  applyScriptLineEdits,
+  type ScriptLineEditsBody,
+  type ScriptLineEditsResponse,
+  scriptLineEditsBodySchema,
+  scriptLineEditsResponseSchema,
+} from "./api/script-edit.js";
+export {
   type SessionLoginBody,
   type SessionStatusResponse,
   sessionLoginBodySchema,
   sessionStatusResponseSchema,
 } from "./api/session.js";
+export * from "./api/videos.js";
 export {
   type Approval,
   type ApprovalBody,
@@ -68,6 +119,7 @@ export {
   workflowRunSchema,
   workflowRunStatusSchema,
 } from "./api/workflow.js";
+export * from "./api/youtube.js";
 export {
   assignWordsToLines,
   type LineSpan,
@@ -94,7 +146,10 @@ export {
   formatPackSchema,
   getFormatPack,
   isDurationAllowed,
+  OUTRO_BEAT,
+  TITLE_BEAT,
 } from "./formats/packs.js";
+export { topicFileSlug } from "./media/file-name.js";
 export {
   type AlignmentValidation,
   type AlignmentWord,
@@ -153,6 +208,12 @@ export {
   shotsNeededForDuration,
   type TimedShot,
 } from "./script/pacing.js";
+export {
+  REVIEW_LONG_LINE_CHARS,
+  reviewScriptV2,
+  type ScriptReviewCode,
+  type ScriptReviewIssue,
+} from "./script/review.js";
 export { type ScriptSource, scriptSourceSchema } from "./script/schema.js";
 export {
   AMBIENCE_KINDS,
@@ -161,10 +222,20 @@ export {
   type CatalogAsset,
   type CreativeMode,
   checkScriptV2Semantics,
+  EFFECT_KINDS,
+  type EffectKindName,
+  ILLUSTRATION_REQUEST_IDS,
+  ILLUSTRATION_STYLES,
+  isRequestRef,
   MAX_ACTORS_BY_SHOT_SIZE,
+  MAX_ASSET_REQUESTS,
+  MOOD_KINDS,
   MOTION_ASSET_KINDS,
+  type MoodKind,
   type MotionAssetKind,
   NARRATOR,
+  OUTFIT_KINDS,
+  type OutfitKindName,
   REQUESTABLE_ASSET_KINDS,
   type ScriptV2,
   type ScriptV2Line,
@@ -202,6 +273,7 @@ export {
   applyWorkflowCommand,
   diagramEdges,
   RESUME_FROM_VALUES,
+  type RedoTarget,
   type ResumeFrom,
   type TransitionResult,
   WORKFLOW_STATUSES,

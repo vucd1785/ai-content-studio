@@ -37,14 +37,16 @@ def artifact_from_saved_json(data: dict[str, object], audio_id: str) -> Alignmen
 def revalidate_on_disk(
     wav_path: Path, json_path: Path, audio_id: str
 ) -> tuple[AlignmentArtifact, dict[str, object]]:
-    """Sửa từ độ dài 0, validate lại và tính lại cổng trên kết quả đã lưu (không chạy lại Whisper).
+    """Sửa từ độ dài 0, kéo dài từ cuối theo PCM, validate lại và tính lại cổng trên kết quả đã lưu (không chạy lại Whisper).
 
     Transcript đã lưu là bản đã chuẩn hóa nên tách token trực tiếp. Ghi đè words, validation, gate.
     """
     data = json.loads(json_path.read_text(encoding="utf-8"))
     artifact = artifact_from_saved_json(data, audio_id)
     expected = tokenize_transcript_words(artifact.transcript)
-    words, validation = validate_with_repair(artifact.words, expected, artifact.durationMs)
+    words, validation = validate_with_repair(
+        artifact.words, expected, artifact.durationMs, wav_path
+    )
     artifact = artifact.model_copy(update={"words": words, "validation": validation})
     gate_payload = evaluate_go_gate(artifact, wav_path)
     data["words"] = [w.model_dump(mode="json") for w in words]

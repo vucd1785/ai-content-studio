@@ -40,6 +40,9 @@ const OPEN_SESSION_PATHS = new Set([
   "/api/session/login",
   "/api/session/logout",
   "/api/session",
+  // ADR-031: Google chuyển trình duyệt về host của API (không có cookie của web). Chỉ GET; bảo vệ bằng `state`
+  // một lần do phiên đã đăng nhập tạo, kèm PKCE.
+  "/api/youtube/oauth/callback",
 ]);
 
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);

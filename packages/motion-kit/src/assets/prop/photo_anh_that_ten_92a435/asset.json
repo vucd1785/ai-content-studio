@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_ten_92a435",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật tên lửa Falcon 9 đang cất cánh, lửa cam và khói trắng.",
+  "tags": [
+    "Falcon 9 launch",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "6c1fda1a-03e7-4ad8-a2af-577c9125413d:acb986ca:1:r4",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "wikipedia.org",
+      "url": "https://www.wikipedia.org/wiki/File:Launch_of_Falcon_9_Flight_127_(KSC-20211110-PH-KNO02_0005).jpg",
+      "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2c/Launch_of_Falcon_9_Flight_127_%28KSC-20211110-PH-KNO02_0005%29.jpg/960px-Launch_of_Falcon_9_Flight_127_%28KSC-20211110-PH-KNO02_0005%29.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=thumbnail",
+      "attribution": "Ảnh: File:Launch of Falcon 9 Flight 127 (KSC-20211110-PH-KNO02 0005).jpg - Wikipedia (https://www.wikipedia.org/wiki/File:Launch_of_Falcon_9_Flight_127_(KSC-20211110-PH-KNO02_0005).jpg)"
+    }
+  ]
+}

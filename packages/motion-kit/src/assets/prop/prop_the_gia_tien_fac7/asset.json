@@ -1,0 +1,19 @@
+{
+  "id": "prop_the_gia_tien_fac7",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Thẻ giá tiền màu xanh lá có mũi tên trắng chỉ xuống, treo trên một cây cọc gỗ nhỏ, khẽ đung đưa qua lại, mũi tên nhún xuống theo nhịp và có các tia lấp lánh nhấp nháy như vừa được giảm giá.",
+  "tags": [
+    "thẻ giá",
+    "giảm giá",
+    "giá rẻ",
+    "mũi tên xuống",
+    "khuyến mãi",
+    "tiền"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "51c5a86d-2348-43cb-b3f4-53b856f46f65:fba124b1:1:r1",
+  "licenses": []
+}

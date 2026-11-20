@@ -1,0 +1,19 @@
+{
+  "id": "bg_phong_lam_mat_d138",
+  "kind": "background",
+  "version": "0.1.0",
+  "description": "Phòng làm mát bằng chất lỏng trong trung tâm dữ liệu, ánh sáng xanh dịu: bể ngâm máy chủ chứa chất lỏng xanh lăn tăn có bọt khí nổi lên và đèn máy chủ nhấp nháy, ống nước xanh và cam chạy dọc tường với vệt dòng chảy trôi đi, đèn trần sáng nhẹ nhấp nháy và kim đồng hồ áp suất khẽ dao động.",
+  "tags": [
+    "trung tâm dữ liệu",
+    "làm mát chất lỏng",
+    "bể ngâm máy chủ",
+    "ống nước",
+    "phòng máy chủ",
+    "bối cảnh trong nhà"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "79ce2a3f-6732-4a1f-9206-4f9586dc33b6:ef6bed6c:1:r8",
+  "licenses": []
+}

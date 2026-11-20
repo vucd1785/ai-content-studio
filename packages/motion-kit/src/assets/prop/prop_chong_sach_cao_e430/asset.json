@@ -1,0 +1,19 @@
+{
+  "id": "prop_chong_sach_cao_e430",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chồng sáu cuốn sách nhiều màu đặt trên mặt đất, khẽ đung đưa. Phía trên có một cuốn sách mở vỗ trang như đôi cánh, một cuốn sách nhỏ, một khung ảnh và một nốt nhạc bay lượn nhẹ nhàng, xen giữa là những đốm lấp lánh nhấp nháy, tượng trưng cho dữ liệu để AI học.",
+  "tags": [
+    "chồng sách",
+    "dữ liệu",
+    "AI học",
+    "sách bay",
+    "nốt nhạc",
+    "khung ảnh"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "2ef07b31-ea54-4786-9a9d-0fdea0ddf92d:1:r1",
+  "licenses": []
+}

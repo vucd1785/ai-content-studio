@@ -6,10 +6,13 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useCreateProject, useProjects } from "@/features/projects/use-projects";
-import { runStatusLabel, runTone, TONE_DOT, TONE_TEXT } from "@/features/run/run-status";
+import { runStatusLabel, runTone } from "@/features/run/run-status";
+import { notificationsSupported } from "@/features/shell/use-approval-alerts";
 import { vi } from "@/i18n/vi";
 import { apiRequest } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -55,19 +58,26 @@ export function HomePage({ onSelect }: { onSelect: (projectId: string) => void }
       ? null
       : tokens.data.inputTokens + tokens.data.outputTokens + tokens.data.thinkingTokens;
 
+  const failed = list.filter((project) => runTone(status(project)) === "failed");
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-6 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-6">
+      <section className="bg-card flex items-center gap-6 overflow-hidden rounded-2xl border px-6 py-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h1 className="text-2xl font-semibold">{vi.home.heading}</h1>
+          <p className="text-lg font-semibold">{vi.greeting.title}</p>
           <p className="text-muted-foreground text-sm">{vi.home.subheading}</p>
         </div>
-        <NewProjectForm onCreated={onSelect} />
-      </div>
+        <img
+          src="/assets/characters/trio_hero.svg"
+          alt=""
+          className="hidden h-28 w-auto shrink-0 md:block"
+        />
+      </section>
 
       <section aria-label={vi.home.statsLabel} className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label={vi.home.statWaiting} value={String(count("waiting"))} tone="text-warning" />
-        <Stat label={vi.home.statWorking} value={String(count("working"))} tone="text-primary" />
+        <Stat label={vi.home.statWorking} value={String(count("working"))} tone="text-info" />
         <Stat label={vi.home.statDone} value={String(count("done"))} tone="text-success" />
         <Stat
           label={vi.home.statTokens}
@@ -77,26 +87,32 @@ export function HomePage({ onSelect }: { onSelect: (projectId: string) => void }
       </section>
 
       {waiting.length > 0 ? (
-        <section aria-label={vi.home.needsYou} className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold">{vi.home.needsYou}</h2>
-          <div className="grid gap-3 md:grid-cols-2">
+        <section
+          aria-label={vi.home.needsYou}
+          className="bg-card flex flex-col gap-3 rounded-2xl border p-5"
+        >
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">{vi.home.needsYou}</h2>
+            <span className="bg-warning-bg text-warning rounded-full px-2.5 py-0.5 text-xs font-semibold">
+              {waiting.length}
+            </span>
+            <EnableNotifications />
+          </div>
+          <div className="divide-border flex flex-col divide-y">
             {waiting.map((project) => (
               <button
                 key={project.id}
                 type="button"
                 aria-label={`${project.title}: ${runStatusLabel(status(project))}`}
                 onClick={() => onSelect(project.id)}
-                className="border-warning/40 bg-warning/5 hover:bg-warning/10 flex gap-4 rounded-xl border p-4 text-left"
+                className="hover:bg-muted/60 flex flex-wrap items-center gap-3 rounded-lg px-2 py-3 text-left"
               >
-                <span className="bg-secondary text-muted-foreground flex h-24 w-14 shrink-0 items-center justify-center rounded-md text-[11px]">
-                  9:16
+                <span className="min-w-0 flex-1 truncate text-base font-semibold">
+                  {project.title}
                 </span>
-                <span className="flex min-w-0 flex-col gap-2">
-                  <span className="bg-warning/15 text-warning self-start rounded-full px-2.5 py-0.5 text-xs font-medium">
-                    {runStatusLabel(status(project))}
-                  </span>
-                  <span className="truncate text-base font-semibold">{project.title}</span>
-                  <span className="text-warning mt-auto text-sm">{vi.home.openToReview}</span>
+                <StatusBadge status={status(project)} />
+                <span className="border-input bg-card rounded-lg border px-3 py-1.5 text-sm font-semibold">
+                  {vi.home.openToReview}
                 </span>
               </button>
             ))}
@@ -104,48 +120,82 @@ export function HomePage({ onSelect }: { onSelect: (projectId: string) => void }
         </section>
       ) : null}
 
-      <section aria-label={vi.home.allProjects} className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold">{vi.home.allProjects}</h2>
+      {failed.length > 0 ? (
+        <section
+          aria-label={vi.home.needsFix}
+          className="bg-card flex flex-col gap-3 rounded-2xl border p-5"
+        >
+          <h2 className="text-lg font-semibold">{vi.home.needsFix}</h2>
+          <ul className="flex flex-col gap-2">
+            {failed.map((project) => (
+              <li key={project.id} className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => onSelect(project.id)}
+                  className="min-w-0 flex-1 truncate text-left text-sm font-semibold underline-offset-4 hover:underline"
+                >
+                  {project.title}
+                </button>
+                <StatusBadge status={status(project)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section
+        aria-label={vi.home.allProjects}
+        className="bg-card flex flex-col gap-4 rounded-2xl border p-5"
+      >
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="text-lg font-semibold">{vi.home.allProjects}</h2>
+          <NewProjectForm onCreated={onSelect} />
+        </div>
         {projects.isError ? (
           <p className="text-destructive text-sm">{vi.project.listError}</p>
         ) : list.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{vi.shell.projectsEmpty}</p>
+          <EmptyState illustration="empty_projects" title={vi.shell.projectsEmpty}>
+            {vi.shell.workspacePlaceholder}
+          </EmptyState>
         ) : (
-          <ul className="divide-border overflow-hidden rounded-xl border">
-            {list.map((project) => {
-              const tone = runTone(status(project));
-              return (
-                <li
-                  key={project.id}
-                  className="hover:bg-surface-raised flex items-center gap-4 px-4 py-3"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSelect(project.id)}
-                    className="min-w-0 flex-1 truncate text-left text-sm font-medium"
-                  >
-                    {project.title}
-                  </button>
-                  <span className={cn("flex items-center gap-2 text-xs", TONE_TEXT[tone])}>
-                    <span
-                      className={cn("size-2 rounded-full", TONE_DOT[tone])}
-                      aria-hidden="true"
-                    />
-                    {runStatusLabel(status(project))}
-                  </span>
-                  <span className="text-muted-foreground hidden w-32 text-right text-xs md:block">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-[55%]" />
+              <col className="w-[27%]" />
+              <col className="hidden w-[18%] md:table-column" />
+            </colgroup>
+            <thead>
+              <tr className="text-muted-foreground border-b text-left text-xs font-semibold uppercase">
+                <th className="py-2 pr-3">{vi.home.colProject}</th>
+                <th className="py-2 pr-3">{vi.home.colStatus}</th>
+                <th className="hidden py-2 text-right md:table-cell">{vi.home.colUpdated}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((project) => (
+                <tr key={project.id} className="hover:bg-muted/50 border-b last:border-0">
+                  <td className="max-w-0 py-2.5 pr-3">
+                    <button
+                      type="button"
+                      onClick={() => onSelect(project.id)}
+                      className="w-full truncate text-left font-semibold"
+                    >
+                      {project.title}
+                    </button>
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <StatusBadge status={status(project)} />
+                  </td>
+                  <td className="text-muted-foreground hidden py-2.5 text-right text-xs md:table-cell">
                     {new Date(project.latestRun?.updatedAt ?? project.updatedAt).toLocaleString(
                       "vi-VN",
-                      {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      },
+                      { dateStyle: "short", timeStyle: "short" },
                     )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </div>
@@ -154,9 +204,9 @@ export function HomePage({ onSelect }: { onSelect: (projectId: string) => void }
 
 function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
-    <div className="bg-card flex flex-col gap-1 rounded-xl border p-4">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className={cn("text-2xl font-semibold", tone)}>{value}</span>
+    <div className="bg-card flex flex-col gap-1 rounded-2xl border p-4">
+      <span className="text-muted-foreground text-sm">{label}</span>
+      <span className={cn("text-3xl font-semibold", tone)}>{value}</span>
     </div>
   );
 }
@@ -192,7 +242,14 @@ function NewProjectForm({ onCreated }: { onCreated: (projectId: string) => void 
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           aria-invalid={errorText !== null}
+          list="topic-ideas"
         />
+        {/* Gợi ý chủ đề (ADR-020): bấm vào ô là thấy, vẫn gõ tên tự do được. */}
+        <datalist id="topic-ideas">
+          {vi.home.topicIdeas.map((idea) => (
+            <option key={idea} value={idea} />
+          ))}
+        </datalist>
       </div>
       <Button type="submit" disabled={create.isPending}>
         {create.isPending ? vi.project.creating : vi.project.create}
@@ -203,5 +260,26 @@ function NewProjectForm({ onCreated }: { onCreated: (projectId: string) => void 
         </p>
       ) : null}
     </form>
+  );
+}
+
+/** Nút xin quyền thông báo của trình duyệt (ADR-020); ẩn khi đã cho phép, đã chặn hoặc không hỗ trợ. */
+function EnableNotifications() {
+  const [permission, setPermission] = useState(() =>
+    notificationsSupported() ? Notification.permission : "denied",
+  );
+  if (permission !== "default") {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      className="text-primary ml-auto text-xs font-semibold underline"
+      onClick={() => {
+        void Notification.requestPermission().then(setPermission);
+      }}
+    >
+      {vi.shell.alertEnable}
+    </button>
   );
 }

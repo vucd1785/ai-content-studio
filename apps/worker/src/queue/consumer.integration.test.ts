@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { type RedoTarget, redoStorageKey } from "@studio/contracts";
 import {
   agentRuns,
   artifacts,
@@ -13,10 +15,13 @@ import {
   jobs,
   listUsageRecordsForRun,
   recordApproval,
+  requestRedo,
   resumeWorkflowRun,
   startWorkflowRun,
 } from "@studio/db";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import type { VoiceJobDeps } from "../assets/voice-job.js";
+import type { VoiceScene } from "../cli/media-stage.js";
 import { PipelineError } from "../cli/paths.js";
 import { writeJsonArtifact } from "../jobs/job-support.js";
 import { createGeminiAdapter } from "../llm/gemini-adapter.js";
@@ -28,9 +33,8 @@ import {
   seedApprovedScript,
   storyFlatJson,
 } from "../render/flow-fixtures.js";
-import type { StoryboardRenderer } from "../render/storyboard-backend.js";
-import type { VoiceScene } from "../cli/media-stage.js";
 import type { RenderBackend } from "../render/render-backend.js";
+import type { StoryboardRenderer } from "../render/storyboard-backend.js";
 import { type Consumer, createConsumer } from "./consumer.js";
 import { redisConnectionFromUrl } from "./queues.js";
 
@@ -409,9 +413,44 @@ describe("consumer queue llm (quyết định 5)", { timeout: 60_000 }, () => {
   });
 });
 
+/** LLM giả của job bộ đăng bài (ADR-018): trả một JSON hợp lệ, đếm số lần gọi. */
+const publishCalls: string[] = [];
+const fakePublishClient: StructuredGenerateClient = {
+  async generateStructured(request) {
+    publishCalls.push(request.model);
+    return {
+      jsonText: JSON.stringify({
+        youtube: {
+          title: "Redis cache là gì? Hiểu trong một phút",
+          description:
+            "Vì sao trang web nhanh hơn khi có cache? Tí và Bit giải thích Redis bằng ví dụ đời thường.",
+          tags: ["redis", "cache", "lập trình"],
+          hashtags: ["#Redis", "#LapTrinh"],
+        },
+        facebook: {
+          title: "Redis cache giúp web nhanh thế nào?",
+          caption: "Bạn đã bao giờ thắc mắc vì sao web nhanh như vậy? Xem Bit giải thích nhé!",
+          hashtags: ["#Redis"],
+        },
+        tiktok: { caption: "Web nhanh nhờ đâu?", hashtags: ["#Redis", "#LapTrinh", "#HocIT"] },
+      }),
+      usage: {
+        provider: "gemini",
+        model: request.model,
+        inputTokens: 10,
+        outputTokens: 10,
+        thinkingTokens: 0,
+      },
+    };
+  },
+};
+
 describe("consumer queue media và render (P3-11)", { timeout: 60_000 }, () => {
   /** Ba queue trong một consumer: TTS và backend render đều giả, không ghi `data/` thật. */
-  function fullConsumer(backend: RenderBackend, tts = collectVoiceScenes) {
+  function fullConsumer(
+    backend: RenderBackend,
+    tts: NonNullable<VoiceJobDeps["collectVoiceScenes"]> = collectVoiceScenes,
+  ) {
     const consumer = createConsumer(
       {
         db,
@@ -419,6 +458,7 @@ describe("consumer queue media và render (P3-11)", { timeout: 60_000 }, () => {
         voice: { collectVoiceScenes: tts },
         storyboard: { renderer: fakeStillRenderer },
         backend,
+        publish: { client: fakePublishClient, model: "gemini-publish-test" },
       },
       {
         queues: ["llm", "media", "render"],
@@ -485,6 +525,83 @@ describe("consumer queue media và render (P3-11)", { timeout: 60_000 }, () => {
         ["qa", "completed"],
       ]),
     );
+
+    // ADR-018: xuất xong thì job `publish` viết bộ đăng bài; run vẫn `exported`.
+    const deadline = Date.now() + 20_000;
+    while (Date.now() < deadline) {
+      await consumer.reconcile();
+      detail = await getWorkflowRunDetail(db, run.runId);
+      if (detail?.artifacts.some((artifact) => artifact.type === "publish_kit")) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    expect(detail?.workflowRun.status).toBe("exported");
+    expect(detail?.artifacts.filter((artifact) => artifact.type === "publish_kit")).toHaveLength(1);
+    expect(publishCalls).toContain("gemini-publish-test");
+    expect(detail?.agentRuns.find((agent) => agent.role === "publish")?.status).toBe("completed");
+  });
+
+  it("ADR-021: đọc lại một cảnh rồi đổi nền một cảnh, mỗi lần qua BullMQ và về lại Cổng 2", async () => {
+    const forced: string[][] = [];
+    const { backend, renders } = fakeBackend();
+    const consumer = fullConsumer(
+      backend,
+      async (
+        scenes: VoiceScene[],
+        _hooks: unknown,
+        options?: { forceSceneIds?: ReadonlySet<string> },
+      ) => {
+        forced.push([...(options?.forceSceneIds ?? [])]);
+        return collectVoiceScenes(scenes);
+      },
+    );
+    const run = await approvedRun("ADR-021: làm lại một phần");
+    await driveUntil(consumer, run.runId, "waiting_final_approval");
+    const latestProps = async () => {
+      const rows = (await getWorkflowRunDetail(db, run.runId))?.artifacts ?? [];
+      const row = rows
+        .filter((a) => a.type === "render_props")
+        .sort((a, b) => b.version - a.version)[0];
+      const all = await db.select().from(artifacts);
+      const key = all.find((a) => a.id === row?.id)?.storageKey ?? "";
+      return JSON.parse(readFileSync(join(dataDir, key), "utf8")) as {
+        scenes: { sceneId: string }[];
+        shots: { sceneId: string; background: string }[];
+      };
+    };
+    const redo = async (request: Record<string, unknown>, target: RedoTarget) => {
+      const redoId = randomUUID();
+      const path = join(dataDir, redoStorageKey(run.runId, redoId));
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, JSON.stringify({ redoId, createdAt: new Date().toISOString(), request }));
+      await requestRedo(db, { workflowRunId: run.runId, redoId, target });
+    };
+    const first = await latestProps();
+    const scene = first.scenes.at(-1)?.sceneId as string;
+
+    await redo({ kind: "revoice", sceneId: scene }, "producing_assets");
+    await driveUntil(consumer, run.runId, "waiting_final_approval");
+    expect(forced).toEqual([[], [scene]]);
+
+    const other =
+      first.shots.find((s) => s.sceneId === scene)?.background === "bg_classroom"
+        ? "bg_room"
+        : "bg_classroom";
+    await redo({ kind: "background", sceneId: scene, backgroundId: other }, "preview_rendering");
+    await driveUntil(consumer, run.runId, "waiting_final_approval");
+    const after = await latestProps();
+    expect(
+      after.shots.filter((s) => s.sceneId === scene).every((s) => s.background === other),
+    ).toBe(true);
+    expect(after.shots.filter((s) => s.sceneId !== scene).map((s) => s.background)).toEqual(
+      first.shots.filter((s) => s.sceneId !== scene).map((s) => s.background),
+    );
+    expect(forced).toHaveLength(2);
+    expect(renders.map((r) => r.purpose)).toEqual(["preview", "preview", "preview"]);
+    // Không lần làm lại nào ghi approval.
+    const detail = await getWorkflowRunDetail(db, run.runId);
+    expect(detail?.approvals.filter((a) => a.gate === "final")).toEqual([]);
   });
 
   it("render lỗi bất ngờ ở cả hai lượt: run failed với resume_from preview_rendering; audio không làm lại", async () => {

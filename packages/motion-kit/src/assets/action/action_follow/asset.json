@@ -1,0 +1,12 @@
+{
+  "id": "action_follow",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Mời theo dõi: đứng nhìn người xem, một tay chỉ lên nút theo dõi rồi nhấn nhấn như bấm nút, người nhún theo. Code dùng cho cảnh kết mời theo dõi kênh.",
+  "tags": ["theo dõi", "mời theo dõi", "bấm nút", "kết video"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

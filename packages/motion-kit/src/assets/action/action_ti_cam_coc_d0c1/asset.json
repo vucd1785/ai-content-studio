@@ -1,0 +1,19 @@
+{
+  "id": "action_ti_cam_coc_d0c1",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Tí cầm cốc cà phê sát người, ngoảnh đầu nhìn đồng hồ, rồi cúi người đặt cốc xuống và đẩy mạnh ra xa, sau đó lắc nhẹ tay từ chối theo vòng lặp.",
+  "tags": [
+    "cà phê",
+    "từ chối",
+    "đẩy ra",
+    "nhìn đồng hồ",
+    "giấc ngủ",
+    "Tí"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:2:r5",
+  "licenses": []
+}

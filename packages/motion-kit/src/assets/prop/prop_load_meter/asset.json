@@ -1,0 +1,12 @@
+{
+  "id": "prop_load_meter",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Đồng hồ tải: kim vọt từ vùng xanh lên vùng đỏ trong shot rồi rung (quá tải, áp lực tăng).",
+  "tags": ["đo", "tải", "quá tải", "tăng"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

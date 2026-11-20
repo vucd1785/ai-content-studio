@@ -264,13 +264,42 @@ export function exportJobKeyAfterApproval(workflowRunId: string, approvalId: str
   return `export:${workflowRunId}:approval:${approvalId}`;
 }
 
+/** Key job viết bộ đăng bài sau một job export (ADR-018). */
+export function publishJobKeyAfterExport(workflowRunId: string, exportJobId: string): string {
+  return `publish:${workflowRunId}:export:${exportJobId}`;
+}
+
+/** Key job viết lại bộ đăng bài khi Director bấm "Tạo lại" (ADR-018); `nonce` để không trùng key cũ. */
+export function publishJobKeyOnRequest(workflowRunId: string, nonce: string): string {
+  return `publish:${workflowRunId}:request:${nonce}`;
+}
+
 const EXPORT_KEY_PATTERN = /^export:[0-9a-f-]{36}:approval:([0-9a-f-]{36})$/;
 
 export function approvalIdFromExportJobKey(idempotencyKey: string): string | null {
   return EXPORT_KEY_PATTERN.exec(idempotencyKey)?.[1] ?? null;
 }
 
-const ASSET_KEY_PATTERN = /^(visual|voice):[0-9a-f-]{36}:approval:([0-9a-f-]{36})$/;
+const ASSET_KEY_PATTERN =
+  /^(visual|voice):[0-9a-f-]{36}:approval:([0-9a-f-]{36})(?::redo:[0-9a-f-]{36})?$/;
+
+/**
+ * Key job của một lần làm lại ở Cổng 2 (ADR-021): cùng approval script với job gốc, thêm `:redo:<id>` để không
+ * trùng key cũ. Job voice của lần đọc lại tạo job render có cùng `redoId`.
+ */
+export function redoJobKey(
+  role: "voice" | "render",
+  workflowRunId: string,
+  approvalId: string,
+  redoId: string,
+): string {
+  return `${role}:${workflowRunId}:approval:${approvalId}:redo:${redoId}`;
+}
+
+/** `redoId` trong key job làm lại; null với job thường. */
+export function redoIdFromJobKey(idempotencyKey: string): string | null {
+  return /:redo:([0-9a-f-]{36})$/.exec(idempotencyKey)?.[1] ?? null;
+}
 
 export function approvalIdFromAssetJobKey(idempotencyKey: string): string | null {
   return ASSET_KEY_PATTERN.exec(idempotencyKey)?.[2] ?? null;
@@ -457,8 +486,9 @@ export async function failJob(
     jobId: string;
     errorCode: string;
     errorMessage: string;
-    runTransition: RunTransition;
-    resumeFrom: ResumeFrom;
+    /** Không có: job lỗi không đổi trạng thái run (job `publish` sau khi đã xuất video, ADR-018). */
+    runTransition?: RunTransition;
+    resumeFrom?: ResumeFrom;
   },
 ) {
   const message = input.errorMessage.slice(0, 2000);
@@ -485,12 +515,12 @@ export async function failJob(
       },
       agentStatusEvent(run.id, agentRun.id, job.id, agentRun.role, "failed"),
     ];
-    if (run.status === input.runTransition.from) {
+    if (input.runTransition !== undefined && run.status === input.runTransition.from) {
       await tx
         .update(workflowRuns)
         .set({
           status: input.runTransition.to,
-          resumeFrom: input.resumeFrom,
+          resumeFrom: input.resumeFrom ?? null,
           failureCode: input.errorCode,
           failureMessage: message,
           updatedAt: now,
@@ -582,4 +612,68 @@ export async function findParentArtifact(db: StudioDb, childId: string, type: Ar
     .orderBy(desc(artifacts.version))
     .limit(1);
   return row?.artifact ?? null;
+}
+
+/**
+ * Director bấm "Tạo lại bộ đăng bài" (ADR-018): tạo job `publish` mới cho run đã xuất. Không đổi trạng thái run.
+ * Đã có job `publish` đang chờ hoặc đang chạy thì không tạo thêm. Worker đẩy job vào Redis khi đối chiếu.
+ */
+export async function requestPublishJob(
+  db: StudioDb,
+  workflowRunId: string,
+  nonce: string,
+): Promise<"queued" | "not_exported" | "already_running" | "not_found"> {
+  return db.transaction(async (tx) => {
+    const [run] = await tx
+      .select()
+      .from(workflowRuns)
+      .where(eq(workflowRuns.id, workflowRunId))
+      .for("update")
+      .limit(1);
+    if (run === undefined) {
+      return "not_found";
+    }
+    if (run.status !== "exported") {
+      return "not_exported";
+    }
+    const [busy] = await tx
+      .select({ id: jobs.id })
+      .from(jobs)
+      .innerJoin(agentRuns, eq(agentRuns.id, jobs.agentRunId))
+      .where(
+        and(
+          eq(agentRuns.workflowRunId, workflowRunId),
+          eq(agentRuns.role, "publish"),
+          inArray(jobs.status, ["queued", "running"]),
+        ),
+      )
+      .limit(1);
+    if (busy !== undefined) {
+      return "already_running";
+    }
+    const queued = await insertQueuedJob(tx, workflowRunId, {
+      role: "publish",
+      queue: "llm",
+      idempotencyKey: publishJobKeyOnRequest(workflowRunId, nonce),
+    });
+    await publishEvents(tx, [queued.event]);
+    return "queued";
+  });
+}
+
+/** Approval `script` + `approved` mới nhất của run (ADR-018 đọc phương án đã duyệt để viết bộ đăng bài). */
+export async function findLatestApprovedScript(db: StudioDb, workflowRunId: string) {
+  const [row] = await db
+    .select()
+    .from(approvals)
+    .where(
+      and(
+        eq(approvals.workflowRunId, workflowRunId),
+        eq(approvals.gate, "script"),
+        eq(approvals.decision, "approved"),
+      ),
+    )
+    .orderBy(desc(approvals.createdAt))
+    .limit(1);
+  return row ?? null;
 }

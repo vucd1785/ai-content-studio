@@ -1,18 +1,24 @@
 import { describe, expect, it } from "vitest";
-import {
-  type FetchLog,
-  type Research,
-  filterResearchFacts,
-  researchSchema,
-} from "./schema.js";
+import { type FetchLog, filterResearchFacts, type Research, researchSchema } from "./schema.js";
 
 const HASH = "a".repeat(64);
 
 const fetchLog: FetchLog = {
   schemaVersion: 1,
   requests: [
-    { url: "https://docs.example.com/redis", finalUrl: "https://docs.example.com/redis/", status: 200, contentHash: HASH },
-    { url: "https://docs.example.com/slow", finalUrl: null, status: null, contentHash: null, error: "timeout" },
+    {
+      url: "https://docs.example.com/redis",
+      finalUrl: "https://docs.example.com/redis/",
+      status: 200,
+      contentHash: HASH,
+    },
+    {
+      url: "https://docs.example.com/slow",
+      finalUrl: null,
+      status: null,
+      contentHash: null,
+      error: "timeout",
+    },
   ],
 };
 
@@ -21,9 +27,24 @@ function research(overrides: Partial<Research> = {}): Research {
     schemaVersion: 1,
     summary: "Redis là kho key-value trong RAM.",
     sources: [
-      { id: "url-1", title: "Redis docs", origin: "fetched_url", url: "https://docs.example.com/redis/" },
-      { id: "url-2", title: "Trang chậm", origin: "fetched_url", url: "https://docs.example.com/slow" },
-      { id: "url-3", title: "Trang không fetch", origin: "fetched_url", url: "https://evil.example.net/" },
+      {
+        id: "url-1",
+        title: "Redis docs",
+        origin: "fetched_url",
+        url: "https://docs.example.com/redis/",
+      },
+      {
+        id: "url-2",
+        title: "Trang chậm",
+        origin: "fetched_url",
+        url: "https://docs.example.com/slow",
+      },
+      {
+        id: "url-3",
+        title: "Trang không fetch",
+        origin: "fetched_url",
+        url: "https://evil.example.net/",
+      },
       { id: "ref-1", title: "notes.md", origin: "user_reference" },
       { id: "ref-9", title: "không thuộc project", origin: "user_reference" },
     ],
@@ -44,7 +65,9 @@ describe("researchSchema (P3-03)", () => {
 
   it("source fetched_url thiếu url và source id trùng bị từ chối", () => {
     expect(
-      researchSchema.safeParse(research({ sources: [{ id: "url-1", title: "a", origin: "fetched_url" }] })).success,
+      researchSchema.safeParse(
+        research({ sources: [{ id: "url-1", title: "a", origin: "fetched_url" }] }),
+      ).success,
     ).toBe(false);
     expect(
       researchSchema.safeParse(
@@ -61,7 +84,9 @@ describe("researchSchema (P3-03)", () => {
   it("chỉ nhận url http/https", () => {
     expect(
       researchSchema.safeParse(
-        research({ sources: [{ id: "url-1", title: "a", origin: "fetched_url", url: "file:///etc/passwd" }] }),
+        research({
+          sources: [{ id: "url-1", title: "a", origin: "fetched_url", url: "file:///etc/passwd" }],
+        }),
       ).success,
     ).toBe(false);
   });
@@ -73,7 +98,11 @@ describe("filterResearchFacts (P3-03)", () => {
       research({
         facts: [
           { statement: "Redis lưu trong RAM.", claimStatus: "verified", sourceIds: ["url-1"] },
-          { statement: "Director ghi chú TTL.", claimStatus: "verified", sourceIds: ["ref-1", "url-1"] },
+          {
+            statement: "Director ghi chú TTL.",
+            claimStatus: "verified",
+            sourceIds: ["ref-1", "url-1"],
+          },
         ],
       }),
       provenance,
@@ -114,7 +143,9 @@ describe("filterResearchFacts (P3-03)", () => {
 
   it("assumption với source có thật được giữ dù nguồn chưa fetch được", () => {
     const result = filterResearchFacts(
-      research({ facts: [{ statement: "có thể", claimStatus: "assumption", sourceIds: ["url-2"] }] }),
+      research({
+        facts: [{ statement: "có thể", claimStatus: "assumption", sourceIds: ["url-2"] }],
+      }),
       provenance,
     );
     expect(result.research.facts).toHaveLength(1);

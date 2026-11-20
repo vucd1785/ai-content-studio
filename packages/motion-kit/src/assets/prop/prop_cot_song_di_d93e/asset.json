@@ -1,0 +1,19 @@
+{
+  "id": "prop_cot_song_di_d93e",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Cột sóng di động có khung thép sơn sọc đỏ trắng. Trên đỉnh có ăng-ten khẽ lắc, đèn đỏ nhấp nháy, và các vòng sóng cong lan dần ra hai bên rồi mờ đi theo nhịp lặp lại.",
+  "tags": [
+    "cột sóng",
+    "trạm phát sóng",
+    "ăng-ten",
+    "sóng điện thoại",
+    "định vị",
+    "tháp viễn thông"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "74229f27-057f-4ddd-a62b-c5c8faa83225:1:r3",
+  "licenses": []
+}

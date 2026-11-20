@@ -268,6 +268,8 @@ describe("GET /api/artifacts/:artifactId/media", () => {
     expect(full.headers["content-type"]).toBe("video/mp4");
     expect(full.headers["accept-ranges"]).toBe("bytes");
     expect(full.headers["content-length"]).toBe(String(MP4.length));
+    // Tên file tải về theo chủ đề của brief, không dấu; bản xem trước có hậu tố riêng.
+    expect(full.headers["content-disposition"]).toBe('inline; filename="redis-ban-xem-truoc.mp4"');
     expect(full.rawPayload.equals(MP4)).toBe(true);
 
     const part = await app.inject({

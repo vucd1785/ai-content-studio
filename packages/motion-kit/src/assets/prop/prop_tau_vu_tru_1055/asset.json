@@ -1,0 +1,18 @@
+{
+  "id": "prop_tau_vu_tru_1055",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Tàu vũ trụ hoạt hình thân trắng, mũi đỏ, có ô cửa tròn, quay mũi sang phải; tàu khẽ rung, lửa cam ở đuôi phụt lên rồi co lại và các vệt sáng tốc độ lướt ra phía sau.",
+  "tags": [
+    "tàu vũ trụ",
+    "tên lửa",
+    "tốc độ ánh sáng",
+    "du hành không gian",
+    "vũ trụ"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "60ce9bee-3e6e-4bca-b85b-f4320c6f60ed:1:r1",
+  "licenses": []
+}

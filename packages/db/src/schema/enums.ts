@@ -36,6 +36,8 @@ export const agentRunRoleEnum = pgEnum("agent_run_role", [
   "voice",
   "video",
   "qa",
+  // ADR-018: viết tiêu đề, mô tả, hashtag cho từng mạng xã hội sau khi xuất video.
+  "publish",
 ]);
 
 export const agentRunStatusEnum = pgEnum("agent_run_status", [
@@ -48,7 +50,8 @@ export const agentRunStatusEnum = pgEnum("agent_run_status", [
   "cancelled",
 ]);
 
-export const jobQueueEnum = pgEnum("job_queue", ["llm", "media", "render"]);
+// ADR-031: queue `upload` đăng video lên YouTube, tách khỏi render để không chặn dựng video.
+export const jobQueueEnum = pgEnum("job_queue", ["llm", "media", "render", "upload"]);
 
 /** Values cited in docs/02-SYSTEM-ARCHITECTURE.md and docs/04-AGENT-ORCHESTRATION.md */
 export const jobStatusEnum = pgEnum("job_status", [
@@ -72,6 +75,10 @@ export const artifactTypeEnum = pgEnum("artifact_type", [
   "preview",
   "qa_report",
   "export",
+  // ADR-018: bộ đăng bài YouTube, Facebook, TikTok.
+  "publish_kit",
+  // ADR-031: kết quả một lần đăng YouTube (videoId, link, chế độ hiển thị đọc lại).
+  "youtube_upload",
 ]);
 
 export const approvalGateEnum = pgEnum("approval_gate", ["script", "final"]);
@@ -91,10 +98,6 @@ export const eventTypeEnum = pgEnum("event_type", [
   "approval.recorded",
 ]);
 
-export const referenceKindEnum = pgEnum("reference_kind", [
-  "user_file",
-  "user_url",
-  "fetched_url",
-]);
+export const referenceKindEnum = pgEnum("reference_kind", ["user_file", "user_url", "fetched_url"]);
 
 export const voiceProfileKindEnum = pgEnum("voice_profile_kind", ["preset", "clone"]);

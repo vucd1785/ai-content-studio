@@ -78,6 +78,8 @@ export async function collectSceneMediaArtifacts(input: {
   dataDir: string;
   ttsClient: TtsMediaClient;
   hooks?: MediaStageHooks;
+  /** Cảnh đọc lại (ADR-021): bỏ cache TTS của mọi câu trong cảnh, TTS lấy mẫu lần mới. */
+  forceSceneIds?: ReadonlySet<string>;
 }): Promise<{ scenes: SceneMediaArtifacts[]; timings: MediaStageTimings }> {
   const plan = input.voiceScenes;
   const timings: MediaStageTimings = {
@@ -114,6 +116,7 @@ export async function collectSceneMediaArtifacts(input: {
         text: line.text,
         voiceId: line.voiceId,
         sceneId: scene.sceneId,
+        force: input.forceSceneIds?.has(scene.sceneId) === true,
       });
       timings.synthesizeMs += performance.now() - synthStart;
       if (wav.reused) {
@@ -446,10 +449,12 @@ async function resolveOrSynthesizeSceneWav(input: {
   text: string;
   voiceId: string;
   sceneId: string;
+  /** Bỏ qua cache; bản đọc mới ghi đè chỉ mục nên lần sau dùng bản này. */
+  force?: boolean;
 }): Promise<{ artifactId: string; reused: boolean }> {
   const contentKey = synthesizeContentKey(input.text, input.voiceId);
   const indexPath = synthesizeIndexPath(input.dataDir, contentKey);
-  if (existsSync(indexPath)) {
+  if (input.force !== true && existsSync(indexPath)) {
     const entry = JSON.parse(readFileSync(indexPath, "utf8")) as SynthesizeIndexEntry;
     const wavPath = ttsWavPath(input.dataDir, entry.artifactId);
     if (existsSync(wavPath)) {
@@ -478,8 +483,8 @@ async function resolveOrSynthesizeSceneWav(input: {
   return { artifactId: response.artifactId, reused: false };
 }
 
-/** Khớp `GATE_POLICY_VERSION` của services/tts (ADR-012, bổ sung 2026-11-02). */
-const GATE_POLICY_VERSION = "2.1.0-repair-zero-length";
+/** Khớp `GATE_POLICY_VERSION` của services/tts (ADR-012, bổ sung 2026-11-04). */
+const GATE_POLICY_VERSION = "2.2.0-extend-last-word";
 
 async function resolveOrAlignScene(input: {
   dataDir: string;

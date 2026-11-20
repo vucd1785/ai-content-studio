@@ -1,0 +1,24 @@
+{
+  "id": "flag_aw",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Aruba bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Aruba.",
+  "tags": [
+    "cờ Aruba",
+    "nước Aruba",
+    "người Aruba",
+    "Aruba",
+    "quốc kỳ Aruba"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

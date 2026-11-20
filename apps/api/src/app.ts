@@ -4,18 +4,28 @@ import {
   type ZodTypeProvider,
 } from "@fastify/type-provider-zod";
 import type { ApiErrorBody } from "@studio/contracts";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import { registerSecurityHooks } from "./hooks.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { createEventNotifier, registerEventStreamRoute } from "./routes/event-stream.js";
+import { registerMotionAssetRoutes } from "./routes/motion-assets.js";
 import { type ProjectRouteDeps, registerProjectRoutes } from "./routes/projects.js";
+import { registerPublishRoutes } from "./routes/publish.js";
+import { registerRedoRoutes } from "./routes/redo.js";
+import { registerScriptEditRoutes } from "./routes/script-edits.js";
 import { registerSessionProbeRoute, registerSessionRoutes } from "./routes/session.js";
+import { registerVideoRoutes } from "./routes/videos.js";
 import {
   type HeartbeatReader,
   redisHeartbeatReader,
   registerWorkerStatusRoute,
 } from "./routes/worker-status.js";
 import { registerWorkflowRunRoutes } from "./routes/workflow-runs.js";
+import {
+  registerYoutubeRoutes,
+  YOUTUBE_CALLBACK_PATH,
+  type YoutubeRouteDeps,
+} from "./routes/youtube.js";
 
 export type BuildAppOptions = {
   password: string;
@@ -29,6 +39,8 @@ export type BuildAppOptions = {
   eventStream?: { pollMs?: number; heartbeatMs?: number };
   /** Đọc heartbeat worker (P3-15). Mặc định Redis của `REDIS_URL`; test thay bằng bản giả. */
   readHeartbeats?: HeartbeatReader;
+  /** ADR-031: cấu hình YouTube (null là chưa cấu hình) và fetch giả cho test. */
+  youtube?: Pick<YoutubeRouteDeps, "youtube" | "fetch" | "now" | "envFile">;
 };
 
 export type StudioApp = FastifyInstance & {
@@ -45,8 +57,23 @@ export async function buildApp(options: BuildAppOptions): Promise<StudioApp> {
         ? false
         : {
             redact: {
-              paths: ["req.headers.cookie", "req.body.password", 'res.headers["set-cookie"]'],
+              paths: [
+                "req.headers.cookie",
+                "req.body.password",
+                "req.body.clientSecret",
+                'res.headers["set-cookie"]',
+              ],
               censor: "[REDACTED]",
+            },
+            serializers: {
+              // ADR-031: URL callback OAuth mang `code` và `state` trong query; log không giữ query đó.
+              req: (req: FastifyRequest) => ({
+                method: req.method,
+                url: redactOauthQuery(req.url ?? ""),
+                host: req.host,
+                remoteAddress: req.ip,
+                remotePort: req.socket?.remotePort ?? 0,
+              }),
             },
           },
   }).withTypeProvider<ZodTypeProvider>();
@@ -110,6 +137,27 @@ export async function buildApp(options: BuildAppOptions): Promise<StudioApp> {
       notifier,
     });
     registerArtifactRoutes(app, { db: options.projects.db, dataDir: options.projects.dataDir });
+    registerMotionAssetRoutes(app, { db: options.projects.db, dataDir: options.projects.dataDir });
+    registerVideoRoutes(app, { db: options.projects.db, dataDir: options.projects.dataDir });
+    registerPublishRoutes(app, { db: options.projects.db, notifier });
+    registerScriptEditRoutes(app, {
+      db: options.projects.db,
+      dataDir: options.projects.dataDir,
+      notifier,
+    });
+    registerRedoRoutes(app, {
+      db: options.projects.db,
+      dataDir: options.projects.dataDir,
+      notifier,
+    });
+    registerYoutubeRoutes(app, {
+      db: options.projects.db,
+      notifier,
+      youtube: options.youtube?.youtube ?? null,
+      ...(options.youtube?.fetch === undefined ? {} : { fetch: options.youtube.fetch }),
+      ...(options.youtube?.now === undefined ? {} : { now: options.youtube.now }),
+      ...(options.youtube?.envFile === undefined ? {} : { envFile: options.youtube.envFile }),
+    });
     registerEventStreamRoute(app, { db: options.projects.db, notifier, ...options.eventStream });
     registerWorkerStatusRoute(app, {
       readHeartbeats:
@@ -125,6 +173,12 @@ export async function buildApp(options: BuildAppOptions): Promise<StudioApp> {
   };
 
   return studioApp;
+}
+
+/** Bỏ query của URL callback OAuth trước khi ghi log. */
+export function redactOauthQuery(url: string): string {
+  const path = url.split("?")[0] ?? url;
+  return path === YOUTUBE_CALLBACK_PATH && path !== url ? `${path}?[REDACTED]` : url;
 }
 
 function sendValidationError(

@@ -1,0 +1,18 @@
+{
+  "id": "prop_toa_nha_cao_8f66",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Tòa nhà cao tầng màu xanh xám vẽ phẳng, có nhiều ô cửa sổ sáng nhấp nháy và đèn ăng-ten trên nóc, khẽ nghiêng lắc qua lại như đang rơi, hai bên có các vệt gió lướt lên.",
+  "tags": [
+    "tòa nhà",
+    "nhà cao tầng",
+    "thành phố",
+    "rơi xuống",
+    "vệt gió"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "4f098ce0-7e52-4d97-bcce-0f13fc1d3773:1:r3",
+  "licenses": []
+}

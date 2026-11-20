@@ -48,3 +48,18 @@ export function usePrefersReducedMotion(): boolean {
     () => false,
   );
 }
+
+/** Trang đang hiện (Page Visibility API); môi trường không có `document` coi như hiện. */
+export function usePageVisible(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof document === "undefined") {
+        return () => {};
+      }
+      document.addEventListener("visibilitychange", onChange);
+      return () => document.removeEventListener("visibilitychange", onChange);
+    },
+    () => (typeof document === "undefined" ? true : document.visibilityState !== "hidden"),
+    () => true,
+  );
+}

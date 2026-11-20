@@ -114,3 +114,69 @@ P6-09 vẽ cả hai thành lớp phủ: dải chữ ở đầu khung và một k
   - prompt P6-10: không yêu cầu hai trường này;
   - `docs/11-TASKS.md`: thêm ghi chú vào P6-10.
 - **Không đổi:** ADR-004 (cổng duyệt), ADR-015 (phụ đề theo người nói), ADR-016 (kho tài sản), script `1`, `EduVertical`, route sửa script của P2-12.
+
+## Bổ sung 2026-11-11: minh họa chỉ hình khi giải thích
+
+Director yêu cầu: khi nhân vật giải thích, nội dung nên được vẽ ra cho dễ hình dung, hoặc trong bong bóng nghĩ trên đầu, hoặc trên bảng. Director chọn có cả hai kiểu và để LLM chọn kiểu theo từng câu.
+
+- **Trường mới:** shot có `illustration` tùy chọn `{ style: "bubble" | "board", owner, items }`.
+  - `items` là 1–3 id tài sản kind `prop`.
+  - `owner` phải là nhân vật trong shot.
+  - Không dùng ở cỡ `close`.
+- **Vẫn giữ luật ở bổ sung 2026-11-03:** minh họa chỉ có hình đồ vật, không chữ, không code, không sơ đồ có nhãn. Object `.strict()`, nên một trường chữ trong `illustration` bị từ chối.
+- **Cách vẽ** (`packages/motion-kit/src/stage/illustration.tsx`):
+  - Vẽ trong hệ màn hình 1080×1920, không theo camera, để không bị mép khung cắt.
+  - Vùng vẽ từ y = 150 tới trên đỉnh đầu nhân vật cao nhất, tối đa y = 820; luôn nằm trên vùng phụ đề.
+  - `bubble`: đám mây với chuỗi chấm dẫn xuống đầu `owner`; đồ vật bật ra lần lượt.
+  - `board`: bảng trắng viền gỗ; đồ vật hiện từ trái sang phải như đang vẽ.
+  - Đồ vật cuối hiện xong ở frame 22 của shot. Ảnh storyboard chụp ở frame 24 nên thấy đủ; storyboard chụp shot có minh họa nếu cảnh có.
+- **Version:** motion kit `0.4.0`, `StickStory` `1.4.0+kit.0.4.0`. MP4 cũ không bị dùng nhầm.
+- **Prompt:** LLM thêm minh họa ở khoảng một shot của mỗi cảnh giải thích. Ở chế độ `creative`, thiếu hình thì được xin thêm `prop` theo ADR-017.
+
+## Bổ sung 2026-11-12: minh họa xin đồ vật mới, diễn xuất tự động, máy quay, phụ đề theo cụm
+
+Director 2026-11-11 duyệt các đề xuất sau khi review video "Vì sao nước biển mặn?": cảnh giải thích chỉ có nhân vật đứng nói, 27/30 shot người nghe đứng đơ, máy quay lặp mẫu, phụ đề ngắt giữa cụm từ.
+
+- **Minh họa xin đồ vật mới.**
+  - Ở chế độ `creative`, `illustration.items` được nêu thẳng id yêu cầu `rN` của một `assetRequests` kind `prop` (`ILLUSTRATION_REQUEST_IDS`). Contracts từ chối `rN` ở chế độ `standard`, hoặc khi yêu cầu không phải `prop`.
+  - Worker thay `rN` bằng tài sản đã tạo. Yêu cầu chưa xong thì bỏ khỏi minh họa; minh họa không còn đồ vật thì bỏ hẳn.
+  - Giới hạn: tối đa 5 yêu cầu, tối đa 3 yêu cầu không dùng cho minh họa.
+- **Diễn xuất tự động** (`aliveOffset`, motion kit 0.5.0). Sau khi tư thế hoặc hành động một lần đã xong:
+  - người nghe gật đầu theo chu kỳ riêng và đung đưa nhẹ;
+  - người nói nghiêng đầu nhấn nhá;
+  - hành động lặp không cộng thêm.
+  - Test kit kiểm luật tay với lớp này ở frame 0–240.
+- **Camera mới:** `cam_pull_out` (lùi máy mở cảnh), `cam_pan` (lia ngang), `cam_bump` (giật máy nhấn bất ngờ).
+- **Đạo diễn máy quay bằng luật** (`directCameras`, sau `fixPacing`):
+  - hoảng hốt, hoặc ngạc nhiên ở cỡ cận: giật máy, không quá một lần trong ba shot;
+  - shot rộng mở cảnh đang đứng yên: lùi máy;
+  - cùng kiểu máy ba shot liền: đổi kiểu.
+- **Phụ đề theo cụm nghĩa** (`groupCaptionPhrases`):
+  - ngắt ở dấu câu, khi đổi người nói, khi ngừng quá 450 ms, hoặc khi khung đủ khoảng 42 ký tự hay 2,6 giây;
+  - câu cảm ngắn đi cùng vế sau; giữ chữ thêm 400 ms để không nháy tắt.
+- **Version:** motion kit `0.5.0`, `StickStory` `1.5.0+kit.0.5.0` (kèm nhạc và SFX của ADR-019).
+- **Không đổi:** không chữ trên màn hình (bổ sung 2026-11-03). Lời mời theo dõi ở cuối video là lời thoại (ADR-020).
+
+## Bổ sung 2026-11-12 (2): thẻ chữ đầu và cuối video
+
+- Trạng thái: **Accepted** (Director 2026-11-12).
+- Ngoại lệ duy nhất của luật không chữ (bổ sung 2026-11-03):
+  - thẻ tiêu đề ở 2,4 giây đầu;
+  - thẻ tên kênh và lời mời theo dõi ở 3 giây cuối.
+- Chi tiết ở [ADR-021](ADR-021-cards-redo-and-export.md). Mọi chỗ khác vẫn không chữ.
+
+## Bổ sung 2026-11-12 (3): minh họa hiện trong cảnh, bỏ bong bóng nghĩ
+
+- Trạng thái: **Accepted**. Director 2026-11-12: "bỏ khung đám mây nói chuyện ra và hiển thị khung cảnh thật xuất hiện khi nhân vật nói đến sẽ hợp lý hơn".
+- **Kiểu `scene` mới** (motion kit 0.6.0):
+  - Đồ vật minh họa vẽ thẳng trong khung cảnh, ở vùng trời trên đầu nhân vật, sau lưng nhân vật, không khung viền.
+  - Mỗi món hiện dần khi vào shot (shot cắt đúng từ khóa đang nói), lệch nhau 6 frame, rồi lơ lửng nhẹ.
+  - Ví dụ: cầu vồng mọc trên bầu trời mưa.
+- **`bubble` cũ** vẫn hợp lệ cho kịch bản đã viết, nhưng vẽ như `scene`. Prompt kịch bản không dùng `bubble` nữa.
+- **`board`** (bảng trắng) giữ nguyên.
+- **SFX:** minh họa `scene` dùng tiếng lấp lánh thay tiếng bật.
+- **Tạo hình:** vật trên trời (mặt trời, cầu vồng, mây, giọt mưa) không có chân đế hay bóng dưới đất.
+- **Storyboard:**
+  - chụp thêm tối đa 3 ảnh mỗi cảnh, cho các shot khác có minh họa hoặc đồ vật (`extraStills`), để ý chính ở shot sau vẫn thấy được ở Cổng 1;
+  - ảnh tĩnh ghi rõ `cards: {}`, không lấy thẻ chữ của fixture.
+

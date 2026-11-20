@@ -1,0 +1,18 @@
+{
+  "id": "prop_hinh_ve_phang_d02d",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Bàn tay cầm chiếc điện thoại thông minh phát ánh sáng xanh trong đêm, ngón cái lướt màn hình liên tục làm các ô nội dung cuộn lên, luồng sáng xanh hắt lên trên nhấp nháy nhẹ cùng các đốm sáng bay lên.",
+  "tags": [
+    "điện thoại",
+    "ánh sáng xanh",
+    "lướt màn hình",
+    "thiếu ngủ",
+    "ban đêm"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:1:r1",
+  "licenses": []
+}

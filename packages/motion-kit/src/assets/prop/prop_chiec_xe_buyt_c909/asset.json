@@ -1,0 +1,18 @@
+{
+  "id": "prop_chiec_xe_buyt_c909",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chiếc xe buýt vàng phanh gấp: bánh xe đứng khựng, thân xe chúi về trước rồi nhún nhẹ theo nhịp, đèn phanh nhấp nháy, khói bụi bay ra sau và các vạch chuyển động lướt qua; trên xe không có ai bị thương.",
+  "tags": [
+    "xe buýt",
+    "phanh gấp",
+    "quán tính",
+    "xe vàng",
+    "dừng đột ngột"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "30cc2a2d-b7f3-48a0-97e7-907e62ca2eb8:1:r2",
+  "licenses": []
+}

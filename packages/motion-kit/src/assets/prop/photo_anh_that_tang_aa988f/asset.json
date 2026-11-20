@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_tang_aa988f",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật tầng đẩy Falcon 9 đứng trên sà lan không người lái giữa biển sau khi hạ cánh.",
+  "tags": [
+    "SpaceX droneship landing",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "a73a195c-7bc3-4bb2-83c7-aa5d2c7e207e:1:r4",
+  "licenses": [
+    {
+      "name": "CC0",
+      "source": "Wikimedia Commons",
+      "author": "SpaceX",
+      "url": "https://commons.wikimedia.org/wiki/File:Falcon_9_first_stage_landing_on_Droneship.jpg",
+      "attribution": "\"Falcon 9 first stage landing on Droneship.jpg\" – SpaceX, CC0, Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Falcon_9_first_stage_landing_on_Droneship.jpg)"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_day_bd6672",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật dãy tủ máy chủ trong trung tâm dữ liệu, đèn nhấp nháy, không có logo.",
+  "tags": [
+    "data center server racks",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "9ea0d0e7-7391-4db0-b0ff-72ac4a6fa0aa:08644792:1:r3",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "en.wikipedia.org",
+      "url": "https://en.wikipedia.org/wiki/Data_center",
+      "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Data_Center_of_CNPC.jpg/1280px-Data_Center_of_CNPC.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=thumbnail",
+      "attribution": "Ảnh: Data center - Wikipedia (https://en.wikipedia.org/wiki/Data_center)"
+    }
+  ]
+}

@@ -34,7 +34,9 @@ export type GeminiResearchAdapterOptions = {
  * (docs/04-AGENT-ORCHESTRATION.md): request chỉ có system instruction, prompt và JSON schema.
  * Dùng chung model và mức thinking của script; chưa có biến env riêng cho research.
  */
-export function createGeminiResearchAdapter(options: GeminiResearchAdapterOptions = {}): ResearchLlm {
+export function createGeminiResearchAdapter(
+  options: GeminiResearchAdapterOptions = {},
+): ResearchLlm {
   const config = options.config ?? readGeminiEnv(process.env);
   const client = options.client ?? createGeminiStructuredClient(config);
   return {

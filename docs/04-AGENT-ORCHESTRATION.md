@@ -63,12 +63,41 @@ Cạnh thêm (P6-10 sửa state machine trong contracts và `packages/db/src/wor
   - Mọi gói viết script `2`; script `1` và `EduVertical` đã xóa (ADR-013 bổ sung (2) 2026-11-03). Brief dùng gói không còn (ví dụ `explainer`) thì job script `failed` với `configuration_missing`.
   - Script job tạo job storyboard trong cùng transaction: vai `visual`, queue `render`, key `storyboard:<run>:script:<job script>`.
   - Agent `script` đặt `waiting_approval` ngay khi ghi script `2`, vì kịch bản đã xong và chỉ còn chờ Director; storyboard chỉ thêm ảnh cho màn duyệt.
+- Bước tài sản trong job storyboard ([ADR-017](decisions/ADR-017-auto-asset-generation.md)), chỉ với run `creative`, trước khi chụp ảnh:
+  - ghi `motion_asset_requests` của cả hai phương án;
+  - dùng lại tài sản khớp tag;
+  - còn thiếu thì Claude Code headless tạo `prop`, `background`, `action` hoặc `pose` (kiểm AST, typecheck, render thử);
+  - yêu cầu tạo xong thành `fulfilled` với tài sản `candidate`; cảnh dùng tài sản mới ở storyboard và mọi bước sau.
+  - Tạo lỗi thì yêu cầu giữ `open`, cảnh dùng `fallbackAssetId`, lỗi vào `errors[]` của storyboard. Không thêm trạng thái workflow.
+  - Trần 3 tài sản mới mỗi run. Lần gọi tạo tài sản (vai `visual`) không tính vào trần gọi LLM của run.
 - `storyboarding → waiting_script_approval`: job storyboard (queue `render`, vai `visual`) đã ghi artifact `storyboard`. Lỗi render ảnh hoặc lỗi kiểm tự động **không** chặn cổng: job vẫn ghi artifact với danh sách lỗi và chuyển trạng thái; hết lượt retry cũng vậy. Không có cạnh `storyboarding → failed`; hủy vẫn đi `cancelled`.
 - `waiting_final_approval → preview_rendering`: chỉ khi run `creative` và Director chọn "Yêu cầu sửa" để dùng tài sản mới đã `approved` cho các yêu cầu của run ([ADR-016](decisions/ADR-016-creative-mode-motion-assets.md), bước 6). Job render dựng lại `render_props` thay tài sản tạm, không gọi LLM, không gọi TTS. Mọi trường hợp "Yêu cầu sửa" khác ở cổng final vẫn đi `scripting` (P3-14). Director xác nhận cạnh này 2026-11-03.
 
 `resume_from` không thêm giá trị: lỗi ngoài ý muốn ở `storyboarding` không xảy ra theo thiết kế trên. Nếu process chết và BullMQ hết lượt, worker vẫn ghi artifact `storyboard` chỉ có `errors[]` và mở cổng script (P6-10).
 
 `waiting_approval` trên `agent_runs` chỉ dùng cho `script` khi đang `storyboarding` hoặc `waiting_script_approval`, và cho `producer` khi đang `waiting_final_approval`.
+
+### Bộ đăng bài (ADR-018)
+
+- Job export xong tạo job `publish` (vai `publish`, queue `llm`, key `publish:<run>:export:<exportJob>`) trong cùng transaction.
+- Run giữ `exported`. Job lỗi không đổi trạng thái run; Director bấm "Tạo lại" (`publish:<run>:request:<nonce>`).
+- Một lượt gọi LLM cùng model với kịch bản, không tính vào trần lượt gọi của run. Kết quả là artifact `publish_kit`.
+
+### Làm lại một phần ở Cổng 2 (ADR-021)
+
+Nhóm cạnh riêng, như hủy và resume; sơ đồ trên không đổi. Lệnh `redo` của state machine chỉ đi từ `waiting_final_approval`:
+
+- `waiting_final_approval → producing_assets`: đọc lại một cảnh.
+  - Route tạo job `voice` (queue `media`), key `voice:<run>:approval:<a>:redo:<id>`.
+  - Job xong tạo job render cùng `redoId`.
+- `waiting_final_approval → preview_rendering`: đổi nền, tạo lại hình, dựng lại.
+  - Route tạo job `video` (queue `render`), key `render:<run>:approval:<a>:redo:<id>`.
+
+`<a>` là approval kịch bản mới nhất. Không ghi approval. Render xong đi QA rồi về `waiting_final_approval` như thường.
+
+Yêu cầu nằm trong `artifacts/<run>/redo/<id>.json`. Render áp mọi lần đổi nền và tạo lại hình sau approval kịch bản đó.
+
+Lần tạo lại hình gọi Claude Code (vai `video`). Lần gọi này không tính vào trần gọi LLM của run, giống tạo tài sản ở ADR-017.
 
 ## Artifact nghiên cứu
 

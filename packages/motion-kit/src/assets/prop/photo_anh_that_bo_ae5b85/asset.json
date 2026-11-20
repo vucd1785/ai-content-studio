@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_bo_ae5b85",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật bo mạch chip AI tự thiết kế của Google (TPU), không có logo.",
+  "tags": [
+    "Google TPU chip",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": "5bd0ed4b-e18e-491f-a349-b614fb4b2e92:7bee71b6:1:r3",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "wikipedia.org",
+      "url": "https://Www.Wikipedia.org/wiki/Tensor_processing_unit",
+      "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Tensor_Processing_Unit_3.0.jpg/1280px-Tensor_Processing_Unit_3.0.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=thumbnail",
+      "attribution": "Ảnh: Tensor Processing Unit - Wikipedia (https://Www.Wikipedia.org/wiki/Tensor_processing_unit)"
+    }
+  ]
+}

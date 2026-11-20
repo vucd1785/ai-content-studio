@@ -1,0 +1,18 @@
+{
+  "id": "prop_ba_toa_nha_b040",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ba tòa nhà văn phòng nhỏ vẽ phẳng; tòa bên phải có đám mây trôi nhẹ trên nóc. Các tòa nối với nhau bằng những đường sáng xanh lá, có chấm sáng chạy qua chạy lại. Đèn cửa sổ nhấp nháy, đèn ăng-ten sáng theo nhịp.",
+  "tags": [
+    "tòa nhà văn phòng",
+    "mạng lưới đối tác",
+    "điện toán đám mây",
+    "kết nối",
+    "công ty công nghệ"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "5bd0ed4b-e18e-491f-a349-b614fb4b2e92:2:r4",
+  "licenses": []
+}

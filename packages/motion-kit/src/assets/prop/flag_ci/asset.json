@@ -1,0 +1,24 @@
+{
+  "id": "flag_ci",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Côte d'Ivoire bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Côte d'Ivoire.",
+  "tags": [
+    "cờ Côte d'Ivoire",
+    "nước Côte d'Ivoire",
+    "người Côte d'Ivoire",
+    "Côte d'Ivoire",
+    "quốc kỳ Côte d'Ivoire"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

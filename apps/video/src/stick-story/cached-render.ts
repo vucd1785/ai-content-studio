@@ -28,6 +28,8 @@ export async function renderStickStoryWithCache(params: {
   renderMedia: StickStoryRenderMediaFn;
   audioContentSha256: string;
   validateCachedMp4?: (path: string) => boolean;
+  /** Xử lý MP4 tạm trước khi vào cache, ví dụ chuẩn hóa độ to (ADR-021). */
+  postProcess?: (path: string) => void | Promise<void>;
 }): Promise<{ outputLocation: string; contentHash: string; cacheHit: boolean; crf: number }> {
   const contentHash = hashStickStoryRenderProps(params.props, {
     audioContentSha256: params.audioContentSha256,
@@ -56,6 +58,7 @@ export async function renderStickStoryWithCache(params: {
     outputLocation: tmp,
     inputProps: params.props,
   });
+  await params.postProcess?.(tmp);
   renameSync(tmp, outputLocation);
   return { outputLocation, contentHash, cacheHit: false, crf };
 }

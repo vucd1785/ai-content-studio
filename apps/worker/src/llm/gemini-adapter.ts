@@ -1,6 +1,7 @@
 import { type GeminiEnvConfig, readGeminiEnv } from "@studio/config/gemini";
 import { scriptV2ArtifactSchema } from "@studio/contracts";
 import { createGeminiStructuredClient } from "./gemini-client.js";
+import { stageOutroScenes } from "./outro-scene.js";
 import {
   buildScriptV2Prompt,
   decodeFlatScriptV2,
@@ -33,7 +34,11 @@ export function createGeminiAdapter(options: GeminiAdapterOptions = {}): Structu
           thinkingLevel: config.thinkingLevelScript,
         },
         {
-          mapParsedJson: (raw) => decodeFlatScriptV2(raw, input.format),
+          // ADR-026: cảnh mời theo dõi do code dựng hình, LLM chỉ viết câu.
+          mapParsedJson: (raw) =>
+            stageOutroScenes(decodeFlatScriptV2(raw, input.format), input.format, (id) =>
+              schemaOptions.assetCatalog.some((a) => a.id === id),
+            ),
           repairNotes:
             "Flat layout: lines and shots are arrays at variant level with sceneId; actors are actor1 and optional actor2, actor3 (actor3 only for wide or high shots). Use only ids from the enums.",
         },

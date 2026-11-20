@@ -8,6 +8,7 @@ import {
 import { getBrandProfileById } from "./brand-profiles.js";
 import type { StudioDb } from "./db.js";
 import { publishEvents } from "./events.js";
+import { approveCandidateAssetsForVariant } from "./motion-assets.js";
 import {
   agentRuns,
   approvals,
@@ -16,10 +17,12 @@ import {
   briefs,
   events,
   jobs,
+  motionAssetRequests,
   projects,
   references,
   usageRecords,
   workflowRuns,
+  youtubeUploads,
 } from "./schema/index.js";
 
 export type StudioTx = Parameters<Parameters<StudioDb["transaction"]>[0]>[0];
@@ -134,6 +137,7 @@ export function mapWorkflowRunRow(row: WorkflowRunRow) {
     failureCode: row.failureCode,
     failureMessage: row.failureMessage,
     llmModel: row.llmModel,
+    aspectRatio: row.aspectRatio === "16:9" ? ("16:9" as const) : ("9:16" as const),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
@@ -224,6 +228,14 @@ export async function recordApproval(
     if (approval === undefined) {
       throw new Error("insert_approval_failed");
     }
+    // ADR-017 mục 3: duyệt phương án ở Cổng 1 cũng duyệt tài sản `candidate` mà phương án đó dùng.
+    const approvedAssetIds =
+      input.gate === "script" && input.decision === "approved" && approval.variantIndex !== null
+        ? await approveCandidateAssetsForVariant(tx, {
+            scriptArtifactId: artifact.id,
+            variantIndex: approval.variantIndex,
+          })
+        : [];
 
     const nextStatus = nextStatusAfterApproval(input.gate, input.decision);
     const [updated] = await tx
@@ -245,6 +257,7 @@ export async function recordApproval(
           decision: approval.decision,
           artifactId: approval.artifactId,
           ...(approval.variantIndex === null ? {} : { variantIndex: approval.variantIndex }),
+          ...(approvedAssetIds.length === 0 ? {} : { approvedAssetIds }),
         },
       },
     ];
@@ -365,11 +378,15 @@ export async function assertExportAllowed(
 type JobProgressRow = {
   done: number;
   total: number;
-  unit: "scene_step" | "frame";
+  unit: "scene_step" | "frame" | "image";
   sceneIndex: number | null;
   sceneCount: number | null;
-  phase: "synthesize" | "align" | null;
+  lineIndex: number | null;
+  lineCount: number | null;
+  phase: "synthesize" | "align" | "assets" | "stills" | null;
 };
+
+const PROGRESS_PHASES = new Set(["synthesize", "align", "assets", "stills"]);
 
 function positiveInt(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
@@ -386,7 +403,11 @@ export function readJobProgress(payload: unknown): JobProgressRow | null {
     typeof value.done === "number" && Number.isInteger(value.done) && value.done >= 0
       ? value.done
       : null;
-  if (total === null || done === null || (value.unit !== "scene_step" && value.unit !== "frame")) {
+  if (
+    total === null ||
+    done === null ||
+    (value.unit !== "scene_step" && value.unit !== "frame" && value.unit !== "image")
+  ) {
     return null;
   }
   return {
@@ -395,7 +416,11 @@ export function readJobProgress(payload: unknown): JobProgressRow | null {
     unit: value.unit,
     sceneIndex: positiveInt(value.sceneIndex),
     sceneCount: positiveInt(value.sceneCount),
-    phase: value.phase === "synthesize" || value.phase === "align" ? value.phase : null,
+    lineIndex: positiveInt(value.lineIndex),
+    lineCount: positiveInt(value.lineCount),
+    phase: PROGRESS_PHASES.has(value.phase as string)
+      ? (value.phase as JobProgressRow["phase"])
+      : null,
   };
 }
 
@@ -490,6 +515,8 @@ export async function deleteProjectCascadeForTests(db: StudioDb, projectId: stri
     await db.delete(events).where(inArray(events.workflowRunId, runIds));
     await db.delete(usageRecords).where(inArray(usageRecords.workflowRunId, runIds));
     await db.delete(approvals).where(inArray(approvals.workflowRunId, runIds));
+    // ADR-031: lần đăng YouTube trỏ tới job và artifact: xóa trước.
+    await db.delete(youtubeUploads).where(inArray(youtubeUploads.workflowRunId, runIds));
     const agentRows = await db
       .select({ id: agentRuns.id })
       .from(agentRuns)
@@ -499,6 +526,8 @@ export async function deleteProjectCascadeForTests(db: StudioDb, projectId: stri
       await db.delete(jobs).where(inArray(jobs.agentRunId, agentIds));
       await db.delete(agentRuns).where(inArray(agentRuns.id, agentIds));
     }
+    // Yêu cầu tài sản (ADR-016/017) trỏ tới artifact script: xóa trước artifact.
+    await db.delete(motionAssetRequests).where(inArray(motionAssetRequests.workflowRunId, runIds));
     await db.delete(artifacts).where(inArray(artifacts.workflowRunId, runIds));
     await db.delete(workflowRuns).where(inArray(workflowRuns.id, runIds));
   }

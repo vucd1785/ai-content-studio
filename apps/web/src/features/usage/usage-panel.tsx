@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { vi } from "@/i18n/vi";
-import { sumUsage } from "./usage-totals";
+import { formatUsd, sumUsage } from "./usage-totals";
 import { useRunUsage } from "./use-usage";
 
 const numberFormat = new Intl.NumberFormat("vi-VN");
@@ -29,7 +29,7 @@ export function UsagePanel({ runId }: { runId: string | null }) {
       [vi.usage.inputTokens, numberFormat.format(totals.inputTokens)],
       [vi.usage.outputTokens, numberFormat.format(totals.outputTokens)],
       [vi.usage.thinkingTokens, numberFormat.format(totals.thinkingTokens)],
-      [vi.usage.estimatedCost, totals.estimatedCostUsd],
+      [vi.usage.estimatedCost, formatUsd(totals.estimatedCostUsd)],
     ];
     body = (
       <div className="flex flex-col gap-3">
@@ -64,7 +64,7 @@ export function UsagePanel({ runId }: { runId: string | null }) {
                 <td className="text-right tabular-nums">
                   {numberFormat.format(record.outputTokens)}
                 </td>
-                <td className="text-right tabular-nums">{record.estimatedCostUsd}</td>
+                <td className="text-right tabular-nums">{formatUsd(record.estimatedCostUsd)}</td>
               </tr>
             ))}
           </tbody>

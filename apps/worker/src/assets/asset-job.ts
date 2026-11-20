@@ -98,7 +98,11 @@ export async function runAssetJob(
     ...(output.dependencies === undefined ? {} : { dependencies: output.dependencies }),
     ...(output.parentArtifacts === undefined ? {} : { parentArtifacts: output.parentArtifacts }),
     runTransition: { from: "producing_assets", to: "producing_assets" },
-    barrier: renderBarrier(context.workflowRun.id, approved.value.approvalId),
+    barrier: renderBarrier(
+      context.workflowRun.id,
+      approved.value.approvalId,
+      context.job.idempotencyKey,
+    ),
   });
   return { status: "completed", artifactIds: inserted.map((row) => row.id) };
 }

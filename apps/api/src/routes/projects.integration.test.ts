@@ -187,14 +187,14 @@ describe("projects API (I1–I13 + security)", () => {
         headers: { cookie: cookieHeader },
         payload,
       });
-    expect((await put({ ...validBrief(), durationSec: 91 })).statusCode).toBe(400);
+    expect((await put({ ...validBrief(), durationSec: 181 })).statusCode).toBe(400);
     expect((await put({ ...validBrief(), durationSec: 29 })).statusCode).toBe(400);
-    const ok = await put({ ...validBrief(), durationSec: 90 });
+    const ok = await put({ ...validBrief(), durationSec: 180 });
     expect(ok.statusCode).toBe(201);
-    expect(ok.json()).toMatchObject({ formatId: "story", formatVersion: 1, durationSec: 90 });
+    expect(ok.json()).toMatchObject({ formatId: "story", formatVersion: 4, durationSec: 180 });
     const ignored = await put({ ...validBrief(), formatId: "what_if", durationSec: 75 });
     expect(ignored.statusCode).toBe(201);
-    expect(ignored.json()).toMatchObject({ formatId: "story", formatVersion: 1 });
+    expect(ignored.json()).toMatchObject({ formatId: "story", formatVersion: 4 });
     await app.close();
   });
 

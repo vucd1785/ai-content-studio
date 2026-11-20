@@ -1,7 +1,8 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { vi } from "@/i18n/vi";
-import { RunProgress } from "./run-progress";
+import { progressDetail, RunProgress } from "./run-progress";
+import { stepProgress } from "./run-steps";
 
 const NOW = Date.parse("2026-11-01T15:10:00Z");
 
@@ -16,6 +17,7 @@ function run(status: string, agentRuns: unknown[], extra: Record<string, unknown
       failureCode: null,
       failureMessage: null,
       llmModel: null,
+      aspectRatio: "9:16",
       createdAt: "2026-11-01T15:00:00Z",
       updatedAt: "2026-11-01T15:00:00Z",
       ...extra,
@@ -58,7 +60,7 @@ describe("thanh tiến trình (P3-17)", () => {
     const bar = screen.getByRole("progressbar");
     expect(bar.getAttribute("aria-valuenow")).toBe("62");
     expect(screen.getByTestId("progress-assets").textContent).toContain(
-      `62% · ${vi.runSteps.sceneOf} 3/4 · ${vi.runSteps.phases.align}`,
+      `62% · ${vi.runSteps.sceneOf} 3/4 · ${vi.runSteps.phases.synthesize}`,
     );
     expect(screen.getByText(vi.runSteps.noLimit)).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
@@ -111,7 +113,8 @@ describe("thanh tiến trình (P3-17)", () => {
               startedAt: "2026-11-01T15:05:00Z",
               finishedAt: "2026-11-01T15:06:00Z",
               errorCode: "quota_exhausted",
-              errorMessage: "Hết hạn mức gói Claude; tiếp tục sau khi hạn mức reset. usage limit reached",
+              errorMessage:
+                "Hết hạn mức gói Claude; tiếp tục sau khi hạn mức reset. usage limit reached",
               progress: null,
             },
           ],
@@ -123,5 +126,34 @@ describe("thanh tiến trình (P3-17)", () => {
     expect(alert.textContent).toContain(vi.runSteps.errors.quota_exhausted);
     expect(alert.textContent).toContain(vi.runSteps.errorHints.claudeCode);
     expect(alert.textContent).not.toContain(vi.runSteps.errorHints.tts);
+  });
+});
+
+describe("chữ tiến trình đếm thật (2026-11-11)", () => {
+  it("voice story v2 nhiều câu mỗi cảnh: lấy cảnh và câu worker ghi, không ra cảnh 15/8", () => {
+    const p = stepProgress({
+      done: 30,
+      total: 32,
+      unit: "scene_step",
+      sceneIndex: 7,
+      sceneCount: 7,
+      lineIndex: 3,
+      lineCount: 3,
+      phase: "synthesize",
+    });
+    expect(p?.percent).toBe(93);
+    expect(progressDetail(p as NonNullable<typeof p>)).toBe(
+      `${vi.runSteps.sceneOf} 7/7 · ${vi.runSteps.lineOf} 3/3 · ${vi.runSteps.phases.synthesize}`,
+    );
+  });
+
+  it("storyboard: đang tạo hình mới, rồi đếm ảnh đã chụp", () => {
+    const assets = stepProgress({ done: 0, total: 14, unit: "image", phase: "assets" });
+    expect(progressDetail(assets as NonNullable<typeof assets>)).toBe(vi.runSteps.phases.assets);
+    const stills = stepProgress({ done: 5, total: 14, unit: "image", phase: "stills" });
+    expect(stills?.percent).toBe(35);
+    expect(progressDetail(stills as NonNullable<typeof stills>)).toBe(
+      `${vi.runSteps.imageOf} 5/14`,
+    );
   });
 });

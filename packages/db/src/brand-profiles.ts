@@ -1,6 +1,6 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import type { StudioDb } from "./db.js";
-import { brandCharacters, brandProfiles } from "./schema/index.js";
+import { brandCharacters, brandProfiles, projects } from "./schema/index.js";
 
 /** Kênh và dàn nhân vật (ADR-013, P6-07). Chỉ đọc; sửa kênh làm ở P6-11. */
 
@@ -39,6 +39,7 @@ export function mapBrandProfileRow(row: BrandProfileRow, characters: BrandCharac
     sonicLogoAssetId: row.sonicLogoAssetId,
     toneRules: row.toneRules,
     narratorVoiceId: row.narratorVoiceId,
+    copyrightContact: row.copyrightContact,
     isDefault: row.isDefault,
     characters: characters.map(mapBrandCharacterRow),
     createdAt: toIso(row.createdAt),
@@ -97,4 +98,62 @@ export async function getDefaultBrandProfile(db: StudioDb) {
   }
   const characters = await charactersByProfile(db, [row.id]);
   return mapBrandProfileRow(row, characters.get(row.id) ?? []);
+}
+
+/** Liên hệ bản quyền của kênh mặc định (ADR-018); null khi chưa có kênh mặc định. */
+export async function getDefaultBrandContact(db: StudioDb) {
+  const [row] = await db
+    .select({
+      id: brandProfiles.id,
+      displayName: brandProfiles.displayName,
+      copyrightContact: brandProfiles.copyrightContact,
+    })
+    .from(brandProfiles)
+    .where(eq(brandProfiles.isDefault, true))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Ghi liên hệ bản quyền (chuỗi rỗng là xóa) và tên kênh (ADR-021; thiếu là giữ tên cũ) của kênh mặc định.
+ * Trả hàng sau khi ghi.
+ */
+export async function setDefaultBrandContact(db: StudioDb, contact: string, displayName?: string) {
+  const value = contact.trim() === "" ? null : contact.trim();
+  const name = displayName?.trim();
+  const [row] = await db
+    .update(brandProfiles)
+    .set({
+      copyrightContact: value,
+      ...(name === undefined || name === "" ? {} : { displayName: name }),
+      updatedAt: new Date(),
+    })
+    .where(eq(brandProfiles.isDefault, true))
+    .returning({
+      id: brandProfiles.id,
+      displayName: brandProfiles.displayName,
+      copyrightContact: brandProfiles.copyrightContact,
+    });
+  return row ?? null;
+}
+
+/**
+ * Chỉ test: kênh phụ có tên (không phải kênh mặc định, không nhân vật), gắn cho dự án test để duyệt bản cuối
+ * mà không đổi tên kênh mặc định của Director (ADR-021). Xóa dự án trước rồi mới xóa kênh.
+ */
+export async function createBrandProfileForTests(db: StudioDb, displayName: string) {
+  const slug = `test-${Math.random().toString(36).slice(2, 12)}`;
+  const [row] = await db.insert(brandProfiles).values({ slug, displayName }).returning();
+  if (row === undefined) {
+    throw new Error("insert_brand_profile_failed");
+  }
+  return row.id;
+}
+
+export async function setProjectBrandForTests(db: StudioDb, projectId: string, brandId: string) {
+  await db.update(projects).set({ brandProfileId: brandId }).where(eq(projects.id, projectId));
+}
+
+export async function deleteBrandProfileForTests(db: StudioDb, brandId: string) {
+  await db.delete(brandProfiles).where(eq(brandProfiles.id, brandId));
 }

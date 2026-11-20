@@ -1,0 +1,24 @@
+{
+  "id": "flag_ss",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ South Sudan bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước South Sudan.",
+  "tags": [
+    "cờ South Sudan",
+    "nước South Sudan",
+    "người South Sudan",
+    "South Sudan",
+    "quốc kỳ South Sudan"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

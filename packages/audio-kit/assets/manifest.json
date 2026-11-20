@@ -1,0 +1,46 @@
+{
+  "music_vui_tuoi.wav": {
+    "sha256": "2249fcc15e81716af5ed1fa991ac25483e2b09d47e06ed2ecb5b2d2b19d6da1d",
+    "durationSec": 34.286
+  },
+  "music_to_mo.wav": {
+    "sha256": "3c6e37122950fd31720ba47bb83b32c6d21939fa93ba158c458fd59f5156badf",
+    "durationSec": 40
+  },
+  "music_nhe_nhang.wav": {
+    "sha256": "dc483d7626e285c96ea6ed7e73ce32947a93080b3432304c63c40c530037f304",
+    "durationSec": 45.714
+  },
+  "music_soi_dong.wav": {
+    "sha256": "73cda414a64839784514f68e2704479635b31370173b55a02add319658d62d71",
+    "durationSec": 30
+  },
+  "sfx_pop.wav": {
+    "sha256": "836cba6cd524a156a8bca79b0bcbc6dfcf0cddd49ea696d56ba0d227a404b8b2",
+    "durationSec": 0.14
+  },
+  "sfx_whoosh.wav": {
+    "sha256": "75c84a817aef7d96796e4fbaf98dcc26a5c297da1c5fa73f3c9e8d77bd5acd40",
+    "durationSec": 0.5
+  },
+  "sfx_ding.wav": {
+    "sha256": "e5ae6d63b035469ddd90b4138b107ab90dcbf60fd765283ad6939d6e55f83be7",
+    "durationSec": 1.1
+  },
+  "sfx_boing.wav": {
+    "sha256": "d56d2d4f4e1ab0543e48ca6b96f16d2899c3fdf4b68bc58634821a71704a2ba7",
+    "durationSec": 0.55
+  },
+  "sfx_sparkle.wav": {
+    "sha256": "ebe28b0f834507b8c03c4f3d562bdc25b178736b59e46904d9a445969341cf0c",
+    "durationSec": 0.9
+  },
+  "sfx_scribble.wav": {
+    "sha256": "cb7db5f9a94c8f2271043a208ec28691ce1f0960ad6afdd378e55d3ada165ff0",
+    "durationSec": 0.45
+  },
+  "sfx_blip.wav": {
+    "sha256": "ab5406aa76ae0acbbb59a3b294ae9cd0dae9509ecc9422739f971da68c6c1135",
+    "durationSec": 0.09
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "action_ti_tat_man_fc9c",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Tí cầm điện thoại, chạm tắt màn hình, nghiêng người đặt điện thoại vào ngăn kéo rồi đẩy ngăn kéo đóng lại, sau đó cầm sách lên đọc và lặp lại động tác gật nhẹ đầu, lật trang chậm rãi.",
+  "tags": [
+    "tắt điện thoại",
+    "đọc sách",
+    "đóng ngăn kéo",
+    "trước khi ngủ",
+    "thói quen ngủ ngon"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:1:r6",
+  "licenses": []
+}

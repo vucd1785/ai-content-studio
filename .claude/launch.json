@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Set-Location apps/api; & ../../scripts/with-node24.ps1 node --env-file=../../.env --import tsx src/main.ts"
+      ],
+      "port": 3001
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/with-node24.ps1",
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "dev"
+      ],
+      "port": 5173
+    }
+  ]
+}

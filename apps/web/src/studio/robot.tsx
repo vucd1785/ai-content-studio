@@ -20,7 +20,8 @@ type Accessory =
   | "palette"
   | "microphone"
   | "camera"
-  | "checklist";
+  | "checklist"
+  | "megaphone";
 
 export const ROLE_STYLE: Readonly<Record<AgentRole, { accent: string; accessory: Accessory }>> = {
   producer: { accent: "#5f6b85", accessory: "clipboard" },
@@ -30,6 +31,7 @@ export const ROLE_STYLE: Readonly<Record<AgentRole, { accent: string; accessory:
   voice: { accent: "#d4537e", accessory: "microphone" },
   video: { accent: "#378add", accessory: "camera" },
   qa: { accent: "#639922", accessory: "checklist" },
+  publish: { accent: "#e0a020", accessory: "megaphone" },
 };
 
 export type Expression = "smile" | "look" | "focus" | "wait" | "happy" | "dead" | "off";
@@ -313,6 +315,14 @@ export function Robot({
 function AccessoryMesh({ kind, accent }: { kind: Accessory; accent: string }) {
   const mat = <meshStandardMaterial color={accent} roughness={0.6} />;
   switch (kind) {
+    case "megaphone":
+      // Loa cầm tay của vai Đăng bài (ADR-018): nón cụt nằm ngang.
+      return (
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.05, 0.11, 0.2, 16, 1, true]} />
+          {mat}
+        </mesh>
+      );
     case "clipboard":
       return (
         <mesh rotation={[-0.4, 0, 0]}>

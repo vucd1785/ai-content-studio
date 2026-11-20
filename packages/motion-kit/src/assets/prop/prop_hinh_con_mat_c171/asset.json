@@ -1,0 +1,19 @@
+{
+  "id": "prop_hinh_con_mat_c171",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Mô hình con mắt vẽ phẳng nhìn nghiêng, đặt trên giá nhỏ: ba tia sáng vàng chạy vào qua giác mạc cong, đi qua thủy tinh thể rồi hội tụ thành một điểm sáng ở đáy mắt; điểm sáng nhấp nháy nhẹ, con mắt khẽ lắc lư.",
+  "tags": [
+    "con mắt",
+    "tia sáng",
+    "hội tụ",
+    "võng mạc",
+    "thị lực",
+    "giác mạc"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "eb4896b4-3171-462b-8403-5d93a811567e:1:r1",
+  "licenses": []
+}

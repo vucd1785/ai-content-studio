@@ -1,0 +1,18 @@
+{
+  "id": "prop_qua_bong_tron_c3d8",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Một quả bóng tròn màu đỏ đặt cạnh một quả bóng bầu dục màu nâu, vẽ phẳng; hai quả lần lượt nảy nhẹ lên, bị nén khi chạm đất và giãn ra khi bay lên, bóng đổ dưới chân co lại theo độ cao.",
+  "tags": [
+    "bóng tròn",
+    "bóng bầu dục",
+    "loạn thị",
+    "hình tròn và hình bầu dục",
+    "quả bóng nảy"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "eb4896b4-3171-462b-8403-5d93a811567e:1:r2",
+  "licenses": []
+}

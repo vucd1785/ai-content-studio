@@ -1,0 +1,12 @@
+{
+  "id": "action_shrug",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Nhún vai: bật vai, hai tay ngửa sang hai bên, nghiêng đầu. Dùng khi không biết, bó tay, nói đùa.",
+  "tags": ["nhún vai", "không biết", "bó tay"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

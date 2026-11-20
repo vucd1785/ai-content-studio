@@ -1,0 +1,12 @@
+{
+  "id": "action_think",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Suy nghĩ: khoanh một tay, dựng tay kia cạnh má, nghiêng đầu lắc nhẹ. Dùng khi băn khoăn, đặt câu hỏi, cân nhắc.",
+  "tags": ["suy nghĩ", "thắc mắc", "băn khoăn"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

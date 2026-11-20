@@ -1,0 +1,12 @@
+{
+  "id": "action_present",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Giới thiệu: đưa tay mở về phía trước như mời nhìn vào đồ vật hay hình minh họa. Dùng khi nói 'đây là', chỉ cho người xem thấy.",
+  "tags": ["giới thiệu", "trình bày", "đây là"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

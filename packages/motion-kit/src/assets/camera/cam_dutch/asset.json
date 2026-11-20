@@ -1,0 +1,12 @@
+{
+  "id": "cam_dutch",
+  "kind": "camera",
+  "version": "0.1.0",
+  "description": "Góc nghiêng: khung nghiêng dần, gây cảm giác chênh vênh, bất an. Dùng khi có vấn đề, nhầm lẫn, căng thẳng.",
+  "tags": ["nghiêng", "căng thẳng", "bất an"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

@@ -1,0 +1,19 @@
+{
+  "id": "prop_thung_hang_carton_fb16",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ba thùng carton màu nâu dán băng keo xếp chồng như trong kho; thùng trên cùng cứ một lúc lại nhấc lên rồi đặt xuống, nảy nhẹ và hơi bẹp ra khi chạm, làm thùng bên dưới cũng hơi lún theo.",
+  "tags": [
+    "thùng carton",
+    "thùng hàng",
+    "kho hàng",
+    "băng keo",
+    "chồng hộp",
+    "giao hàng"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "f035f163-cf05-49b6-bbb8-ff17eb71317f:2:r1",
+  "licenses": []
+}

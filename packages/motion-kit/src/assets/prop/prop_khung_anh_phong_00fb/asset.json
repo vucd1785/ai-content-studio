@@ -1,0 +1,19 @@
+{
+  "id": "prop_khung_anh_phong_00fb",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Khung ảnh phong cảnh (núi, mặt trời, mây) đặt trên giá vẽ nhỏ, cạnh một cuộn phim đứng trên mặt đất; khung khẽ lắc qua lại, cuộn phim từ từ xoay, mặt trời sáng nhịp nhàng và một ngôi sao lấp lánh, tượng trưng cho việc AI tạo ảnh và tạo video.",
+  "tags": [
+    "khung ảnh",
+    "cuộn phim",
+    "tạo ảnh AI",
+    "tạo video AI",
+    "phong cảnh",
+    "giá vẽ"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "9ea0d0e7-7391-4db0-b0ff-72ac4a6fa0aa:08644792:1:r4",
+  "licenses": []
+}

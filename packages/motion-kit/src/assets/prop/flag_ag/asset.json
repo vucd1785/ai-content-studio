@@ -1,0 +1,24 @@
+{
+  "id": "flag_ag",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Antigua and Barbuda bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Antigua and Barbuda.",
+  "tags": [
+    "cờ Antigua and Barbuda",
+    "nước Antigua and Barbuda",
+    "người Antigua and Barbuda",
+    "Antigua and Barbuda",
+    "quốc kỳ Antigua and Barbuda"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+import { flagProp } from "../../../stage/flag.js";
+
+/** Cờ Wallis and Futuna (flag-icons 7.5.0, MIT). Sinh bởi scripts/import-flags.mts, không sửa tay. */
+export const asset = flagProp("wf", "<svg xmlns=\"http://www.w3.org/2000/svg\" id=\"flag-icons-wf\" viewBox=\"0 0 640 480\"> <path fill=\"#fff\" d=\"M0 0h640v480H0z\"/> <path fill=\"#000091\" d=\"M0 0h213.3v480H0z\"/> <path fill=\"#e1000f\" d=\"M426.7 0H640v480H426.7z\"/> </svg>");

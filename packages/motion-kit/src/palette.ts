@@ -25,4 +25,13 @@ export const PALETTE = {
   wood: "#8b5e3c",
   woodDark: "#6b4a2e",
   wallInk: "#2a2420",
+  // Đồ vật (P6-19)
+  metal: "#9aa3b5",
+  metalDark: "#4a5266",
+  ok: "#4cd07d",
+  alert: "#e5484d",
+  warn: "#f5b83d",
+  shield: "#4f81bd",
+  shieldLight: "#a9c8f0",
+  smoke: "#8a8f99",
 } as const;

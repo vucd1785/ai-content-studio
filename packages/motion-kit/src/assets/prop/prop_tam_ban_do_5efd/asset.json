@@ -1,0 +1,19 @@
+{
+  "id": "prop_tam_ban_do_5efd",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Tấm bản đồ thành phố màu sáng dựng trên giá gỗ, có đường phố, công viên và dòng sông; ở giữa là chấm định vị xanh dương nhấp nháy, xung quanh có quầng sáng xanh lan ra rồi mờ dần theo nhịp đều.",
+  "tags": [
+    "bản đồ",
+    "định vị",
+    "GPS",
+    "chấm xanh",
+    "thành phố",
+    "điện thoại"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "74229f27-057f-4ddd-a62b-c5c8faa83225:1:r2",
+  "licenses": []
+}

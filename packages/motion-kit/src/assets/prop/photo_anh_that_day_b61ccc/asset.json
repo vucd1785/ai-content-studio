@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_day_b61ccc",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật dãy tủ máy chủ trong trung tâm dữ liệu, đèn xanh dương nhấp nháy.",
+  "tags": [
+    "data center server racks",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "51c5a86d-2348-43cb-b3f4-53b856f46f65:fba124b1:2:r2",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "datacenterknowledge.com",
+      "url": "https://www.datacenterknowledge.com/node/155572",
+      "file": "https://eu-images.contentstack.com/v3/assets/blt8eb3cdfc1fce5194/blt1bdf09913ba6762b/6a203495522f89cdd026b887/DCK_Placeholder_Image.png?disable=upscale&width=1200&height=630&fit=crop",
+      "attribution": "Ảnh: Business Recent News | Data Center Knowledge (https://www.datacenterknowledge.com/node/155572)"
+    }
+  ]
+}

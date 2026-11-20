@@ -1,0 +1,12 @@
+{
+  "id": "cam_bump",
+  "kind": "camera",
+  "version": "0.1.0",
+  "description": "Giật máy vào nhanh rồi lùi về, nhấn khoảnh khắc bất ngờ.",
+  "tags": ["giật máy", "bất ngờ"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

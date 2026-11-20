@@ -1,0 +1,24 @@
+{
+  "id": "flag_ms",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Montserrat bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Montserrat.",
+  "tags": [
+    "cờ Montserrat",
+    "nước Montserrat",
+    "người Montserrat",
+    "Montserrat",
+    "quốc kỳ Montserrat"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

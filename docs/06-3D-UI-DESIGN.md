@@ -13,27 +13,46 @@ Bản thiết kế tham chiếu (Director duyệt hướng 2026-11-01): canvas "
 
 ## Token thiết kế
 
-Dùng chung cho 2D và studio 3D:
+Từ P7-04 (Director chọn ngày 2026-11-10, kế hoạch [14](14-ASSET-REUSE-AND-UI-PLAN.md) D3): theme **sáng ấm là mặc định**, có theme tối. Nguồn token là [design/ui-kit/07_DESIGN_TOKENS](design/ui-kit/07_DESIGN_TOKENS/design-tokens.json); biến CSS nằm ở `apps/web/src/index.css`.
 
-| Vai trò | Màu |
-|---|---|
-| Nền trang | `#0f1115` |
-| Mặt thẻ | `#171a21`, viền `#262a33` |
-| Chữ chính / phụ / mờ | `#e8e9ec` / `#9aa0aa` / `#7d8390` |
-| Nhấn (hành động chính, đang chạy) | `#5b78ff`, chữ trên nền nhấn tối `#0b0d12` |
-| Hoàn tất | `#3fb27f` |
-| Chờ bạn | `#e7a33e` |
-| Lỗi | `#e5534b` |
-| Rảnh / tắt | `#4a4f5a` |
+| Vai trò | Sáng | Tối |
+|---|---|---|
+| Nền trang | `#f4efe6` (giấy) | `#0f172a` |
+| Mặt thẻ | `#fffaf3` | `#1c2940` |
+| Chữ chính / phụ | `#1f2a44` / `#48536a` | `#f2f5fb` / `#c1c9d6` |
+| Nút chính | nền cam `#f26b3a`, chữ `#23130d` | nền `#ff9569`, chữ `#29160e` |
+| Focus | `#0d5977` | `#8fe9ff` |
+| Đang chạy (info) | chữ `#16536c` trên `#dbf4fc` | chữ `#a6ebff` trên `#1c4655` |
+| Chờ bạn (warning) | chữ `#714a04` trên `#fff0c9` | chữ `#ffe1a0` trên `#493c1d` |
+| Hoàn tất (ok) | chữ `#205b39` trên `#e0f3e5` | chữ `#9eedb7` trên `#204235` |
+| Lỗi | chữ `#892629` trên `#fce6e4` | chữ `#ffbec1` trên `#542c36` |
+| Màu thoại Tí / Bit / Đậu | `#b4441c` / `#0f5f78` / `#1d6f63` | `#ffb08a` / `#8fe9ff` / `#8fe0d4` |
 
-Chữ: Be Vietnam Pro (400, 500, 600), cỡ chữ thân 14–15 px, tiêu đề màn 24 px. Bo góc: thẻ 12–14 px, nút và ô nhập 8–10 px. Vùng bấm tối thiểu 36 px, nút chính 44 px.
+- Không dùng chữ nhỏ màu cam trên nền sáng. Trạng thái luôn có chữ hoặc icon, không chỉ màu.
+- Chữ: Be Vietnam Pro 400–700, file trong `apps/video/src/fonts` (dùng chung với phụ đề video). Thân 15 px; tiêu đề màn 24 px; thang 12/14/16/20/24/32.
+- Bo góc: thẻ 16 px, nút và ô nhập 8–10 px. Vùng bấm tối thiểu 36 px, nút chính 40–44 px. Focus là viền 3 px màu focus.
+- Studio 3D luôn nền tối. Vùng chứa canvas dùng token tối ở cả hai theme. Đèn trạng thái: đang chạy `#8fe9ff`, chờ `#f5b83d`, hoàn tất `#4cd07d`, lỗi `#e5484d`, rảnh `#4a4f5a`.
 
 ## Khung ứng dụng
 
-- Thanh trên (56 px): logo, đường dẫn `AI Content Studio / <dự án>`, chấm trạng thái worker, đăng xuất.
-- Trang dự án là trang riêng: số liệu tóm tắt (chờ bạn duyệt, máy đang chạy, đã xuất, token), khối "Cần bạn xử lý" dạng thẻ có khung 9:16, rồi danh sách mọi dự án với trạng thái từng dự án.
-- Trong một dự án: cột trái hẹp (220–240 px) là danh sách dự án gần đây với chấm trạng thái; vùng giữa là màn của bước hiện tại. Không còn cột phải cố định.
-- Thanh tiến trình bảy bước nằm dưới tiêu đề dự án ở mọi màn trong dự án: nghiên cứu, viết kịch bản, bạn duyệt kịch bản, giọng và hình, render và QA, bạn duyệt bản cuối, xuất video. Mỗi ô ghi trạng thái (xong, đang chạy, chờ bạn, lỗi, đã dừng, chưa tới) và thời gian (thời gian thật nếu đã chạy, ước tính nếu chưa). Hai ô của Director có viền đứt màu vàng, không ước tính.
+Từ P7-04:
+
+- **Thanh trên 64 px:** logo và tên app, đường dẫn tới dự án, trạng thái worker, chọn chế độ bố cục, chọn Sáng/Tối, Đăng xuất.
+- **Điều hướng trái** (224 px; 208 px khi màn hẹp hơn 1400 px): Tổng quan, Sử dụng LLM, Kho hình động, Bộ nhận diện kênh, rồi các dự án gần đây kèm chấm trạng thái.
+- **Panel giám sát phải** (336 px; 288 px khi hẹp): danh sách bảy vai trò bằng robot của ui-kit cùng trạng thái đã lưu, và tiến độ render thật. Chưa có lượt chạy thì hiện ảnh xưởng có ghi rõ "không phải canvas 3D".
+- **Ba chế độ, lưu trên máy:**
+  - Làm việc: ba vùng.
+  - Tập trung: ẩn panel giám sát, dùng khi duyệt.
+  - Giám sát: studio 3D cỡ lớn, lazy-load, dừng vẽ khi tab bị ẩn.
+- **Vị trí nằm trên URL:** `#/`, `#/projects/<id>/<tab>`, `#/usage`, `#/library`, `#/videos` (P8-08), `#/brand`. Tải lại trang vẫn ở đúng màn.
+- **Thanh tiến trình bảy bước** nằm dưới tiêu đề dự án ở mọi màn trong dự án: nghiên cứu, viết kịch bản, bạn duyệt kịch bản, giọng và hình, render và QA, bạn duyệt bản cuối, xuất video.
+  - Mỗi ô ghi trạng thái (xong, đang chạy, chờ bạn, lỗi, đã dừng, chưa tới) và thời gian: thời gian thật nếu đã chạy, ước tính nếu chưa.
+  - Hai ô của Director có viền đứt màu vàng, không có ước tính.
+- **Ba loại sự cố hiện khác nhau:**
+  - lỗi của bước: hộp lỗi có lời giải thích, cách sửa, chi tiết kỹ thuật thu gọn;
+  - mất kết nối tới máy chủ: "Chưa thể cập nhật trạng thái" kèm giờ cập nhật cuối;
+  - worker tắt.
+- **Hủy lượt chạy** mở hộp thoại xác nhận, focus mặc định ở "Giữ lượt chạy".
 
 ## Năm màn hình
 
@@ -55,7 +74,11 @@ Nguồn: [ADR-013](decisions/ADR-013-brand-kit-and-formats.md), [ADR-014](decisi
 - **Thanh tiến trình.** Ô "viết kịch bản" gồm cả `storyboarding`; nhãn phụ "đang vẽ storyboard" khi ở trạng thái đó. Không thêm ô mới, vẫn bảy bước.
 - **Duyệt kịch bản (script `2`).** Mỗi cảnh hiển thị ảnh storyboard 9:16 bên cạnh các câu thoại. Mỗi câu có nhãn người nói (tên và màu nhân vật). Director sửa chữ từng câu; đổi người nói chọn trong danh sách nhân vật nói của kênh. Vấn đề kiểm tự động (`issues[]`) hiện dưới ảnh dạng chip vàng; `errors[]` của job hiện ở đầu cột, không khóa nút duyệt. Ảnh có tài sản tạm mang nhãn "chờ tài sản mới". Script `1` giữ màn như cũ.
 - **Màn "Kênh".** Sửa tên hiển thị nhân vật, tính cách, câu cửa miệng, quy tắc giọng điệu. Giọng của mỗi nhân vật nói và giọng người dẫn chọn từ danh sách service TTS trả về, có nút nghe thử một câu mẫu. Không có ô gõ tên giọng tự do.
-- **Màn "Kho hình động".** Lưới thẻ tài sản có ảnh xem trước, lọc theo loại, kênh, trạng thái (`candidate`, `approved`) và người tạo. Thẻ `candidate` có nút duyệt. Danh sách yêu cầu tài sản `open` của từng run, mỗi yêu cầu chỉ sang tài sản đã đáp ứng nếu có. Duyệt tài sản không phải quyết định của workflow, không dùng màu vàng của cổng duyệt.
+- **Màn "Kho hình động"** (P7-09, [ADR-017](decisions/ADR-017-auto-asset-generation.md)): lưới thẻ tài sản, lọc theo loại và trạng thái (`candidate`, `approved`).
+  - Tài sản tự tạo có ảnh xem trước.
+  - Màn chỉ đọc, **không có nút duyệt**: tài sản `candidate` mang nhãn "Chờ duyệt cùng kịch bản".
+- **Cổng 1 có tài sản mới** (P7-07, ADR-017): mỗi phương án có khối "Tài sản hình động mới" gồm ảnh xem trước, mô tả, cảnh dùng và trạng thái (mới tạo, có sẵn, chưa tạo được kèm tài sản thay thế). "Duyệt phương án N" duyệt luôn tài sản `candidate` của phương án đó.
+- **Thẻ "Bắt đầu lượt chạy"** có lựa chọn "Sáng tạo (mặc định)" và "Tiêu chuẩn". Sáng tạo: thiếu tài sản thì Claude Code tự tạo, tối đa 3 mỗi lượt chạy.
 - **Duyệt bản cuối, run `creative`.** Khi mọi yêu cầu của run đã có tài sản `approved`, thanh quyết định có thêm nút "Dựng lại với tài sản mới" (gửi `changes_requested` theo cạnh `waiting_final_approval → preview_rendering` của [04-AGENT-ORCHESTRATION.md](04-AGENT-ORCHESTRATION.md)).
 
 Studio 3D không đổi ở Phase 6: robot vẫn là nhân vật của vai trò, không dùng dàn nhân vật kênh. Avatar chỉ vẽ trạng thái đã lưu.

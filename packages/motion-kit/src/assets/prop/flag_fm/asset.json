@@ -1,0 +1,24 @@
+{
+  "id": "flag_fm",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Federated States of Micronesia bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Federated States of Micronesia.",
+  "tags": [
+    "cờ Federated States of Micronesia",
+    "nước Federated States of Micronesia",
+    "người Federated States of Micronesia",
+    "Federated States of Micronesia",
+    "quốc kỳ Federated States of Micronesia"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

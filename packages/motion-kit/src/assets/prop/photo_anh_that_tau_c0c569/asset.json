@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_tau_c0c569",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật tàu Crew Dragon của SpaceX bay trên quỹ đạo.",
+  "tags": [
+    "SpaceX Crew Dragon",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "6c1fda1a-03e7-4ad8-a2af-577c9125413d:acb986ca:2:r3",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "en.wikipedia.org",
+      "url": "https://en.wikipedia.org/wiki/SpaceX_Dragon_2",
+      "file": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4e/Iss071e052057.jpg/1280px-Iss071e052057.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=thumbnail",
+      "attribution": "Ảnh: SpaceX Dragon 2 - Wikipedia (https://en.wikipedia.org/wiki/SpaceX_Dragon_2)"
+    }
+  ]
+}

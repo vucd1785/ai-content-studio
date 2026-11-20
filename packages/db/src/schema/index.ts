@@ -44,6 +44,11 @@ export const brandProfiles = pgTable(
     toneRules: text("tone_rules").notNull().default(""),
     /** Null là dùng `TTS_DEFAULT_VOICE`. Agent không điền giá trị này. */
     narratorVoiceId: text("narrator_voice_id"),
+    /**
+     * Email hoặc trang liên hệ khi có khiếu nại bản quyền, ghi cuối mô tả mọi video (ADR-018).
+     * Director nhập ở "Bộ nhận diện kênh"; null thì mô tả nhắc điền trước khi đăng.
+     */
+    copyrightContact: text("copyright_contact"),
     isDefault: boolean("is_default").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
@@ -166,6 +171,8 @@ export const workflowRuns = pgTable(
     llmModel: text("llm_model"),
     /** `standard` hoặc `creative` (ADR-016); chọn khi bắt đầu run, không đổi sau đó. */
     creativeMode: text("creative_mode").notNull().default("standard"),
+    /** Khung hình (ADR-022): `9:16` dọc (mặc định) hoặc `16:9` ngang; chọn khi bắt đầu run, không đổi sau đó. */
+    aspectRatio: text("aspect_ratio").notNull().default("9:16"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
   },
@@ -174,6 +181,7 @@ export const workflowRuns = pgTable(
       "workflow_runs_creative_mode_valid",
       sql`${table.creativeMode} IN ('standard', 'creative')`,
     ),
+    check("workflow_runs_aspect_ratio_valid", sql`${table.aspectRatio} IN ('9:16', '16:9')`),
   ],
 );
 
@@ -407,6 +415,69 @@ export const motionAssetRequests = pgTable(
     check(
       "motion_asset_requests_fulfilled",
       sql`(${table.status} = 'fulfilled') = (${table.fulfilledAssetId} IS NOT NULL)`,
+    ),
+  ],
+);
+
+/**
+ * Kênh YouTube đã kết nối của một Bộ nhận diện kênh (ADR-031). Refresh token chỉ lưu dạng mã hóa
+ * (AES-256-GCM, khóa `STUDIO_TOKEN_KEY`); access token không lưu.
+ */
+export const youtubeConnections = pgTable("youtube_connections", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  brandProfileId: uuid("brand_profile_id")
+    .notNull()
+    .unique("youtube_connections_brand_unique")
+    .references(() => brandProfiles.id, { onDelete: "cascade" }),
+  channelId: text("channel_id").notNull(),
+  channelTitle: text("channel_title").notNull(),
+  channelThumbnail: text("channel_thumbnail"),
+  refreshTokenEnc: text("refresh_token_enc").notNull(),
+  scopes: text("scopes").notNull(),
+  lastError: text("last_error"),
+  connectedAt: timestamp("connected_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+});
+
+/**
+ * Một lần đăng YouTube (ADR-031 mục 4), một hàng cho mỗi job `upload`. Giữ các ô Director đã xác nhận và trạng thái
+ * bền (URI phiên resumable, `video_id`) để thử lại không đăng trùng.
+ */
+export const youtubeUploads = pgTable(
+  "youtube_uploads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .unique("youtube_uploads_job_unique")
+      .references(() => jobs.id, { onDelete: "restrict" }),
+    workflowRunId: uuid("workflow_run_id")
+      .notNull()
+      .references(() => workflowRuns.id, { onDelete: "restrict" }),
+    exportArtifactId: uuid("export_artifact_id")
+      .notNull()
+      .references(() => artifacts.id, { onDelete: "restrict" }),
+    brandProfileId: uuid("brand_profile_id")
+      .notNull()
+      .references(() => brandProfiles.id, { onDelete: "restrict" }),
+    request: jsonb("request").notNull(),
+    sessionUri: text("session_uri"),
+    videoId: text("video_id"),
+    thumbnail: text("thumbnail").notNull().default("pending"),
+    thumbnailReason: text("thumbnail_reason"),
+    resultArtifactId: uuid("result_artifact_id").references(() => artifacts.id, {
+      onDelete: "restrict",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("youtube_uploads_export_idx").on(table.exportArtifactId),
+    check(
+      "youtube_uploads_thumbnail_valid",
+      sql`${table.thumbnail} IN ('pending', 'set', 'failed', 'skipped')`,
     ),
   ],
 );

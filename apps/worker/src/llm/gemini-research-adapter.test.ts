@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { createGeminiResearchAdapter } from "./gemini-research-adapter.js";
 import { buildGeminiGenerateContentConfig } from "./gemini-request-config.js";
+import { createGeminiResearchAdapter } from "./gemini-research-adapter.js";
 import { buildResearchPrompt } from "./research-prompt.js";
 import type { StructuredGenerateClient, StructuredGenerateRequest } from "./structured-output.js";
 
@@ -33,24 +33,39 @@ function fakeClient(responses: string[]) {
       const jsonText = responses.shift() ?? "";
       return {
         jsonText,
-        usage: { provider: "gemini", model: request.model, inputTokens: 10, outputTokens: 5, thinkingTokens: 0 },
+        usage: {
+          provider: "gemini",
+          model: request.model,
+          inputTokens: 10,
+          outputTokens: 5,
+          thinkingTokens: 0,
+        },
       };
     },
   };
   return { client, requests };
 }
 
-const config = { apiKey: "test-key-not-real", modelScript: "test-model", thinkingLevelScript: "low" as const };
+const config = {
+  apiKey: "test-key-not-real",
+  modelScript: "test-model",
+  thinkingLevelScript: "low" as const,
+};
 
 describe("Gemini research adapter (P3-03)", () => {
   it("không dùng Search grounding: request và config Gemini không có tools", async () => {
     const { client, requests } = fakeClient([
-      JSON.stringify({ summary: "Tóm tắt", facts: [{ statement: "a", claimStatus: "verified", sourceIds: ["url-1"] }] }),
+      JSON.stringify({
+        summary: "Tóm tắt",
+        facts: [{ statement: "a", claimStatus: "verified", sourceIds: ["url-1"] }],
+      }),
     ]);
     const adapter = createGeminiResearchAdapter({ config, client });
     const result = await adapter.extractResearch({
       brief,
-      documents: [{ sourceId: "url-1", title: "Docs", origin: "fetched_url", text: "Redis lưu RAM." }],
+      documents: [
+        { sourceId: "url-1", title: "Docs", origin: "fetched_url", text: "Redis lưu RAM." },
+      ],
     });
     expect(result.extraction.facts).toHaveLength(1);
     expect(requests).toHaveLength(1);
@@ -65,7 +80,9 @@ describe("Gemini research adapter (P3-03)", () => {
     ]);
     const sdkConfig = buildGeminiGenerateContentConfig({
       systemInstruction: request?.systemInstruction ?? "",
-      ...(request?.responseJsonSchema === undefined ? {} : { responseJsonSchema: request.responseJsonSchema }),
+      ...(request?.responseJsonSchema === undefined
+        ? {}
+        : { responseJsonSchema: request.responseJsonSchema }),
       thinkingLevel: "low",
     });
     expect(sdkConfig).not.toHaveProperty("tools");
@@ -81,11 +98,19 @@ describe("Gemini research adapter (P3-03)", () => {
 
   it("schema sai thì repair đúng một lần, rồi báo schema_invalid", async () => {
     const { client, requests } = fakeClient([
-      JSON.stringify({ summary: "x", facts: [{ statement: "a", claimStatus: "verified", sourceIds: [] }] }),
-      JSON.stringify({ summary: "x", facts: [{ statement: "a", claimStatus: "bịa", sourceIds: ["url-1"] }] }),
+      JSON.stringify({
+        summary: "x",
+        facts: [{ statement: "a", claimStatus: "verified", sourceIds: [] }],
+      }),
+      JSON.stringify({
+        summary: "x",
+        facts: [{ statement: "a", claimStatus: "bịa", sourceIds: ["url-1"] }],
+      }),
     ]);
     const adapter = createGeminiResearchAdapter({ config, client });
-    await expect(adapter.extractResearch({ brief, documents: [] })).rejects.toMatchObject({ code: "schema_invalid" });
+    await expect(adapter.extractResearch({ brief, documents: [] })).rejects.toMatchObject({
+      code: "schema_invalid",
+    });
     expect(requests).toHaveLength(2);
   });
 

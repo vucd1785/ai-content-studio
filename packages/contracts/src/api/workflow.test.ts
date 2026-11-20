@@ -11,25 +11,38 @@ describe("approvalBodySchema", () => {
 
   it("approved cho phép note rỗng hoặc thiếu", () => {
     expect(
-      approvalBodySchema.safeParse({ gate: "script", decision: "approved", artifactId, variantIndex: 1 }).success,
+      approvalBodySchema.safeParse({
+        gate: "script",
+        decision: "approved",
+        artifactId,
+        variantIndex: 1,
+      }).success,
     ).toBe(true);
     expect(
-      approvalBodySchema.safeParse({ gate: "final", decision: "approved", artifactId, note: "" }).success,
+      approvalBodySchema.safeParse({ gate: "final", decision: "approved", artifactId, note: "" })
+        .success,
     ).toBe(true);
   });
 
   it("changes_requested và rejected bắt buộc note 1–2000", () => {
     for (const decision of ["changes_requested", "rejected"]) {
-      expect(approvalBodySchema.safeParse({ gate: "script", decision, artifactId }).success).toBe(false);
+      expect(approvalBodySchema.safeParse({ gate: "script", decision, artifactId }).success).toBe(
+        false,
+      );
       expect(
         approvalBodySchema.safeParse({ gate: "script", decision, artifactId, note: "" }).success,
       ).toBe(false);
       expect(
-        approvalBodySchema.safeParse({ gate: "script", decision, artifactId, note: "Sửa cảnh 2" }).success,
+        approvalBodySchema.safeParse({ gate: "script", decision, artifactId, note: "Sửa cảnh 2" })
+          .success,
       ).toBe(true);
       expect(
-        approvalBodySchema.safeParse({ gate: "script", decision, artifactId, note: "x".repeat(2001) })
-          .success,
+        approvalBodySchema.safeParse({
+          gate: "script",
+          decision,
+          artifactId,
+          note: "x".repeat(2001),
+        }).success,
       ).toBe(false);
     }
   });
@@ -39,25 +52,41 @@ describe("approvalBodySchema", () => {
     expect(approvalBodySchema.safeParse(base).success).toBe(false);
     expect(approvalBodySchema.safeParse({ ...base, variantIndex: 2 }).success).toBe(true);
     for (const bad of [0, 3, "1", 1.5]) {
-      expect(approvalBodySchema.safeParse({ ...base, variantIndex: bad }).success, String(bad)).toBe(false);
+      expect(
+        approvalBodySchema.safeParse({ ...base, variantIndex: bad }).success,
+        String(bad),
+      ).toBe(false);
     }
     expect(
-      approvalBodySchema.safeParse({ gate: "script", decision: "rejected", artifactId, note: "x", variantIndex: 1 })
-        .success,
+      approvalBodySchema.safeParse({
+        gate: "script",
+        decision: "rejected",
+        artifactId,
+        note: "x",
+        variantIndex: 1,
+      }).success,
     ).toBe(false);
     expect(
-      approvalBodySchema.safeParse({ gate: "final", decision: "approved", artifactId, variantIndex: 1 }).success,
+      approvalBodySchema.safeParse({
+        gate: "final",
+        decision: "approved",
+        artifactId,
+        variantIndex: 1,
+      }).success,
     ).toBe(false);
   });
 
   it("gate và decision ngoài enum bị từ chối", () => {
-    expect(approvalBodySchema.safeParse({ gate: "preview", decision: "approved", artifactId }).success).toBe(
-      false,
-    );
-    expect(approvalBodySchema.safeParse({ gate: "script", decision: "auto", artifactId }).success).toBe(false);
-    expect(approvalBodySchema.safeParse({ gate: "script", decision: "approved", artifactId: "x" }).success).toBe(
-      false,
-    );
+    expect(
+      approvalBodySchema.safeParse({ gate: "preview", decision: "approved", artifactId }).success,
+    ).toBe(false);
+    expect(
+      approvalBodySchema.safeParse({ gate: "script", decision: "auto", artifactId }).success,
+    ).toBe(false);
+    expect(
+      approvalBodySchema.safeParse({ gate: "script", decision: "approved", artifactId: "x" })
+        .success,
+    ).toBe(false);
   });
 });
 
@@ -69,7 +98,16 @@ describe("eventIdSchema (P3-07)", () => {
   });
 
   it("từ chối chuỗi lạ, số âm, thập phân, số 0 đứng đầu, vượt bigint mà không ném lỗi", () => {
-    for (const value of ["", "abc", "-1", "1.5", "01", " 1", "9223372036854775808", "99999999999999999999"]) {
+    for (const value of [
+      "",
+      "abc",
+      "-1",
+      "1.5",
+      "01",
+      " 1",
+      "9223372036854775808",
+      "99999999999999999999",
+    ]) {
       expect(eventIdSchema.safeParse(value).success, value).toBe(false);
     }
   });

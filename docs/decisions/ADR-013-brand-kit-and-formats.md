@@ -184,3 +184,27 @@ Director đã xem cả hai, chỉ muốn đường hoạt hình, và không mu�
   - docs 00, 01, 04, 05, 07, 09, 10, 11; README ADR.
   - Các task đã xong của Phase 1–5 không mở lại. P6-18 ghi rõ phần nào của chúng bị xóa.
 - **Report cũ** (P1-04, P1-08, P2-12, P5-03…) vẫn mô tả code script `1` như lúc đó. Không sửa report cũ.
+
+## Bổ sung 2026-11-09: gói `story` v2, nhịp chậm hơn, video dài hơn, font phụ đề
+
+- Trạng thái: **Accepted** (Director duyệt 2026-11-09).
+  - Director yêu cầu sau khi xem video DDoS: "font chữ khó nhìn… chuyển cảnh hơi nhanh tui muốn chậm lại một chút… ko nhất thiết video phải ngắn".
+  - Director đã chọn: font Be Vietnam Pro; 12–18 cú cắt mỗi phút, shot đứng yên tối đa 5 giây; thời lượng 30–180 giây.
+- Phạm vi: thay các con số "Thời lượng 30–90 giây" và "Nhịp: 20–27 cú cắt mỗi phút, shot đứng yên tối đa 3 giây" của bổ sung 2026-11-03 (2) cho brief mới. Câu "cảnh tĩnh tối đa 3 giây" ở ADR-014 hiểu theo gói đang dùng.
+
+### Quyết định
+
+- **Gói `story` v2 "Hoạt hình"** là `DEFAULT_FORMAT` của brief mới. Năm nhịp, dàn nhân vật, research và không người dẫn giữ như v1. Hai thứ đổi:
+  - thời lượng 30–180 giây;
+  - nhịp 12–18 cú cắt mỗi phút, shot đứng yên tối đa 5 giây, hai shot liền nhau vẫn không cùng cỡ khung.
+- **Gói `story` v1 giữ nguyên** để đọc brief và run đã lưu, giống `what_if`. Không cần migration: CHECK của DB đã là 10–600 giây.
+- **Phụ đề `StickStory` dùng font Be Vietnam Pro.**
+  - File TTF (giấy phép SIL OFL 1.1) nằm trong `apps/video`, render không cần mạng và lần nào cũng như nhau.
+  - Font chữ của brand kit là font dự phòng.
+  - Chữ to và đậm hơn, nền phụ đề đậm hơn. Từ đang đọc được gạch chân thay vì đổi độ đậm, nên dòng chữ không xô lệch.
+
+### Hệ quả
+
+- Video dài nhất 3 phút, render khoảng 20 phút trên máy dev (đo P6-19: khoảng 6,7 giây máy cho mỗi giây video).
+- Gemini nhận số shot theo nhịp mới qua prompt sẵn có; builder chia shot dài hơn 5 giây.
+- Template `StickStory` lên version mới nên cache không dùng lại MP4 cũ.

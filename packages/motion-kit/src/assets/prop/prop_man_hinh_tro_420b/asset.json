@@ -1,0 +1,19 @@
+{
+  "id": "prop_man_hinh_tro_420b",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Màn hình trò chơi vẽ phẳng trên chân đế: một nhân vật 3D dạng khối đa giác chạy và bật nhảy mượt qua những ngọn đồi, nền cuộn liên tục, viên ngọc nhấp nháy, phía trước có tay cầm chơi game với nút sáng lên mỗi lần nhân vật nhảy.",
+  "tags": [
+    "màn hình trò chơi",
+    "trò chơi điện tử",
+    "đồ họa 3D",
+    "tay cầm chơi game",
+    "card đồ họa",
+    "NVIDIA"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "7c50ffb2-d09c-4285-a8dd-bd6a7f0f6080:70821d45:1:r4",
+  "licenses": []
+}

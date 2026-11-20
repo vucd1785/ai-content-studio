@@ -87,8 +87,15 @@ const APPROVAL_TARGET: Readonly<Record<WorkflowGate, Record<WorkflowDecision, Wo
   },
 };
 
+/**
+ * Làm lại một phần ở Cổng 2 (ADR-021): đọc lại một cảnh đi `producing_assets` (chỉ job voice), đổi nền,
+ * tạo lại một hình hay dựng lại đi `preview_rendering`. Không ghi approval.
+ */
+export type RedoTarget = "producing_assets" | "preview_rendering";
+
 export type WorkflowCommand =
   | { kind: "advance"; to: WorkflowStatus }
+  | { kind: "redo"; target: RedoTarget }
   | { kind: "approval"; gate: WorkflowGate; decision: WorkflowDecision }
   | { kind: "fail" }
   | { kind: "cancel" }
@@ -121,6 +128,8 @@ export function applyWorkflowCommand(
       return FAILABLE.has(from) ? { ok: true, to: "failed" } : REJECT;
     case "cancel":
       return from === "exported" || from === "cancelled" ? REJECT : { ok: true, to: "cancelled" };
+    case "redo":
+      return from === "waiting_final_approval" ? { ok: true, to: command.target } : REJECT;
     case "resume":
       return from === "failed" && state.resumeFrom !== null
         ? { ok: true, to: state.resumeFrom }

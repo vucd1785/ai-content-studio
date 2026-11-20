@@ -1,0 +1,266 @@
+[
+  {
+    "svg": "01_CHARACTERS/svg/bit_error.svg",
+    "png": "01_CHARACTERS/png/bit_error.png",
+    "viewbox": "embedded",
+    "purpose": "bit error"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/bit_idle.svg",
+    "png": "01_CHARACTERS/png/bit_idle.png",
+    "viewbox": "embedded",
+    "purpose": "bit idle"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/bit_success.svg",
+    "png": "01_CHARACTERS/png/bit_success.png",
+    "viewbox": "embedded",
+    "purpose": "bit success"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/bit_work.svg",
+    "png": "01_CHARACTERS/png/bit_work.png",
+    "viewbox": "embedded",
+    "purpose": "bit work"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/dau_celebrate.svg",
+    "png": "01_CHARACTERS/png/dau_celebrate.png",
+    "viewbox": "embedded",
+    "purpose": "dau celebrate"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/dau_idea.svg",
+    "png": "01_CHARACTERS/png/dau_idea.png",
+    "viewbox": "embedded",
+    "purpose": "dau idea"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/dau_idle.svg",
+    "png": "01_CHARACTERS/png/dau_idle.png",
+    "viewbox": "embedded",
+    "purpose": "dau idle"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/dau_wait.svg",
+    "png": "01_CHARACTERS/png/dau_wait.png",
+    "viewbox": "embedded",
+    "purpose": "dau wait"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/ti_celebrate.svg",
+    "png": "01_CHARACTERS/png/ti_celebrate.png",
+    "viewbox": "embedded",
+    "purpose": "ti celebrate"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/ti_idle.svg",
+    "png": "01_CHARACTERS/png/ti_idle.png",
+    "viewbox": "embedded",
+    "purpose": "ti idle"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/ti_think.svg",
+    "png": "01_CHARACTERS/png/ti_think.png",
+    "viewbox": "embedded",
+    "purpose": "ti think"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/ti_wave.svg",
+    "png": "01_CHARACTERS/png/ti_wave.png",
+    "viewbox": "embedded",
+    "purpose": "ti wave"
+  },
+  {
+    "svg": "01_CHARACTERS/svg/trio_hero.svg",
+    "png": "01_CHARACTERS/png/trio_hero.png",
+    "viewbox": "embedded",
+    "purpose": "trio hero"
+  },
+  {
+    "svg": "02_AGENT_ROBOTS/svg/agent_coordinator.svg",
+    "png": "02_AGENT_ROBOTS/png/agent_coordinator.png",
+    "viewbox": "embedded",
+    "purpose": "agent coordinator"
+  },
+  {
+    "svg": "02_AGENT_ROBOTS/svg/agent_qa.svg",
+    "png": "02_AGENT_ROBOTS/png/agent_qa.png",
+    "viewbox": "embedded",
+    "purpose": "agent qa"
+  },
+  {
+    "svg": "02_AGENT_ROBOTS/svg/agent_render.svg",
+    "png": "02_AGENT_ROBOTS/png/agent_render.png",
+    "viewbox": "embedded",
+    "purpose": "agent render"
+  },
+  {
+    "svg": "02_AGENT_ROBOTS/svg/agent_research.svg",
+    "png": "02_AGENT_ROBOTS/png/agent_research.png",
+    "viewbox": "embedded",
+    "purpose": "agent research"
+  },
+  {
+    "svg": "02_AGENT_ROBOTS/svg/agent_script.svg",
+    "png": "02_AGENT_ROBOTS/png/agent_script.png",
+    "viewbox": "embedded",
+    "purpose": "agent script"
+  },
+  {
+    "svg": "02_AGENT_ROBOTS/svg/agent_visual.svg",
+    "png": "02_AGENT_ROBOTS/png/agent_visual.png",
+    "viewbox": "embedded",
+    "purpose": "agent visual"
+  },
+  {
+    "svg": "02_AGENT_ROBOTS/svg/agent_voice.svg",
+    "png": "02_AGENT_ROBOTS/png/agent_voice.png",
+    "viewbox": "embedded",
+    "purpose": "agent voice"
+  },
+  {
+    "svg": "03_STUDIO_3D/svg/studio_isometric_dark.svg",
+    "png": "03_STUDIO_3D/png/studio_isometric_dark.png",
+    "viewbox": "embedded",
+    "purpose": "studio isometric dark"
+  },
+  {
+    "svg": "03_STUDIO_3D/svg/studio_isometric_light.svg",
+    "png": "03_STUDIO_3D/png/studio_isometric_light.png",
+    "viewbox": "embedded",
+    "purpose": "studio isometric light"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/background_dark.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/background_dark.png",
+    "viewbox": "embedded",
+    "purpose": "background dark"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/background_light.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/background_light.png",
+    "viewbox": "embedded",
+    "purpose": "background light"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/empty_projects.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/empty_projects.png",
+    "viewbox": "embedded",
+    "purpose": "empty projects"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/export_done.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/export_done.png",
+    "viewbox": "embedded",
+    "purpose": "export done"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/login.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/login.png",
+    "viewbox": "embedded",
+    "purpose": "login"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/no_connection.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/no_connection.png",
+    "viewbox": "embedded",
+    "purpose": "no connection"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/waiting_review.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/waiting_review.png",
+    "viewbox": "embedded",
+    "purpose": "waiting review"
+  },
+  {
+    "svg": "04_UI_ILLUSTRATIONS/svg/worker_offline.svg",
+    "png": "04_UI_ILLUSTRATIONS/png/worker_offline.png",
+    "viewbox": "embedded",
+    "purpose": "worker offline"
+  },
+  {
+    "svg": "05_STORYBOARD_SAMPLES/svg/01_mo_dau.svg",
+    "png": "05_STORYBOARD_SAMPLES/png/01_mo_dau.png",
+    "viewbox": "embedded",
+    "purpose": "01 mo dau"
+  },
+  {
+    "svg": "05_STORYBOARD_SAMPLES/svg/02_dat_van_de.svg",
+    "png": "05_STORYBOARD_SAMPLES/png/02_dat_van_de.png",
+    "viewbox": "embedded",
+    "purpose": "02 dat van de"
+  },
+  {
+    "svg": "05_STORYBOARD_SAMPLES/svg/03_dien_giai.svg",
+    "png": "05_STORYBOARD_SAMPLES/png/03_dien_giai.png",
+    "viewbox": "embedded",
+    "purpose": "03 dien giai"
+  },
+  {
+    "svg": "05_STORYBOARD_SAMPLES/svg/04_su_that.svg",
+    "png": "05_STORYBOARD_SAMPLES/png/04_su_that.png",
+    "viewbox": "embedded",
+    "purpose": "04 su that"
+  },
+  {
+    "svg": "05_STORYBOARD_SAMPLES/svg/05_cu_chot.svg",
+    "png": "05_STORYBOARD_SAMPLES/png/05_cu_chot.png",
+    "viewbox": "embedded",
+    "purpose": "05 cu chot"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/logo_mark.svg",
+    "png": "06_PROPS_AND_BRANDING/png/logo_mark.png",
+    "viewbox": "embedded",
+    "purpose": "logo mark"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_books.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_books.png",
+    "viewbox": "embedded",
+    "purpose": "prop books"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_clapperboard.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_clapperboard.png",
+    "viewbox": "embedded",
+    "purpose": "prop clapperboard"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_clock.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_clock.png",
+    "viewbox": "embedded",
+    "purpose": "prop clock"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_laptop.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_laptop.png",
+    "viewbox": "embedded",
+    "purpose": "prop laptop"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_microphone.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_microphone.png",
+    "viewbox": "embedded",
+    "purpose": "prop microphone"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_server.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_server.png",
+    "viewbox": "embedded",
+    "purpose": "prop server"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_shield.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_shield.png",
+    "viewbox": "embedded",
+    "purpose": "prop shield"
+  },
+  {
+    "svg": "06_PROPS_AND_BRANDING/svg/prop_sparkles.svg",
+    "png": "06_PROPS_AND_BRANDING/png/prop_sparkles.png",
+    "viewbox": "embedded",
+    "purpose": "prop sparkles"
+  }
+]

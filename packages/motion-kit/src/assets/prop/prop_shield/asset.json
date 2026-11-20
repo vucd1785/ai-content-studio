@@ -1,0 +1,12 @@
+{
+  "id": "prop_shield",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Khiên bảo vệ trên giá, viền sáng phập phồng, dấu tích ở giữa (lớp lọc, phòng thủ).",
+  "tags": ["bảo vệ", "an toàn", "phòng thủ", "lọc"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

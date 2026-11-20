@@ -1277,3 +1277,590 @@ Mục tiêu: mọi run mới đi script `2` và `StickStory`; brief không có �
 Tiêu chí nghiệm thu: không còn `EduVertical`, schema script `1`, nhánh `v1` của job, route và màn sửa script `1`; brief mới ghi `format_id = story`; brief, run `what_if` cũ vẫn đọc được; test và typecheck mọi package đạt; build web đạt.
 
 Kiểm tra: test, typecheck mọi package; build web. **Cổng Director:** chạy migration mới trên DB `studio`.
+
+## P6-19 — Đồ vật trong motion kit
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P6-18`
+- Skill: `build-video-template`, `create-motion-asset`
+- ADR: [ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md), [ADR-016](decisions/ADR-016-creative-mode-motion-assets.md)
+
+Director mở task 2026-11-04 ("bổ sung thêm các vật thể mới để biểu diễn rõ hơn mà ko nhất thiết chỉ có nói"). Script `2` đã có `shots[].props` (tối đa 3 id kind `prop`) nhưng kit chưa có tài sản `prop` nào và `StickStory` chưa vẽ trường này. Nằm trong ADR-014, không đổi ADR.
+
+File được phép: `packages/motion-kit/**` (kind `prop`, lớp đồ vật trong `StageShot`, khung, ảnh tĩnh), `apps/video/src/stick-story/**`, `apps/worker/src/render/storyboard-*` (kiểm và ảnh tĩnh storyboard), `apps/worker/src/cli/build-stick-story-props*`, `apps/worker/src/llm/script-v2-prompt*`, docs 05 mục shot và `StickStory`, report, task file.
+
+Mục tiêu:
+- Kind `prop` trong kit, hai cách đặt: `floor` (đứng trên sàn, chiếm một vị trí `left`, `center`, `right` còn trống như một người) và `air` (bay trong khung, không chiếm vị trí, tối đa một mỗi shot).
+- Luật đặt chung cho render và kiểm storyboard: người cộng đồ vật `floor` không vượt `MAX_ACTORS_BY_SHOT_SIZE`; cỡ `close` không vẽ đồ vật; đồ vật thừa bị bỏ, builder ghi cảnh báo. Khung camera tính cả đồ vật để không bị mép cắt.
+- Bộ đầu, dùng được cho nhiều chủ đề, không có chữ: máy chủ, máy chủ quá tải, laptop, router nhiễm mã độc, khiên bảo vệ, đồng hồ tải, hàng người xếp hàng, dòng gói tin bay.
+- Prompt script `2` hướng dẫn dùng đồ vật.
+
+Tiêu chí nghiệm thu: đồ vật là hàm thuần của frame; mỗi đồ vật có `asset.json` `approved` và vào danh mục prompt; shot có đồ vật render đúng vị trí, không chồng người, không bị mép khung cắt ở `wide`, `high`, `medium`; ảnh tĩnh từng đồ vật và một shot mẫu; test và typecheck motion-kit, video, worker đạt.
+
+Kiểm tra: test, typecheck `packages/motion-kit`, `apps/video`, `apps/worker`; ảnh tĩnh trong report.
+
+## P6-20 — Cổng căn chữ: kéo dài từ cuối theo năng lượng PCM
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P6-18`, ADR-012 bổ sung 2026-11-04 (Director duyệt 2026-11-04)
+- Skill: `review-architecture` (trước), rồi `implement-task`, `debug-pipeline`
+- ADR: [ADR-012](decisions/ADR-012-alignment-trailing-silence-gate.md), [ADR-011](decisions/ADR-011-whisper-alignment-default.md)
+
+Director mở task 2026-11-04 ("Mở task sửa cổng") sau khi run DDoS lỗi `alignment_gate_failed` ở cảnh c3, câu l10 "Chật quá!".
+
+- Máy căn chữ ghi từ cuối "quá" kết thúc ở 340 ms. Đo PCM: tiếng nói kéo tới khoảng 640 ms (peak -6 đến -24 dBFS), sau đó mới im dưới -40 dBFS.
+- Vì vậy `durationDeltaMs` là 460 ms ở WAV câu và 470 ms ở WAV cả cảnh. Mức này vượt 400 ms nên ADR-012 không cho kiểm im lặng đuôi; 28/28 từ đều căn được.
+- Câu cảm thán ngắn, từ cuối kéo dài, sẽ còn gặp. Sửa câu thoại chỉ né được từng lần.
+
+Đổi chính sách cổng của ADR-012 (mục 5 "không sửa timestamp Whisper"). Director duyệt bổ sung 2026-11-04 ("Duyệt và làm"); review ở `reports/P6-20.md`.
+
+File được phép: `services/tts/app/alignment/**`, `services/tts/tests/**`, `packages/contracts/src/media/tts*`, `apps/worker/src/cli/media-stage.ts` và test liên quan (`GATE_POLICY_VERSION`, fixture có version), docs 05 mục cổng, report, task file.
+
+Mục tiêu:
+- Trong service, khi `durationDeltaMs > 250`: quét PCM từ `endMs` của từ cuối, tìm điểm tiếng nói dừng thật (cửa sổ 50 ms, peak < -40 dBFS tới hết file).
+- Nếu năng lượng liền mạch từ `endMs` tới điểm đó và đoạn kéo dài không quá một hằng số (đề xuất 500 ms), dời `endMs` của từ cuối tới điểm đó, rồi validate và chấm cổng như cũ (A hoặc B của ADR-012).
+- Ghi rõ đã sửa: `validation.lastWordExtendedMs` và một warning. Tỷ lệ từ không đổi.
+- Revalidate áp dụng cùng phép sửa, nên run đã lỗi bấm Tiếp tục là qua, không phải chạy lại Whisper.
+- `GATE_POLICY_VERSION` lên `2.2.0-extend-last-word` ở service và worker.
+
+Tiêu chí nghiệm thu:
+- Test PCM tổng hợp:
+  - từ cuối bị cắt sớm: được kéo dài và qua cổng;
+  - tiếng nói vượt mức kéo dài tối đa: không sửa, trượt cổng;
+  - có khoảng lặng giữa `endMs` và tiếng nói (có thể là từ bị sót): không sửa;
+  - WAV thiếu hoặc hỏng: fail closed.
+- Test ADR-012 cũ vẫn đạt.
+- Revalidate artifact thật của cảnh c3 (WAV cả cảnh và WAV câu l10) qua cổng, số đo ghi trong report.
+- Run DDoS bấm Tiếp tục đi qua bước Giọng và hình.
+
+Kiểm tra: pytest `services/tts`, test và typecheck `packages/contracts`, `apps/worker`; revalidate trên artifact thật.
+
+## P6-21 — Phụ đề dễ đọc, nhịp cắt chậm hơn, video dài hơn
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P6-19`, ADR-013 bổ sung 2026-11-09 (Director duyệt 2026-11-09)
+- Skill: `build-video-template`, `implement-task`
+- ADR: [ADR-013](decisions/ADR-013-brand-kit-and-formats.md), [ADR-014](decisions/ADR-014-motion-kit-and-shot-list.md)
+
+Director yêu cầu ngày 2026-11-09 sau khi xem video DDoS:
+- phụ đề khó đọc: Segoe UI cỡ 42 px, chữ nhạt trên nền mờ;
+- chuyển cảnh nhanh: 20–27 cú cắt mỗi phút;
+- muốn video không bị bó ở 90 giây.
+
+Director chọn font Be Vietnam Pro, nhịp 12–18 cú cắt mỗi phút với shot tối đa 5 giây, thời lượng 30–180 giây.
+
+File được phép: `packages/contracts/src/formats/**`, `packages/contracts/src/api/project*`, `packages/contracts/src/script/v2.test.ts`, `apps/video/src/stick-story/**`, `apps/video/src/fonts/**` (mới), `apps/video/font-licenses.json`, `apps/worker/src/render/storyboard-checks*` (số đo hộp phụ đề), test có `formatVersion` hoặc khoảng thời lượng ở `apps/**`, `apps/web/src/i18n/vi.ts`, `apps/web/src/features/projects/brief-form*`, docs 05, report, task file.
+
+Mục tiêu:
+- Gói `story` v2 (30–180 giây, 12–18 cắt mỗi phút, tối đa 5 giây) làm `DEFAULT_FORMAT`; v1 giữ để đọc dữ liệu cũ.
+- Phụ đề `StickStory`:
+  - Be Vietnam Pro nạp từ file trong repo;
+  - chữ khoảng 58 px, đậm 700;
+  - nền đậm hơn;
+  - từ đang đọc được gạch chân.
+- Template lên version mới.
+
+Tiêu chí nghiệm thu:
+- Brief 180 giây được nhận; 181 giây bị từ chối.
+- Builder chia shot dài hơn 5 giây.
+- Prompt nêu nhịp mới.
+- Ảnh tĩnh phụ đề trước và sau khi đổi.
+- Test và typecheck contracts, video, worker, web, api đạt.
+
+Kiểm tra: test và typecheck các package trên; ảnh tĩnh trong report.
+
+## Phase 7 — Tái dùng tài sản, tự tạo tài sản, giao diện mới
+
+Kế hoạch: [14-ASSET-REUSE-AND-UI-PLAN.md](14-ASSET-REUSE-AND-UI-PLAN.md). Director duyệt kế hoạch và D1–D4 ngày 2026-11-10, và yêu cầu agent tự làm hết các phase rồi báo một lần. Mỗi task vẫn có report riêng và chờ nghiệm thu.
+
+## P7-01 — Lọc danh mục tài sản theo brief
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P6-19`
+- Skill: `build-agent-workflow`
+- ADR: [ADR-017](decisions/ADR-017-auto-asset-generation.md)
+
+File được phép:
+- `apps/worker/src/llm/script-v2-prompt*`;
+- `apps/worker/src/llm/asset-catalog*` (mới);
+- `apps/worker/src/script/script-job*`;
+- `asset.json` của `packages/motion-kit` (chỉ `tags`, `description`);
+- test, report, task file.
+
+Mục tiêu:
+- Hàm chọn tài sản liên quan theo từ khóa brief, research và nhịp. Mỗi loại có trần; tài sản bắt buộc luôn có.
+- Prompt `creative` nói rõ chỉ xin tài sản mới khi danh mục không có cái dùng được, tối đa 3.
+
+Tiêu chí nghiệm thu:
+- Test chọn tài sản.
+- Đo số ký tự prompt trước và sau trên brief DDoS và brief giấc ngủ.
+
+## P7-02 — Tự tạo tài sản trong bước storyboard
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P7-01`
+- Skill: `build-agent-workflow`, `create-motion-asset`
+- ADR: [ADR-017](decisions/ADR-017-auto-asset-generation.md), [ADR-016](decisions/ADR-016-creative-mode-motion-assets.md)
+
+File được phép:
+- `apps/worker/src/assets/generate/**` (mới);
+- `apps/worker/src/render/storyboard-*`;
+- `apps/worker/src/render/render-backend.ts` (bundle lại);
+- `apps/worker/src/llm/claude-code-client*`;
+- `packages/motion-kit/src/assets/generated.ts` (mới), `packages/motion-kit/src/assets/index.ts`;
+- `packages/db/src/motion-assets*` (mới, chỉ truy vấn, không migration);
+- skill `create-motion-asset` (`.claude`, `.cursor`);
+- docs 04, 05, 08;
+- test, report, task file.
+
+Mục tiêu:
+- Ghi `motion_asset_requests`.
+- Dùng lại tài sản khớp.
+- Gọi Claude Code headless.
+- Kiểm AST, typecheck, render thuần.
+- Lưu `candidate`, ảnh xem trước, đồng bộ `motion_assets`.
+- Bundle lại. Lỗi thì dùng tài sản thay thế.
+
+Tiêu chí nghiệm thu:
+- Test với Claude giả: một đạt, một bị kiểm AST chặn.
+- Một lần tạo thật một đồ vật.
+
+## P7-03 — Duyệt tài sản ở Cổng 1
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P7-02`
+- Skill: `build-agent-workflow`
+- ADR: [ADR-017](decisions/ADR-017-auto-asset-generation.md)
+
+File được phép:
+- route approval script ở `apps/api`;
+- `packages/db` (cập nhật trạng thái tài sản trong giao dịch approval);
+- module ghi `asset.json` dùng chung;
+- contracts API (phần đọc tài sản của run);
+- test, report, task file.
+
+Mục tiêu:
+- Duyệt phương án N thì tài sản `candidate` của N thành `approved` (DB và `asset.json`).
+- Có API đọc tài sản mới của run cho Cổng 1.
+
+Tiêu chí nghiệm thu: test API; từ chối và yêu cầu sửa không đổi trạng thái tài sản.
+
+## P7-04 — Giao diện nền: theme, shell, điều hướng, component
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: không
+- Skill: `build-3d-scene` (phần token), `implement-task`
+
+File được phép:
+- `apps/web/**` (giữ logic gọi API sẵn có);
+- `apps/web/public/assets/**` (SVG từ `docs/design/ui-kit`);
+- docs 06;
+- report, task file.
+
+Mục tiêu:
+- Token sáng và tối theo `ui-kit/07`; font Be Vietnam Pro.
+- Topbar, sidebar, panel giám sát; ba chế độ Làm việc / Tập trung / Giám sát.
+- Hash route.
+- Component nền: StatusBadge, Stepper, EmptyState, ErrorPanel, ConfirmDialog, Toast, CharacterAvatar.
+
+Tiêu chí nghiệm thu: test component; ảnh chụp sáng và tối ở 1440 và 1280.
+
+## P7-05 — Đăng nhập, Dashboard, dự án, Brief
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P7-04`
+- Skill: `implement-task`
+
+File được phép: `apps/web/src/features/{session,home,projects,shell}/**`, `apps/web/src/i18n/vi.ts`, test, report, task file.
+
+Mục tiêu: các màn theo prompt mục 2, dữ liệu thật.
+
+Tiêu chí nghiệm thu: test; ảnh chụp.
+
+## P7-06 — Màn Đang chạy
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P7-04`
+- Skill: `implement-task`
+
+File được phép: `apps/web/src/features/{run,final-review,shell}/**`, i18n, test, report, task file.
+
+Mục tiêu:
+- Stepper 7 bước, ETA khoảng, tiến độ thật.
+- Ba loại lỗi: task, mất kết nối, worker tắt.
+- Chạy lại; hủy có xác nhận, focus "Giữ lượt chạy".
+
+Tiêu chí nghiệm thu: test các trạng thái; ảnh chụp bình thường và lỗi.
+
+## P7-07 — Cổng 1 mới, có tài sản mới
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P7-04`, `P7-03`
+- Skill: `implement-task`
+
+File được phép: `apps/web/src/features/script-review/**`, i18n, test, report, task file.
+
+Mục tiêu:
+- Hai phương án, storyboard phóng to.
+- Thoại theo nhân vật (tên, màu, icon); nghiên cứu có nhãn.
+- Tài sản mới của từng phương án.
+- Ghi chú bắt buộc, lịch sử quyết định.
+
+Tiêu chí nghiệm thu: test; ảnh chụp.
+
+## P7-08 — Preview, version, Cổng 2
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P7-04`
+- Skill: `implement-task`
+
+File được phép: `apps/web/src/features/{preview,final-review}/**`, i18n, test, report, task file.
+
+Mục tiêu:
+- Dòng thời gian version; bản cũ chỉ đọc; video 9:16.
+- Danh sách QA; khóa duyệt có lý do; tải MP4.
+
+Tiêu chí nghiệm thu: test; ảnh chụp.
+
+## P7-09 — Sử dụng LLM, studio, Kho hình động, Bộ nhận diện
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P7-04`, `P7-02`
+- Skill: `build-3d-scene`, `implement-task`
+
+File được phép:
+- `apps/web/src/{features/usage,studio}/**`;
+- `apps/web/src/features/library/**`, `apps/web/src/features/brand/**` (mới);
+- route API đọc kho tài sản và bộ nhận diện (chỉ đọc);
+- contracts, i18n, test, report, task file.
+
+Mục tiêu:
+- Usage có lọc.
+- Danh sách vai trò 2D bằng robot `ui-kit`.
+- Studio 3D theo token; lazy-load, dừng khi ẩn.
+- Kho hình động chỉ đọc.
+- Bộ nhận diện chỉ đọc; phần chưa có API mang nhãn "Sắp có".
+
+Tiêu chí nghiệm thu: test; ảnh chụp.
+
+## P7-10 — Playwright E2E và soát cuối
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P7-05` đến `P7-09`
+- Skill: `verify-phase`
+
+File được phép: cấu hình và test Playwright trong `apps/web`, script chạy, docs 06, 09, report, task file. Director cho phép tải trình duyệt Playwright ngày 2026-11-10.
+
+Mục tiêu:
+- E2E luồng chính với API giả.
+- Ảnh chụp sáng và tối ở 1440, 1280, tablet.
+- Soát bàn phím, tương phản, giảm chuyển động.
+
+Tiêu chí nghiệm thu: E2E đạt; checklist kế hoạch 14 mục 5.
+
+## P7-11 — Tiến trình đếm thật và form Brief dễ viết
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P7-06`, `P7-05`
+- Skill: `implement-feature`
+
+Director yêu cầu 2026-11-11: mỗi bước có phần trăm; "Giọng và hình" đếm động (đang hiện "cảnh 15/8" sai); ô Brief nhiều dòng, bố cục dùng hết chiều rộng.
+
+File được phép: `apps/web/src/features/run/*`, `apps/web/src/features/projects/*`, `apps/web/src/i18n/vi.ts`, `apps/worker/src/render/storyboard-job.ts`, `packages/contracts/src/api/workflow.ts`, `packages/db/src/workflow.ts`, test và E2E liên quan.
+
+Tiêu chí nghiệm thu: cảnh và câu lấy từ worker; storyboard đếm ảnh thật; ô Brief là textarea có bộ đếm; ảnh chụp E2E màn Brief.
+
+## P7-12 — Minh họa khi giải thích: bong bóng nghĩ và bảng trắng
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P6-19`
+- Skill: `implement-feature`
+
+Theo ADR-014 bổ sung 2026-11-11. File được phép: `packages/motion-kit/src/stage/*`, `packages/contracts/src/script/v2.ts`, `apps/video/src/stick-story/*`, `apps/worker/src/llm/script-v2-prompt.ts`, `apps/worker/src/render/storyboard-*`, `apps/worker/src/cli/build-stick-story-props.ts`, `apps/worker/src/assets/generate/substitute.ts`, test, docs 05.
+
+Tiêu chí nghiệm thu: schema chặn minh họa sai (cỡ close, owner ngoài shot, không phải prop, có chữ); ảnh render thử có bong bóng và bảng không che mặt, không đè phụ đề; storyboard chụp shot có minh họa.
+
+## P7-13 — Bộ đăng bài và hướng dẫn đăng
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P3-06`
+- Skill: `implement-feature`
+
+Theo ADR-018. File được phép: migration `0006`, `packages/db/src/*`, `packages/contracts/src/api/publish.ts`, `apps/worker/src/publish/*`, `apps/worker/src/render/export-job.ts`, `apps/worker/src/queue/consumer.ts`, `apps/api/src/routes/publish.ts`, `apps/web/src/features/publish/*`, `apps/web/src/features/brand/*`, `apps/web/src/features/final-review/final-review-panel.tsx`, shell và route, test, E2E.
+
+Tiêu chí nghiệm thu: export xong tạo job `publish`; artifact `publish_kit` có ô riêng cho ba mạng; phần chân có AI, nguồn, liên hệ bản quyền; nút Tạo lại; trang hướng dẫn chung; ô liên hệ ở Bộ nhận diện kênh.
+
+## P7-14 — Thư viện âm thanh tự tạo, nhạc nền và SFX
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P6-09`
+- Skill: `implement-feature`
+
+Theo ADR-019. File được phép: `packages/audio-kit/*`, `.gitignore` (ngoại lệ WAV của audio-kit), `packages/contracts/src/script/v2.ts` (trường `music`), `apps/video/src/stick-story/*`, `apps/worker/src/cli/build-stick-story-props.ts`, `apps/worker/src/render/render-backend.ts`, `apps/worker/src/llm/script-v2-prompt.ts`, test.
+
+Tiêu chí nghiệm thu: bốn nhạc nền và bảy SFX tạo bằng code, tất định, có sha256; nhạc lặp liền, hạ khi có lời; SFX đặt bằng luật; `StickStory` 1.5.0; render thật có nhạc và SFX.
+
+## P7-15 — Diễn xuất tự động, máy quay, minh họa xin đồ vật, phụ đề theo cụm
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P7-12`
+- Skill: `implement-feature`
+
+Theo ADR-014 bổ sung 2026-11-12. File được phép: `packages/motion-kit/src/rig/actor.tsx`, `packages/motion-kit/src/assets/camera/*`, `packages/motion-kit/src/assets/index.ts`, `packages/motion-kit/src/index.ts`, `version.ts`, `packages/contracts/src/script/v2.ts`, `apps/worker/src/assets/generate/substitute.ts`, `storyboard-assets.ts`, `approved-script.ts`, `apps/video/src/captions/*`, prompt, test.
+
+Tiêu chí nghiệm thu: người nghe gật đầu, người nói nghiêng đầu mà luật tay vẫn đạt; ba camera mới và luật đạo diễn máy quay; `illustration.items` nêu được `rN` ở chế độ creative, yêu cầu chưa xong thì bỏ; phụ đề ngắt theo cụm nghĩa.
+
+## P7-16 — Sửa câu tại Cổng 1 và tự kiểm kịch bản
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P6-17`
+- Skill: `implement-feature`
+
+Theo ADR-020 mục 1, 2. File được phép: `packages/contracts/src/api/script-edit.ts`, `packages/contracts/src/script/review.ts`, `packages/db/src/script-edits.ts`, `packages/db/src/workflow.ts` (helper xóa của test), `apps/api/src/routes/script-edits.ts`, `apps/api/src/app.ts`, `apps/web/src/features/script-review/*`, prompt, i18n, test.
+
+Tiêu chí nghiệm thu: sửa câu tạo script version mới, chép yêu cầu tài sản, không đổi trạng thái run, không ghi approval; 409 khi không chờ duyệt hoặc đã có bản mới hơn; gợi ý tự kiểm ở từng phương án.
+
+## P7-17 — QA hình, báo việc chờ duyệt, chỉnh giao diện
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P7-16`
+- Skill: `implement-feature`
+
+Theo ADR-020 mục 3–6. File được phép: `apps/worker/src/render/qa-job.ts`, `packages/contracts/src/workflow/asset-artifacts.ts` (mã QA), `apps/worker/src/publish/*`, `apps/worker/src/llm/research-prompt.ts`, `apps/web/src/features/{final-review,run,shell,home,usage}/*`, `apps/web/src/studio/*`, i18n, test, E2E.
+
+Tiêu chí nghiệm thu: QA báo `visual_unsafe_area`, `visual_overlap` dạng cảnh báo; tiêu đề tab có số việc chờ và có thông báo; Cổng 2 video không bị che; panel Giám sát thu gọn được và có vai Đăng bài; chi phí dễ đọc; tên nhân vật trong bộ đăng bài đúng dấu.
+
+## P7-18 — Thẻ tiêu đề đầu và thẻ kênh cuối video
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P7-15`
+- Skill: `implement-feature`
+
+Theo ADR-021 mục 1.
+
+File được phép:
+
+- `apps/video/src/stick-story/*`;
+- `apps/worker/src/cli/build-stick-story-props.ts`, `apps/worker/src/render/render-job.ts`;
+- `packages/contracts/src/api/publish.ts` (tên kênh seed);
+- test.
+
+Tiêu chí nghiệm thu:
+
+- `StickStory` 1.6.0 có `cards` tùy chọn.
+- Thẻ tiêu đề ở 2,4 giây đầu. Thẻ kênh và lời mời ở 3 giây cuối; kênh chưa có tên thì thẻ chỉ có lời mời.
+- Thẻ không che phụ đề.
+- Có render thật để Director xem.
+
+## P7-19 — Làm lại một phần ở Cổng 2
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P7-18`
+- Skill: `implement-feature`
+
+Theo ADR-021 mục 2.
+
+File được phép:
+
+- `packages/contracts/src/api/redo.ts`, `packages/contracts/src/workflow/state-machine.ts`;
+- `packages/db/src/{workflow-control,agent-jobs}.ts`;
+- `apps/api/src/routes/redo.ts`;
+- `apps/worker/src/{render/redo.ts,render/render-job.ts,assets/*,cli/media-stage.ts,jobs/job-support.ts,queue/*}`;
+- `apps/web/src/features/final-review/*`;
+- i18n, test.
+
+Tiêu chí nghiệm thu:
+
+- Đọc lại một cảnh, đổi nền một cảnh, tạo lại một hình, dựng lại đều đi qua job và QA, rồi về Cổng 2.
+- Không ghi approval.
+- Lần sau không làm mất lần trước.
+- Có test luồng BullMQ.
+
+## P7-20 — Tên kênh trước lần xuất, ảnh bìa, kho "dùng trong"
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P7-18`
+- Skill: `implement-feature`
+
+Theo ADR-021 mục 3–5.
+
+File được phép:
+
+- `apps/api/src/routes/{publish,workflow-runs,artifacts,motion-assets}.ts`;
+- `packages/db/src/{brand-profiles,motion-assets}.ts`;
+- `packages/contracts/src/api/{publish,motion-assets}.ts`;
+- `apps/worker/src/render/{export-job,render-backend}.ts`, `apps/worker/src/cli/ffprobe.ts`;
+- `apps/web/src/features/{brand,library,final-review}/*`;
+- i18n, test.
+
+Tiêu chí nghiệm thu:
+
+- Sửa được tên kênh.
+- Duyệt bản cuối bị chặn khi kênh chưa có tên, ở cả web lẫn API.
+- Bản xuất có ảnh bìa tải được.
+- Kho lọc được theo video và "Chưa dùng".
+
+## P7-21 — Chuẩn hóa -14 LUFS
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: không
+- Skill: `implement-feature`
+
+Theo ADR-021 mục 6.
+
+File được phép:
+
+- `apps/worker/src/cli/loudness.ts`, `apps/worker/src/render/render-backend.ts`;
+- `apps/video/src/stick-story/cached-render.ts`;
+- test.
+
+Tiêu chí nghiệm thu: preview và export ở -14 ± 1 LUFS, true peak dưới -1 dBTP, hình không mã hóa lại.
+
+## Phase 8 — Đăng YouTube bằng một nút
+
+Theo [ADR-031](decisions/ADR-031-youtube-upload.md). Mỗi task có report riêng; Director nghiệm thu rồi mới đổi `done`.
+
+## P8-01 — Bộ đăng bài theo giới hạn YouTube
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: không
+- Skill: `implement-feature`
+
+Theo ADR-031 mục 5.
+
+File được phép: `apps/worker/src/publish/publish-text.ts`, `packages/contracts/src/api/youtube.ts`, test.
+
+Tiêu chí nghiệm thu:
+
+- Mô tả YouTube không quá 5.000 byte UTF-8 với văn bản tiếng Việt dài; phần chân và mục "Nguồn hình ảnh" còn nguyên.
+- Tiêu đề và mô tả không chứa `<` hoặc `>`.
+- Thẻ không quá 500 ký tự theo cách tính của YouTube.
+
+## P8-02 — Bảng kết nối, artifact và queue upload
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: không
+- Skill: `implement-feature`
+
+Theo ADR-031 mục 2, 4.
+
+File được phép: `packages/db/drizzle/0008_*`, `packages/db/src/{schema/*,youtube.ts,index.ts}`, `packages/contracts/src/{api/youtube.ts,queue/*,index.ts}`, test.
+
+Tiêu chí nghiệm thu: migration chạy được trên DB có dữ liệu; contracts kiểm hộp xác nhận và artifact `youtube_upload`.
+
+## P8-03 — Mã hóa token và đăng nhập Google
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P8-02`
+- Skill: `implement-feature`
+
+Theo ADR-031 mục 1, 2, 6.
+
+File được phép: `apps/api/src/routes/youtube.ts`, `apps/api/src/app.ts`, `apps/api/src/config*`, `packages/db/src/youtube.ts`, `packages/contracts/src/crypto/*`, `.env.example`, test.
+
+Tiêu chí nghiệm thu: sai, hết hạn hoặc dùng lại `state` bị từ chối; token lưu mã hóa; log không chứa token; ngắt kết nối xóa token.
+
+## P8-04 — Client YouTube trong worker
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P8-02`
+- Skill: `implement-feature`
+
+Theo ADR-031 mục 4.
+
+File được phép: `apps/worker/src/youtube/*`, test.
+
+Tiêu chí nghiệm thu: upload đứt giữa chừng thì resume; lỗi sau khúc cuối không đăng trùng; 403 hạn mức và 403 ảnh bìa ra đúng mã; chỉ gọi host trong allowlist.
+
+## P8-05 — Job đăng và route
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P8-03`, `P8-04`
+- Skill: `implement-feature`
+
+Theo ADR-031 mục 3, 4, 6.
+
+File được phép: `apps/worker/src/{youtube/*,main.ts,queues*}`, `apps/api/src/routes/{youtube,workflow-runs}.ts`, `packages/db/src/youtube.ts`, test.
+
+Tiêu chí nghiệm thu: route trả 409 đúng các trường hợp của ADR; job ghi artifact `youtube_upload` có `privacyStatus` đọc lại; lỗi không đổi trạng thái run.
+
+## P8-06 — Giao diện đăng YouTube
+
+- Trạng thái: pending
+- Ưu tiên: high
+- Phụ thuộc: `P8-05`
+- Skill: `implement-feature`
+
+Theo ADR-031 mục 1, 3.
+
+File được phép: `apps/web/src/features/{brand,final-review,youtube}/*`, `apps/web/src/i18n/vi.ts`, `apps/web/src/lib/*`, test.
+
+Tiêu chí nghiệm thu: kết nối và ngắt kết nối ở Bộ nhận diện kênh; hộp xác nhận đếm ký tự, byte, thẻ, bắt chọn "Dành cho trẻ em"; link "Xem trên YouTube"; trang hướng dẫn cài đặt.
+
+## P8-07 — Thử thật với kênh của Director
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P8-06`; Director tạo dự án Google Cloud và kết nối kênh
+- Skill: `implement-feature`
+
+Tiêu chí nghiệm thu: một video riêng tư đăng thành công với đúng tiêu đề, mô tả, ảnh bìa; report có link.
+
+## P8-08 — Màn Video: các video đã duyệt và xuất của mọi dự án
+
+- Trạng thái: pending
+- Ưu tiên: medium
+- Phụ thuộc: `P8-06`; Director yêu cầu 2026-11-17
+- Skill: `implement-feature`
+
+File được phép:
+- `packages/contracts/src/api/videos.ts` (mới), `packages/contracts/src/index.ts`;
+- `packages/db/src/videos.ts` (mới), `packages/db/src/index.ts`;
+- `apps/api/src/routes/videos.ts` (mới), `apps/api/src/app.ts`;
+- `apps/web/src/features/videos/**` (mới), `apps/web/src/features/shell/app-shell.tsx`, `apps/web/src/lib/hash-route.ts`;
+- i18n, test, `docs/07-API-CONTRACTS.md`, `docs/06-3D-UI-DESIGN.md`, report, task file.
+
+Mục tiêu:
+- Một màn `#/videos` liệt kê bản xuất mới nhất của mỗi lượt chạy đã xuất, ở mọi dự án, mới nhất trước.
+- Mỗi thẻ: ảnh bìa, chủ đề, tên dự án, ngày xuất, khung dọc hay ngang, thời lượng, trạng thái YouTube và link (Short hoặc video thường).
+- Nút tải video, tải ảnh bìa, mở dự án ở tab Duyệt cuối.
+- Lọc: tất cả, chưa đăng, đã đăng; dọc, ngang. Tìm theo chủ đề hoặc tên dự án.
+
+Ràng buộc:
+- Chỉ đọc. Không duyệt, không xóa, không đăng từ màn này; đăng vẫn qua hộp xác nhận ở dự án.
+- Không đổi schema DB. Khung và thời lượng đọc từ `render_props` cha của bản xuất (export → preview → render_props).
+- Tải file dùng route có sẵn (`/media`, `/thumbnail`); không nhận đường dẫn từ client.
+
+Kiểm tra:
+- `pnpm --dir apps/api exec vitest run src/routes/videos.integration.test.ts`, `pnpm --dir apps/web exec vitest run src/features/videos`, typecheck các package đã sửa.
+
+Tiêu chí nghiệm thu: màn Video hiện đúng các video đã xuất của mọi dự án, lọc và tìm hoạt động, link Short đúng, nút tải và mở dự án hoạt động.

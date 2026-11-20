@@ -70,7 +70,8 @@ export async function runStageJob(
   try {
     await claimJob(db, {
       jobId,
-      allowedRunStatuses: "from" in spec.enter ? [spec.enter.from, spec.enter.working] : [spec.enter.working],
+      allowedRunStatuses:
+        "from" in spec.enter ? [spec.enter.from, spec.enter.working] : [spec.enter.working],
       ...(entering && "from" in spec.enter
         ? { runTransition: advanceTransition(spec.enter.from, spec.enter.working) }
         : {}),

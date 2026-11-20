@@ -1,0 +1,18 @@
+{
+  "id": "action_ti_bat_day_e7f4",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Tí lấy đà nhún xuống rồi bật dậy, dang hai tay sang ngang vươn vai và nghiêng người sảng khoái, sau đó với tay xuống bên phải nhẹ nhàng bấm tắt đồng hồ báo thức, rồi đung đưa vui vẻ lặp lại.",
+  "tags": [
+    "bật dậy",
+    "vươn vai",
+    "tắt báo thức",
+    "buổi sáng",
+    "ngủ đủ giấc"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:2:r7",
+  "licenses": []
+}

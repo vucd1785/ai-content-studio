@@ -1,0 +1,19 @@
+{
+  "id": "prop_bieu_do_cot_faa7",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Biểu đồ cột phẳng gồm bốn cột xanh lá và xanh dương cao dần. Các cột mọc lên lúc mở đầu rồi nhấp nhô nhẹ theo nhịp, còn mũi tên zíc zắc đi lên nhấp nháy và đầu mũi tên lấp lánh.",
+  "tags": [
+    "biểu đồ cột",
+    "tăng trưởng",
+    "mũi tên đi lên",
+    "đầu tư",
+    "tài chính",
+    "lợi nhuận"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "e711ea11-dd75-47a9-abf0-8c340b55b18e:962dff59:2:r3",
+  "licenses": []
+}

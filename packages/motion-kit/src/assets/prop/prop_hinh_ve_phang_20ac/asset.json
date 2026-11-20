@@ -1,0 +1,19 @@
+{
+  "id": "prop_hinh_ve_phang_20ac",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Hình vẽ phẳng so sánh hai cách làm: bên trái, một đầu bếp que tất bật chạy qua lại, tay vung loạn xạ, mồ hôi rơi trước kệ đầy nồi bốc khói; bên phải, hai hàng đầu bếp nhỏ cùng khuấy nồi của mình theo một nhịp đều.",
+  "tags": [
+    "đầu bếp",
+    "xử lý song song",
+    "nồi nấu",
+    "GPU và CPU",
+    "so sánh",
+    "NVIDIA"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "7c50ffb2-d09c-4285-a8dd-bd6a7f0f6080:70821d45:1:r5",
+  "licenses": []
+}

@@ -1,0 +1,12 @@
+{
+  "id": "prop_cau_vong_hinh_2926",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Cầu vồng hình vòng cung phẳng có đủ bảy dải màu, đỏ ở ngoài cùng và tím ở trong cùng; mỗi chân cầu vồng có một đám mây trắng nhỏ. Các dải màu sáng lên nhẹ theo nhịp, vài đốm sáng nhỏ nhấp nháy và hai đám mây khẽ nhún.",
+  "tags": ["cầu vồng", "sau cơn mưa", "bảy màu", "đám mây", "ánh sáng", "thời tiết"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "ecb5311d-9b5b-47b7-b1a3-07faea63816f:1:r3",
+  "licenses": []
+}

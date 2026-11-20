@@ -10,12 +10,14 @@
     "worker": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts",
     "worker:llm": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=llm",
     "worker:media": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=media",
-    "worker:render": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=render"
+    "worker:render": "node --env-file-if-exists=../../.env --import tsx src/queue/run-worker.ts --queues=render",
+    "previews": "node --env-file-if-exists=../../.env --import tsx src/cli/render-asset-previews.ts"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
     "@remotion/bundler": "4.0.539",
     "@remotion/renderer": "4.0.539",
+    "@studio/audio-kit": "workspace:*",
     "@studio/config": "workspace:*",
     "@studio/contracts": "workspace:*",
     "@studio/db": "workspace:*",

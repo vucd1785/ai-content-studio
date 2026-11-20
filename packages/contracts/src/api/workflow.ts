@@ -89,6 +89,8 @@ export const workflowRunSchema = z.object({
   failureMessage: z.string().nullable().default(null),
   /** Model LLM chọn khi bắt đầu run (P3-12); null là mặc định của worker. */
   llmModel: z.string().nullable().default(null),
+  /** Khung hình chọn khi bắt đầu run (ADR-022); run cũ là `9:16`. */
+  aspectRatio: z.enum(["9:16", "16:9"]).default("9:16"),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -102,6 +104,10 @@ export const approvalCreatedResponseSchema = z.object({
 export const startWorkflowRunBodySchema = z
   .object({
     llmModel: z.string().trim().min(1).max(100).optional(),
+    /** ADR-016/017: `creative` cho phép kịch bản xin tài sản mới và worker tự tạo; không gửi là `creative`. */
+    creativeMode: z.enum(["standard", "creative"]).optional(),
+    /** ADR-022: khung hình; không gửi là dọc `9:16`. `16:9` là lựa chọn thử. */
+    aspectRatio: z.enum(["9:16", "16:9"]).optional(),
   })
   .strict();
 
@@ -126,11 +132,16 @@ export const workflowRunControlResponseSchema = z.object({
 export const jobProgressSchema = z.object({
   done: z.number().int().nonnegative(),
   total: z.number().int().positive(),
-  unit: z.enum(["scene_step", "frame"]),
+  /** `image`: ảnh storyboard đã chụp xong (bước viết kịch bản). */
+  unit: z.enum(["scene_step", "frame", "image"]),
   /** Voice: cảnh đang làm (1-based) và pha đang chạy. */
   sceneIndex: z.number().int().positive().nullable().default(null),
   sceneCount: z.number().int().positive().nullable().default(null),
-  phase: z.enum(["synthesize", "align"]).nullable().default(null),
+  /** Voice: câu thoại đang làm trong cảnh (story v2 đọc từng câu). */
+  lineIndex: z.number().int().positive().nullable().default(null),
+  lineCount: z.number().int().positive().nullable().default(null),
+  /** Voice: đọc lời hoặc căn chữ. Storyboard: tạo hình mới hoặc chụp ảnh. */
+  phase: z.enum(["synthesize", "align", "assets", "stills"]).nullable().default(null),
 });
 
 export type JobProgress = z.infer<typeof jobProgressSchema>;

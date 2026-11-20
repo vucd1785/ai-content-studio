@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import {
   type FormatPack,
   getFormatPack,
@@ -11,13 +12,19 @@ import {
   findRunApproval,
   getArtifactById,
   type JobContext,
+  listMotionAssetRequestsForScript,
   loadRunBrandProfile,
+  redoIdFromJobKey,
+  redoJobKey,
   renderJobKeyAfterAssets,
   type StudioDb,
 } from "@studio/db";
 import type { z } from "zod/v4";
+import { resolveRepoRoot } from "../cli/paths.js";
 import { readJsonArtifact } from "../jobs/job-support.js";
 import { loadApprovedAssetCatalog } from "../llm/asset-catalog.js";
+import { syncApprovedManifests } from "./generate/storyboard-assets.js";
+import { applyAssetSubstitutions, splitSceneIds } from "./generate/substitute.js";
 
 /** Kênh của run như `loadRunBrandProfile` trả về. */
 export type RunBrand = NonNullable<Awaited<ReturnType<typeof loadRunBrandProfile>>>;
@@ -43,7 +50,7 @@ export async function loadScriptV2Variant(
   db: StudioDb,
   dataDir: string,
   runId: string,
-  row: { storageKey: string; metadata: unknown },
+  row: { id: string; storageKey: string; metadata: unknown },
   variantIndex: 1 | 2,
 ): Promise<{ script: ScriptV2; format: FormatPack; brand: RunBrand } | null> {
   const meta = (row.metadata ?? {}) as {
@@ -67,8 +74,24 @@ export async function loadScriptV2Variant(
     row.storageKey,
     schema as z.ZodType<{ variants: ScriptV2[] }>,
   );
-  const script = content?.variants[variantIndex - 1];
-  return script === undefined ? null : { script, format, brand };
+  const saved = content?.variants[variantIndex - 1];
+  if (saved === undefined) {
+    return null;
+  }
+  // ADR-016/017: cảnh có yêu cầu tài sản đã đóng dùng tài sản mới thay cho tài sản thay thế.
+  const fulfilled = (await listMotionAssetRequestsForScript(db, row.id)).filter(
+    (r) => r.variantIndex === variantIndex && r.status === "fulfilled" && r.fulfilledAssetId,
+  );
+  const script = applyAssetSubstitutions(
+    saved,
+    fulfilled.map((r) => ({
+      sceneIds: splitSceneIds(r.sceneId),
+      fallbackAssetId: r.fallbackAssetId,
+      assetId: r.fulfilledAssetId as string,
+      requestId: r.requestKey,
+    })),
+  );
+  return { script, format, brand };
 }
 
 export type ApprovedScriptResult =
@@ -101,6 +124,15 @@ export async function loadApprovedScript(
   if (row === null || v2 === null) {
     return { ok: false, errorCode: "script_missing" };
   }
+  // ADR-017 mục 3: tài sản được duyệt cùng phương án ở Cổng 1 ghi lại `approved` vào asset.json.
+  const synced = await syncApprovedManifests(
+    db,
+    join(resolveRepoRoot(import.meta.url), "packages", "motion-kit", "src"),
+    { scriptArtifactId: row.id, variantIndex: approval.variantIndex },
+  );
+  if (synced.length > 0) {
+    console.log(`tài sản đã duyệt cùng kịch bản: ${synced.join(", ")}`);
+  }
   return {
     ok: true,
     value: {
@@ -113,7 +145,19 @@ export async function loadApprovedScript(
 }
 
 /** Rào phụ thuộc: render chỉ được tạo khi visual và voice của cùng approval đều xong. */
-export function renderBarrier(workflowRunId: string, approvalId: string) {
+export function renderBarrier(workflowRunId: string, approvalId: string, jobKey?: string) {
+  // Đọc lại một cảnh (ADR-021): chỉ có job voice; xong là tạo job render cùng `redoId`.
+  const redoId = jobKey === undefined ? null : redoIdFromJobKey(jobKey);
+  if (jobKey !== undefined && redoId !== null) {
+    return {
+      requiredJobKeys: [jobKey],
+      nextJob: {
+        role: "video" as const,
+        queue: "render" as const,
+        idempotencyKey: redoJobKey("render", workflowRunId, approvalId, redoId),
+      },
+    };
+  }
   const roles: AssetRole[] = ["visual", "voice"];
   return {
     requiredJobKeys: roles.map((role) =>
@@ -127,7 +171,8 @@ export function renderBarrier(workflowRunId: string, approvalId: string) {
   };
 }
 
-const RENDER_KEY_PATTERN = /^render:[0-9a-f-]{36}:approval:([0-9a-f-]{36})$/;
+const RENDER_KEY_PATTERN =
+  /^render:[0-9a-f-]{36}:approval:([0-9a-f-]{36})(?::redo:[0-9a-f-]{36})?$/;
 
 /** Approval id trong key job render (`renderJobKeyAfterAssets`). */
 export function approvalIdFromRenderJobKey(idempotencyKey: string): string | null {

@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_he_1f5ced",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật hệ thống làm mát bằng chất lỏng cho máy chủ: các ống nước xanh nối vào bo mạch và chip trong tủ máy chủ.",
+  "tags": [
+    "liquid cooling server",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "72294a26-3aed-463f-a4da-31c482622c9f:49540158:2:r2",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "servethehome.com",
+      "url": "https://www.servethehome.com/how-liquid-cooling-works-in-servers-gigabyte-h262-zl0-coolit-amd-epyc/2/",
+      "file": "https://www.servethehome.com/wp-content/uploads/2022/04/Gigabyte-H262-ZL0-Node-Next-to-PCL-2.jpg",
+      "attribution": "Ảnh: How Liquid Cooling Servers Works with Gigabyte and CoolIT (https://www.servethehome.com/how-liquid-cooling-works-in-servers-gigabyte-h262-zl0-coolit-amd-epyc/2/)"
+    }
+  ]
+}

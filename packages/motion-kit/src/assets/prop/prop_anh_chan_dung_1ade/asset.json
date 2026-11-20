@@ -1,0 +1,18 @@
+{
+  "id": "prop_anh_chan_dung_1ade",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Khung ảnh chân dung đặt trên giá vẽ, bên trong là hình hoạt hình đơn giản của một người đàn ông tóc ngắn, mặc áo len (không vẽ giống người thật). Khung khẽ đung đưa, người trong ảnh thỉnh thoảng chớp mắt và một tia sáng lấp lánh lướt qua mặt kính.",
+  "tags": [
+    "khung ảnh",
+    "chân dung",
+    "giá vẽ",
+    "người đàn ông",
+    "nhân vật"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "9ea0d0e7-7391-4db0-b0ff-72ac4a6fa0aa:08644792:2:r5",
+  "licenses": []
+}

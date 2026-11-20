@@ -6,8 +6,9 @@ import {
   artifactDetailResponseSchema,
   artifactIdParamsSchema,
   MEDIA_ARTIFACT_TYPES,
+  topicFileSlug,
 } from "@studio/contracts";
-import { getArtifactById, type StudioDb } from "@studio/db";
+import { getArtifactById, getRunBriefTopic, type StudioDb } from "@studio/db";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod/v4";
 import { sendNotFound } from "../http/errors.js";
@@ -22,7 +23,7 @@ export type ArtifactRouteDeps = {
 const MAX_ARTIFACT_JSON_BYTES = 2 * 1024 * 1024;
 
 /** Đọc JSON theo `storage_key`; path thoát `DATA_DIR` (kể cả qua symlink), thiếu file hay JSON hỏng thì `null`. */
-async function readArtifactJson(dataDir: string, storageKey: string): Promise<unknown> {
+export async function readArtifactJson(dataDir: string, storageKey: string): Promise<unknown> {
   const target = await resolveStorageKey(dataDir, storageKey);
   if (target === null) {
     return null;
@@ -170,6 +171,14 @@ export function registerArtifactRoutes(app: FastifyInstance, deps: ArtifactRoute
       }
       const size = info.size;
       const range = parseByteRange(request.headers.range, size);
+      // Video tải về mang tên chủ đề của brief, không dấu (Director 2026-11-12): vi-sao-dom-dom-phat-sang.mp4.
+      // `inline` để thẻ <video> vẫn phát; link có thuộc tính `download` lấy tên từ đây.
+      if (row !== null && (row.type === "export" || row.type === "preview")) {
+        const topic = await getRunBriefTopic(deps.db, row.workflowRunId);
+        const base = topicFileSlug(topic ?? "", "video");
+        const name = row.type === "preview" ? `${base}-ban-xem-truoc` : base;
+        reply.header("content-disposition", `inline; filename="${name}${extname(key ?? "")}"`);
+      }
       reply
         .header("content-type", contentType)
         .header("accept-ranges", "bytes")
@@ -189,6 +198,43 @@ export function registerArtifactRoutes(app: FastifyInstance, deps: ArtifactRoute
     },
   );
 
+  // Ảnh bìa của bản xuất (ADR-021): chỉ file JPEG ghi trong metadata `thumbnailKey` của artifact `export`,
+  // nằm trong thư mục artifact của đúng run. Không nhận đường dẫn từ client.
+  typed.get(
+    "/api/artifacts/:artifactId/thumbnail",
+    { schema: { params: artifactIdParamsSchema } },
+    async (request, reply) => {
+      const row = await getArtifactById(deps.db, request.params.artifactId);
+      const key =
+        row === null || row.type !== "export"
+          ? null
+          : (row.metadata as { thumbnailKey?: unknown } | null)?.thumbnailKey;
+      if (
+        row === null ||
+        typeof key !== "string" ||
+        !key.startsWith(`artifacts/${row.workflowRunId}/thumbnail-`) ||
+        extname(key) !== ".jpg"
+      ) {
+        return sendNotFound(reply);
+      }
+      const target = await resolveStorageKey(deps.dataDir, key);
+      const info = target === null ? null : await stat(target).catch(() => null);
+      if (target === null || info === null || !info.isFile()) {
+        return sendNotFound(reply);
+      }
+      // Ảnh bìa tải về mang tên chủ đề như video (ADR-027): vi-sao-dom-dom-phat-sang-anh-bia.jpg.
+      const topic = await getRunBriefTopic(deps.db, row.workflowRunId);
+      const name = `${topicFileSlug(topic ?? "", "video")}-anh-bia.jpg`;
+      return reply
+        .header("content-type", "image/jpeg")
+        .header("content-disposition", `inline; filename="${name}"`)
+        .header("content-length", info.size)
+        .header("cache-control", "private, no-cache")
+        .header("x-content-type-options", "nosniff")
+        .send(createReadStream(target));
+    },
+  );
+
   // Ảnh storyboard (P6-10, P6-17): chỉ file PNG có tên trong artifact `storyboard` schema `2`, nằm trong
   // thư mục storyboard của đúng run. Không nhận đường dẫn từ client.
   typed.get(
@@ -199,10 +245,18 @@ export function registerArtifactRoutes(app: FastifyInstance, deps: ArtifactRoute
           variantIndex: z.coerce.number().int().min(1).max(2),
           sceneId: z.string().regex(/^[a-z0-9-]{1,40}$/),
         }),
+        // Ảnh thêm của một shot khác trong cảnh (bổ sung 2026-11-12); thiếu là ảnh chính.
+        querystring: z.object({
+          shot: z
+            .string()
+            .regex(/^s[0-9]{1,3}[a-z]?$/)
+            .optional(),
+        }),
       },
     },
     async (request, reply) => {
       const { artifactId, variantIndex, sceneId } = request.params;
+      const shotId = request.query.shot;
       const row = await getArtifactById(deps.db, artifactId);
       if (row === null || row.type !== "storyboard" || row.schemaVersion !== "2") {
         return sendNotFound(reply);
@@ -210,13 +264,22 @@ export function registerArtifactRoutes(app: FastifyInstance, deps: ArtifactRoute
       const board = (await readArtifactJson(deps.dataDir, row.storageKey)) as {
         variants?: {
           variantIndex?: unknown;
-          scenes?: { sceneId?: unknown; stillKey?: unknown }[];
+          scenes?: {
+            sceneId?: unknown;
+            stillKey?: unknown;
+            extraStills?: { shotId?: unknown; stillKey?: unknown }[];
+          }[];
         }[];
       } | null;
       const scene = board?.variants
         ?.find((variant) => variant.variantIndex === variantIndex)
         ?.scenes?.find((item) => item.sceneId === sceneId);
-      const key = scene?.stillKey;
+      const key =
+        shotId === undefined
+          ? scene?.stillKey
+          : (Array.isArray(scene?.extraStills) ? scene.extraStills : []).find(
+              (e) => e.shotId === shotId,
+            )?.stillKey;
       const prefix = `artifacts/${row.workflowRunId}/storyboard/`;
       if (typeof key !== "string" || !key.startsWith(prefix) || extname(key) !== ".png") {
         return sendNotFound(reply);

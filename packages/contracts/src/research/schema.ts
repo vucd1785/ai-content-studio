@@ -24,7 +24,10 @@ export const researchSourceSchema = z
     id: sourceIdSchema,
     title: z.string().min(1).max(200),
     origin: z.enum(["user_reference", "fetched_url"]),
-    url: z.url({ protocol: /^https?$/ }).max(2048).optional(),
+    url: z
+      .url({ protocol: /^https?$/ })
+      .max(2048)
+      .optional(),
   })
   .strict();
 
@@ -40,11 +43,19 @@ export const researchSchema = z
     const ids = new Set<string>();
     data.sources.forEach((source, index) => {
       if (ids.has(source.id)) {
-        ctx.addIssue({ code: "custom", message: `source id trùng: ${source.id}`, path: ["sources", index, "id"] });
+        ctx.addIssue({
+          code: "custom",
+          message: `source id trùng: ${source.id}`,
+          path: ["sources", index, "id"],
+        });
       }
       ids.add(source.id);
       if (source.origin === "fetched_url" && source.url === undefined) {
-        ctx.addIssue({ code: "custom", message: "source fetched_url cần url", path: ["sources", index, "url"] });
+        ctx.addIssue({
+          code: "custom",
+          message: "source fetched_url cần url",
+          path: ["sources", index, "url"],
+        });
       }
     });
   });
@@ -73,7 +84,10 @@ export const fetchLogRequestSchema = z
     url: z.string().max(2048),
     finalUrl: z.string().max(2048).nullable(),
     status: z.number().int().nullable(),
-    contentHash: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+    contentHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
     error: fetchErrorCodeSchema.optional(),
   })
   .strict();
@@ -140,7 +154,10 @@ export function filterResearchFacts(
       rejected.push({ statement: fact.statement, reason: "unknown_source" });
       continue;
     }
-    if (fact.claimStatus === "verified" && !sources.every((source) => source !== undefined && isProven(source))) {
+    if (
+      fact.claimStatus === "verified" &&
+      !sources.every((source) => source !== undefined && isProven(source))
+    ) {
       rejected.push({ statement: fact.statement, reason: "unverified_source" });
       continue;
     }

@@ -2,9 +2,11 @@ import type { ZodTypeProvider } from "@fastify/type-provider-zod";
 import { isClaudeCodeModel, readClaudeCodeEnv } from "@studio/config/claude-code";
 import { readGeminiEnv } from "@studio/config/gemini";
 import {
+  apiErrorBodySchema,
   applyWorkflowCommand,
   approvalBodySchema,
   approvalCreatedResponseSchema,
+  isChannelNameSet,
   llmModelsResponseSchema,
   projectIdParamsSchema,
   type ResumeFrom,
@@ -21,6 +23,7 @@ import {
   cancelWorkflowRun,
   getWorkflowRunDetail,
   listUsageRecordsForRun,
+  loadRunBrandProfile,
   recordApproval,
   resumeWorkflowRun,
   type StudioDb,
@@ -172,6 +175,9 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
       try {
         const result = await startWorkflowRun(deps.db, request.params.projectId, {
           ...(llmModel === undefined ? {} : { llmModel }),
+          // ADR-017 mục 1: run mới mặc định `creative` (tự tạo tài sản thiếu).
+          creativeMode: body.data.creativeMode ?? "creative",
+          ...(body.data.aspectRatio === undefined ? {} : { aspectRatio: body.data.aspectRatio }),
         });
         deps.notifier?.notify(result.workflowRun.id);
         return reply.status(201).send({ workflowRun: result.workflowRun });
@@ -244,11 +250,25 @@ export function registerWorkflowRunRoutes(app: FastifyInstance, deps: WorkflowRu
       schema: {
         params: runIdParamsSchema,
         body: approvalBodySchema,
-        response: { 201: approvalCreatedResponseSchema },
+        response: { 201: approvalCreatedResponseSchema, 409: apiErrorBodySchema },
       },
     },
     async (request, reply) => {
       const { gate, decision, artifactId, variantIndex, note } = request.body;
+      // ADR-021: thẻ cuối và bộ đăng bài cần tên kênh thật trước lần xuất. Kiểm ở route vì chỉ route ghi
+      // approval; run lạ để `recordApproval` trả 404 như cũ.
+      if (gate === "final" && decision === "approved") {
+        const brand = await loadRunBrandProfile(deps.db, request.params.runId);
+        if (brand !== null && !isChannelNameSet(brand.displayName)) {
+          return reply.status(409).send({
+            error: {
+              code: "conflict",
+              message: "Đặt tên kênh ở Bộ nhận diện kênh trước lần xuất đầu tiên.",
+              details: { reason: "channel_name_required" },
+            },
+          });
+        }
+      }
       try {
         const result = await recordApproval(deps.db, {
           workflowRunId: request.params.runId,

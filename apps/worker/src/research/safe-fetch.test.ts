@@ -8,6 +8,7 @@ import {
   htmlToText,
   isPublicAddress,
   safeFetch,
+  safeFetchBytes,
 } from "./safe-fetch.js";
 
 /** Resolver giả: không đụng DNS thật. */
@@ -62,7 +63,11 @@ describe("safeFetch: từ chối trước khi mở socket (P3-03)", () => {
       "http://100.100.100.200/latest/meta-data/",
     ]) {
       const result = await safeFetch(url, { allowedHosts: hostAllowlistFor([url]) });
-      expect(result.log, url).toMatchObject({ error: "address_blocked", status: null, contentHash: null });
+      expect(result.log, url).toMatchObject({
+        error: "address_blocked",
+        status: null,
+        contentHash: null,
+      });
       expect(result.text).toBeUndefined();
     }
   });
@@ -84,16 +89,47 @@ describe("safeFetch: từ chối trước khi mở socket (P3-03)", () => {
 
   it("giao thức khác http/https, URL có credential, URL hỏng bị từ chối", async () => {
     const allowedHosts = new Set(["example.com", ""]);
-    expect((await safeFetch("file:///etc/passwd", { allowedHosts })).log.error).toBe("protocol_not_allowed");
-    expect((await safeFetch("ftp://example.com/a", { allowedHosts })).log.error).toBe("protocol_not_allowed");
-    expect((await safeFetch("gopher://example.com/", { allowedHosts })).log.error).toBe("protocol_not_allowed");
-    expect((await safeFetch("https://user:pw@example.com/", { allowedHosts })).log.error).toBe("invalid_url");
+    expect((await safeFetch("file:///etc/passwd", { allowedHosts })).log.error).toBe(
+      "protocol_not_allowed",
+    );
+    expect((await safeFetch("ftp://example.com/a", { allowedHosts })).log.error).toBe(
+      "protocol_not_allowed",
+    );
+    expect((await safeFetch("gopher://example.com/", { allowedHosts })).log.error).toBe(
+      "protocol_not_allowed",
+    );
+    expect((await safeFetch("https://user:pw@example.com/", { allowedHosts })).log.error).toBe(
+      "invalid_url",
+    );
     expect((await safeFetch("not a url", { allowedHosts })).log.error).toBe("invalid_url");
+  });
+
+  it("ADR-032: safeFetchBytes với mọi host công khai vẫn chặn địa chỉ nội bộ và metadata", async () => {
+    const kind = {
+      allowedHosts: "any-public" as const,
+      contentTypes: ["image/png"],
+      accept: "image/png",
+    };
+    expect(
+      await safeFetchBytes("http://intranet.example/", {
+        ...kind,
+        resolver: fakeResolver({ "intranet.example": ["10.1.2.3"] }),
+      }),
+    ).toEqual({ ok: false, error: "address_blocked" });
+    expect(await safeFetchBytes("http://169.254.169.254/latest/", kind)).toEqual({
+      ok: false,
+      error: "address_blocked",
+    });
+    expect(await safeFetchBytes("file:///etc/passwd", kind)).toEqual({
+      ok: false,
+      error: "protocol_not_allowed",
+    });
   });
 
   it("host ngoài allowlist và DNS lỗi", async () => {
     expect(
-      (await safeFetch("https://other.example.com/", { allowedHosts: new Set(["example.com"]) })).log.error,
+      (await safeFetch("https://other.example.com/", { allowedHosts: new Set(["example.com"]) }))
+        .log.error,
     ).toBe("host_not_allowed");
     expect(
       (
@@ -143,19 +179,31 @@ describe("safeFetch: server giả trên 127.0.0.1 (P3-03)", () => {
     const html =
       "<html><head><title>Redis &amp; cache</title><script>alert(1)</script></head>" +
       "<body><h1>Redis</h1><p>Lưu dữ liệu trong RAM.</p><style>p{}</style></body></html>";
-    handlers.set("/ok", (res) => res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(html));
-    handlers.set("/plain", (res) => res.writeHead(200, { "content-type": "text/plain" }).end("  văn bản  "));
+    handlers.set("/ok", (res) =>
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(html),
+    );
+    handlers.set("/plain", (res) =>
+      res.writeHead(200, { "content-type": "text/plain" }).end("  văn bản  "),
+    );
     for (let i = 1; i <= 4; i++) {
-      handlers.set(`/r${i}`, (res) => res.writeHead(302, { location: i === 4 ? "/ok" : `/r${i + 1}` }).end());
+      handlers.set(`/r${i}`, (res) =>
+        res.writeHead(302, { location: i === 4 ? "/ok" : `/r${i + 1}` }).end(),
+      );
     }
-    handlers.set("/to-other", (res) => res.writeHead(301, { location: `http://${OTHER}:${port}/ok` }).end());
-    handlers.set("/to-private", (res) => res.writeHead(307, { location: `http://${PRIVATE}:${port}/ok` }).end());
+    handlers.set("/to-other", (res) =>
+      res.writeHead(301, { location: `http://${OTHER}:${port}/ok` }).end(),
+    );
+    handlers.set("/to-private", (res) =>
+      res.writeHead(307, { location: `http://${PRIVATE}:${port}/ok` }).end(),
+    );
     handlers.set("/to-metadata", (res) =>
       res.writeHead(302, { location: "http://169.254.169.254/latest/meta-data/" }).end(),
     );
     handlers.set("/to-file", (res) => res.writeHead(302, { location: "file:///etc/passwd" }).end());
     handlers.set("/big-declared", (res) =>
-      res.writeHead(200, { "content-type": "text/plain", "content-length": String(2 * 1024 * 1024) }).end(),
+      res
+        .writeHead(200, { "content-type": "text/plain", "content-length": String(2 * 1024 * 1024) })
+        .end(),
     );
     handlers.set("/big-chunked", (res) => {
       res.writeHead(200, { "content-type": "text/plain" });
@@ -168,8 +216,12 @@ describe("safeFetch: server giả trên 127.0.0.1 (P3-03)", () => {
     handlers.set("/hang", () => {
       // Không trả lời.
     });
-    handlers.set("/missing", (res) => res.writeHead(404, { "content-type": "text/html" }).end("không có"));
-    handlers.set("/binary", (res) => res.writeHead(200, { "content-type": "application/octet-stream" }).end("x"));
+    handlers.set("/missing", (res) =>
+      res.writeHead(404, { "content-type": "text/html" }).end("không có"),
+    );
+    handlers.set("/binary", (res) =>
+      res.writeHead(200, { "content-type": "application/octet-stream" }).end("x"),
+    );
   });
 
   afterAll(async () => {
@@ -208,10 +260,15 @@ describe("safeFetch: server giả trên 127.0.0.1 (P3-03)", () => {
     expect((await safeFetch(`${base()}/to-private`, options())).log.error).toBe("address_blocked");
     expect(
       (
-        await safeFetch(`${base()}/to-metadata`, options({ allowedHosts: new Set([SITE, "169.254.169.254"]) }))
+        await safeFetch(
+          `${base()}/to-metadata`,
+          options({ allowedHosts: new Set([SITE, "169.254.169.254"]) }),
+        )
       ).log.error,
     ).toBe("address_blocked");
-    expect((await safeFetch(`${base()}/to-file`, options())).log.error).toBe("protocol_not_allowed");
+    expect((await safeFetch(`${base()}/to-file`, options())).log.error).toBe(
+      "protocol_not_allowed",
+    );
   });
 
   it("vượt 1 MB theo content-length hoặc khi đang đọc bị dừng", async () => {
@@ -230,12 +287,16 @@ describe("safeFetch: server giả trên 127.0.0.1 (P3-03)", () => {
       status: 404,
       contentHash: null,
     });
-    expect((await safeFetch(`${base()}/binary`, options())).log.error).toBe("unsupported_content_type");
+    expect((await safeFetch(`${base()}/binary`, options())).log.error).toBe(
+      "unsupported_content_type",
+    );
   });
 });
 
 describe("htmlToText", () => {
   it("bỏ thẻ, comment, script và giải mã entity cơ bản", () => {
-    expect(htmlToText("<p>a&lt;b</p><!-- x --><script>y</script><p>c&#39;d</p>")).toEqual({ text: "a<b\nc'd" });
+    expect(htmlToText("<p>a&lt;b</p><!-- x --><script>y</script><p>c&#39;d</p>")).toEqual({
+      text: "a<b\nc'd",
+    });
   });
 });

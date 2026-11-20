@@ -128,19 +128,29 @@ describe("tiến độ thật và lỗi chi tiết (P3-17)", () => {
           role: "voice",
           status: "running",
           startedAt: "2026-10-31T15:05:00Z",
-          progress: { done: 3, total: 10, unit: "scene_step", sceneCount: 5 },
+          progress: {
+            done: 3,
+            total: 10,
+            unit: "scene_step",
+            sceneIndex: 2,
+            sceneCount: 5,
+            phase: "align",
+          },
         },
       ],
     });
     const assets = steps.find((step) => step.id === "assets");
+    // Cảnh và pha lấy từ worker, không suy từ `done` (2026-11-11).
     expect(assets?.progress).toEqual({
       percent: 30,
       done: 3,
       total: 10,
       unit: "scene_step",
-      currentScene: 2,
+      sceneIndex: 2,
       sceneCount: 5,
-      currentPhase: "align",
+      lineIndex: null,
+      lineCount: null,
+      phase: "align",
     });
   });
 

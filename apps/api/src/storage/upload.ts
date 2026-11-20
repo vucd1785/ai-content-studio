@@ -3,9 +3,9 @@ import { mkdir, open, readFile, realpath, rename, rm, writeFile } from "node:fs/
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import {
   ALLOWED_UPLOAD_EXTENSIONS,
+  type AllowedUploadExtension,
   MAX_UPLOAD_BYTES,
   STORAGE_KEY_PATTERN,
-  type AllowedUploadExtension,
 } from "./constants.js";
 
 export class StorageValidationError extends Error {
@@ -84,10 +84,7 @@ export function extensionFromFilename(filename: string): AllowedUploadExtension 
   return null;
 }
 
-export function validateUploadContent(
-  ext: AllowedUploadExtension,
-  buffer: Buffer,
-): void {
+export function validateUploadContent(ext: AllowedUploadExtension, buffer: Buffer): void {
   if (buffer.length > MAX_UPLOAD_BYTES) {
     throw new StorageValidationError("upload_too_large", "File exceeds maximum size");
   }
@@ -97,12 +94,43 @@ export function validateUploadContent(
     }
     return;
   }
+  if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp") {
+    // ADR-030: sniff chữ ký thật của ảnh; đuôi đổi tên không qua được.
+    if (imageKind(buffer) !== (ext === "jpeg" ? "jpg" : ext)) {
+      throw new StorageValidationError("upload_content_invalid", "Image signature invalid");
+    }
+    return;
+  }
   if (buffer.includes(0)) {
     throw new StorageValidationError("upload_content_invalid", "Text file contains NUL byte");
   }
   if (buffer.subarray(0, 4).toString("ascii") === "%PDF") {
-    throw new StorageValidationError("upload_content_invalid", "Text extension does not match PDF content");
+    throw new StorageValidationError(
+      "upload_content_invalid",
+      "Text extension does not match PDF content",
+    );
   }
+}
+
+/** Loại ảnh theo chữ ký đầu file; không phải ảnh nhận thì null. */
+export function imageKind(buffer: Buffer): "png" | "jpg" | "webp" | null {
+  if (
+    buffer.length >= 8 &&
+    buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return "png";
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "jpg";
+  }
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "webp";
+  }
+  return null;
 }
 
 export function generateStorageKey(ext: AllowedUploadExtension): string {
@@ -136,7 +164,17 @@ export async function writeUploadFile(
 
   const contentHash = createHash("sha256").update(buffer).digest("hex");
   const mediaType =
-    ext === "pdf" ? "application/pdf" : ext === "md" ? "text/markdown" : "text/plain";
+    ext === "pdf"
+      ? "application/pdf"
+      : ext === "md"
+        ? "text/markdown"
+        : ext === "png"
+          ? "image/png"
+          : ext === "webp"
+            ? "image/webp"
+            : ext === "jpg" || ext === "jpeg"
+              ? "image/jpeg"
+              : "text/plain";
   return { storageKey, byteSize: buffer.length, mediaType, contentHash };
 }
 

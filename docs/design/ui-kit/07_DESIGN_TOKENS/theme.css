@@ -1,0 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+:root { color-scheme: light; --app-bg:#f4efe6;--surface:#fffaf3;--surface-muted:#f1e7db;--text:#1f2a44;--muted:#48536a;--border:#a9a7a5;--accent:#f26b3a;--accent-text:#23130d;--focus:#0d5977;--ok:#205b39;--warn:#714a04;--error:#892629;--radius:16px;--font:'Be Vietnam Pro',system-ui,sans-serif;}
+[data-theme="dark"] {color-scheme: dark;--app-bg:#0f172a;--surface:#1c2940;--surface-muted:#27364f;--text:#f2f5fb;--muted:#c1c9d6;--border:#55647b;--accent:#ff9569;--accent-text:#29160e;--focus:#8fe9ff;--ok:#9eedb7;--warn:#ffe1a0;--error:#ffbec1;}
+:focus-visible {outline:3px solid var(--focus);outline-offset:3px;}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}

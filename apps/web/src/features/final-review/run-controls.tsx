@@ -1,6 +1,8 @@
 import type { WorkflowRunStatus } from "@studio/contracts";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useWorkflowRun } from "@/features/script-review/use-script-review";
 import { vi } from "@/i18n/vi";
 import { ApiError } from "@/lib/api";
@@ -10,8 +12,8 @@ import { useCancelRun, useResumeRun } from "./use-run-control";
 const FINISHED: ReadonlySet<WorkflowRunStatus> = new Set(["exported", "cancelled"]);
 
 /**
- * Trạng thái lượt chạy cùng nút hủy và resume (P2-10). Hủy cần bấm xác nhận lần hai vì không đảo ngược được.
- * Resume chỉ hiện khi run `failed` và có `resume_from`. Trạng thái hiển thị luôn đọc từ server.
+ * Trạng thái lượt chạy cùng nút hủy và chạy lại (P2-10, P7-06). Hủy mở hộp thoại xác nhận, focus mặc định ở
+ * "Giữ lượt chạy". Chạy lại chỉ hiện khi run `failed` và có `resume_from`. Trạng thái luôn đọc từ server.
  */
 export function RunControls({ runId }: { runId: string }) {
   const run = useWorkflowRun(runId);
@@ -39,30 +41,26 @@ export function RunControls({ runId }: { runId: string }) {
   return (
     <section
       aria-label={vi.runControl.heading}
-      className="flex flex-col gap-2 rounded-md border p-3 text-sm"
+      className="bg-card flex flex-wrap items-center gap-3 rounded-2xl border px-4 py-3 text-sm"
     >
-      <p>
-        <span className="text-muted-foreground">{vi.runControl.status}: </span>
-        <span data-testid="run-status" className="font-medium">
+      <p className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground">{vi.runControl.status}:</span>
+        <span data-testid="run-status" className="sr-only">
           {vi.runControl.statuses[status]}
         </span>
+        <StatusBadge status={status} />
         {status === "failed" && resumeFrom !== null ? (
           <span className="text-muted-foreground">
-            {` · ${vi.runControl.resumeFrom} ${(vi.runControl.statuses as Record<string, string>)[resumeFrom] ?? resumeFrom}`}
+            {`${vi.runControl.resumeFrom} ${(vi.runControl.statuses as Record<string, string>)[resumeFrom] ?? resumeFrom}`}
             {failureCode === null ? null : ` (${failureCode})`}
           </span>
         ) : null}
       </p>
-      {error === null ? null : (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
-        </p>
-      )}
+      <span className="flex-1" />
       <div className="flex flex-wrap gap-2">
         {status === "failed" && resumeFrom !== null ? (
           <Button
             type="button"
-            size="sm"
             disabled={busy}
             onClick={() => {
               setError(null);
@@ -72,34 +70,9 @@ export function RunControls({ runId }: { runId: string }) {
             {vi.runControl.resume}
           </Button>
         ) : null}
-        {FINISHED.has(status) ? null : confirming ? (
-          <>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                setError(null);
-                cancel.mutate(undefined, { onError, onSettled: () => setConfirming(false) });
-              }}
-            >
-              {vi.runControl.confirmCancel}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => setConfirming(false)}
-            >
-              {vi.runControl.keepRunning}
-            </Button>
-          </>
-        ) : (
+        {FINISHED.has(status) ? null : (
           <Button
             type="button"
-            size="sm"
             variant="outline"
             disabled={busy}
             onClick={() => setConfirming(true)}
@@ -108,9 +81,25 @@ export function RunControls({ runId }: { runId: string }) {
           </Button>
         )}
       </div>
-      {confirming ? (
-        <p className="text-muted-foreground text-xs">{vi.runControl.cancelHint}</p>
-      ) : null}
+      {error === null ? null : (
+        <p role="alert" className="text-destructive w-full text-sm">
+          {error}
+        </p>
+      )}
+      <ConfirmDialog
+        open={confirming}
+        title={vi.runControl.confirmTitle}
+        confirmLabel={vi.runControl.confirmCancel}
+        cancelLabel={vi.runControl.keepRunning}
+        pending={cancel.isPending}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          setError(null);
+          cancel.mutate(undefined, { onError, onSettled: () => setConfirming(false) });
+        }}
+      >
+        {vi.runControl.cancelHint}
+      </ConfirmDialog>
     </section>
   );
 }

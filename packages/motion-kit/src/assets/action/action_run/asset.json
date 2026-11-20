@@ -1,0 +1,12 @@
+{
+  "id": "action_run",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Chạy: chúi người tới trước, tay gập đánh mạnh, có pha bay, chu kỳ nhanh. Dùng khi vội, đuổi theo, chạy trốn.",
+  "tags": ["chạy", "vội", "đuổi"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

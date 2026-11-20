@@ -1,0 +1,24 @@
+{
+  "id": "flag_bq",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Bonaire, Sint Eustatius and Saba bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Bonaire, Sint Eustatius and Saba.",
+  "tags": [
+    "cờ Bonaire, Sint Eustatius and Saba",
+    "nước Bonaire, Sint Eustatius and Saba",
+    "người Bonaire, Sint Eustatius and Saba",
+    "Bonaire, Sint Eustatius and Saba",
+    "quốc kỳ Bonaire, Sint Eustatius and Saba"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

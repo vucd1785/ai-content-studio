@@ -1,6 +1,6 @@
 {
   "name": "@studio/motion-kit",
-  "version": "0.2.0",
+  "version": "0.12.1",
   "private": true,
   "type": "module",
   "exports": {
@@ -25,5 +25,8 @@
     "remotion": "4.0.539",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "flag-icons": "7.5.0"
   }
 }

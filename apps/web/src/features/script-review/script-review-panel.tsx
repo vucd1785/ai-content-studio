@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vi } from "@/i18n/vi";
 import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { ScriptV2Review } from "./script-v2-review";
 import { useArtifact, useRecordApproval, useWorkflowRun } from "./use-script-review";
 
@@ -23,8 +24,8 @@ function latestOf(artifacts: RunArtifact[], type: string): RunArtifact | null {
 
 /**
  * Duyệt kịch bản (P2-07, P2-11, P6-17): research của run, hai phương án script `2` với câu theo người nói và ảnh
- * storyboard. Mỗi nút gửi đúng một decision tường minh (ADR-004); decision đã lưu đọc lại từ server. Chưa sửa được
- * kịch bản trên web: màn sửa script `1` (P2-12) đã xóa (ADR-013 bổ sung (2)), sửa script `2` thuộc P6-11.
+ * storyboard. Mỗi nút gửi đúng một decision tường minh (ADR-004); decision đã lưu đọc lại từ server. Khi đang
+ * chờ duyệt, Director sửa được chữ trong câu (ADR-020); sửa cấu trúc cảnh vẫn qua "Yêu cầu sửa".
  */
 export function ScriptReviewPanel({ runId }: { runId: string | null }) {
   const run = useWorkflowRun(runId);
@@ -86,10 +87,13 @@ export function ScriptReviewPanel({ runId }: { runId: string | null }) {
       ) : null}
 
       <ScriptV2Review
+        runId={runId}
         content={artifact.data.content}
         storyboardContent={storyboard.data?.content}
         storyboardArtifactId={storyboardRow?.id ?? null}
         storyboarding={status === "storyboarding"}
+        scriptArtifactId={latest.id}
+        editable={waiting}
       />
 
       {decisions.length > 0 ? (
@@ -111,8 +115,10 @@ export function ScriptReviewPanel({ runId }: { runId: string | null }) {
 
 function DecisionForm({ runId, artifactId }: { runId: string; artifactId: string }) {
   const [note, setNote] = useState("");
+  const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const record = useRecordApproval(runId);
+  const expanded = focused || note !== "" || error !== null;
 
   // Duyệt luôn kèm phương án (quyết định 6): mỗi phương án một nút, không có duyệt chung.
   const submit = (decision: ApprovalDecision, variantIndex?: 1 | 2) => {
@@ -148,18 +154,24 @@ function DecisionForm({ runId, artifactId }: { runId: string; artifactId: string
   };
 
   return (
-    <div className="bg-surface-raised sticky bottom-0 -mx-1 flex flex-wrap items-end gap-3 rounded-xl border p-4">
+    <div className="bg-surface-raised sticky bottom-0 -mx-1 flex flex-wrap items-end gap-3 rounded-xl border px-4 py-3 shadow-sm">
       <div className="flex min-w-72 flex-1 flex-col gap-1.5">
         <Label htmlFor="script-review-note">{vi.scriptReview.noteLabel}</Label>
         <Textarea
           id="script-review-note"
           value={note}
-          rows={2}
+          rows={expanded ? 3 : 1}
           maxLength={NOTE_MAX}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           onChange={(event) => setNote(event.target.value)}
           aria-describedby="script-review-note-hint"
+          className="min-h-0"
         />
-        <p id="script-review-note-hint" className="text-muted-foreground text-xs">
+        <p
+          id="script-review-note-hint"
+          className={cn("text-muted-foreground text-xs", expanded ? "" : "sr-only")}
+        >
           {vi.scriptReview.noteHint}
         </p>
         {error === null ? null : (
@@ -185,12 +197,8 @@ function DecisionForm({ runId, artifactId }: { runId: string; artifactId: string
         >
           {vi.scriptReview.requestChanges}
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={record.isPending}
-          onClick={() => submit("approved", 1)}
-        >
+        {/* Hai phương án ngang hàng: không tô nổi một nút để khỏi thiên vị. */}
+        <Button type="button" disabled={record.isPending} onClick={() => submit("approved", 1)}>
           {vi.scriptReview.approveVariant1}
         </Button>
         <Button type="button" disabled={record.isPending} onClick={() => submit("approved", 2)}>

@@ -56,10 +56,13 @@ export function PreviewPanel({ runId }: { runId: string | null }) {
         ) : (
           <ArtifactView key={selectedId} artifactId={selectedId} />
         )}
-        <section aria-label={vi.preview.versionsCaption} className="flex flex-col gap-2 text-sm">
+        <section
+          aria-label={vi.preview.versionsCaption}
+          className="divide-border flex flex-col divide-y rounded-2xl border text-sm"
+        >
           {groups.map((group) => (
-            <div key={group.type} className="flex flex-wrap items-center gap-1">
-              <span className="text-muted-foreground mr-1 text-xs">
+            <div key={group.type} className="flex flex-wrap items-center gap-2 px-3 py-2">
+              <span className="text-muted-foreground w-32 shrink-0 text-xs font-semibold">
                 {(vi.preview.types as Record<string, string>)[group.type] ?? group.type}
               </span>
               {group.versions.map((artifact) => (
@@ -75,6 +78,11 @@ export function PreviewPanel({ runId }: { runId: string | null }) {
                   {`${vi.preview.version} ${artifact.version}`}
                 </Button>
               ))}
+              {group.versions.some((artifact) => artifact.id === selectedId) ? (
+                <span className="bg-info-bg text-info rounded-full px-2 py-0.5 text-xs font-semibold">
+                  {vi.preview.selected}
+                </span>
+              ) : null}
             </div>
           ))}
         </section>
@@ -85,7 +93,7 @@ export function PreviewPanel({ runId }: { runId: string | null }) {
   return (
     <Card className="gap-3 py-4">
       <CardHeader className="px-4">
-        <CardTitle className="text-sm">{vi.preview.heading}</CardTitle>
+        <CardTitle className="text-lg">{vi.preview.heading}</CardTitle>
       </CardHeader>
       <CardContent className="px-4">{body}</CardContent>
     </Card>

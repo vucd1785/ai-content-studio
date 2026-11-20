@@ -29,8 +29,11 @@ export type ResolvedAddress = { address: string; family: 4 | 6 };
 export type HostResolver = (hostname: string) => Promise<ResolvedAddress[]>;
 
 export type SafeFetchOptions = {
-  /** Host (chữ thường) được phép ở mọi hop. */
-  allowedHosts: ReadonlySet<string>;
+  /**
+   * Host (chữ thường) được phép ở mọi hop. `"any-public"` (tìm ảnh trên web, ADR-032): mọi host, vẫn chặn địa chỉ
+   * không công khai như mọi lần gọi.
+   */
+  allowedHosts: ReadonlySet<string> | "any-public";
   resolver?: HostResolver;
   /** Mặc định `isPublicAddress`. Test có thể cho phép đúng 127.0.0.1 của server giả. */
   isAddressAllowed?: (address: string) => boolean;
@@ -175,7 +178,11 @@ async function resolveChecked(
 
 /** Lookup trả đúng các địa chỉ đã kiểm, nên socket không resolve lại. */
 function pinnedLookup(addresses: ResolvedAddress[]): LookupFunction {
-  return ((_hostname: string, options: { all?: boolean }, callback: (...args: unknown[]) => void) => {
+  return ((
+    _hostname: string,
+    options: { all?: boolean },
+    callback: (...args: unknown[]) => void,
+  ) => {
     if (options.all === true) {
       callback(null, addresses);
       return;
@@ -185,10 +192,13 @@ function pinnedLookup(addresses: ResolvedAddress[]): LookupFunction {
   }) as LookupFunction;
 }
 
+const TEXT_ACCEPT = "text/html, text/plain, text/markdown;q=0.9";
+
 function requestOnce(
   url: URL,
   addresses: ResolvedAddress[],
   signal: AbortSignal,
+  accept: string,
 ): Promise<IncomingMessage> {
   const client = url.protocol === "https:" ? https : http;
   return new Promise((resolve, reject) => {
@@ -199,7 +209,7 @@ function requestOnce(
         lookup: pinnedLookup(addresses),
         signal,
         headers: {
-          accept: "text/html, text/plain, text/markdown;q=0.9",
+          accept,
           "accept-encoding": "identity",
           "user-agent": "AIContentStudio-Research/0.1",
         },
@@ -211,7 +221,8 @@ function requestOnce(
   });
 }
 
-function readBody(response: IncomingMessage, maxBytes: number): Promise<Buffer> {
+/** `truncate`: quá `maxBytes` thì trả phần đầu thay vì lỗi (đọc `<head>` của trang lớn, ADR-032). */
+function readBody(response: IncomingMessage, maxBytes: number, truncate = false): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
@@ -219,6 +230,11 @@ function readBody(response: IncomingMessage, maxBytes: number): Promise<Buffer> 
       size += chunk.length;
       if (size > maxBytes) {
         response.destroy();
+        if (truncate) {
+          chunks.push(chunk);
+          resolve(Buffer.concat(chunks).subarray(0, maxBytes));
+          return;
+        }
         reject(new FetchFailure("too_large", response.statusCode ?? null));
         return;
       }
@@ -235,7 +251,7 @@ function readBody(response: IncomingMessage, maxBytes: number): Promise<Buffer> 
   });
 }
 
-function decodeEntities(text: string): string {
+export function decodeEntities(text: string): string {
   return text
     .replace(/&nbsp;/g, " ")
     .replace(/&lt;/g, "<")
@@ -266,28 +282,51 @@ export function htmlToText(html: string): { text: string; title?: string } {
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
-export async function safeFetch(rawUrl: string, options: SafeFetchOptions): Promise<SafeFetchResult> {
+type FetchKind = {
+  /** Loại nội dung nhận (chữ thường, không tham số). */
+  contentTypes: readonly string[];
+  accept: string;
+  /** Quá `maxBytes` thì lấy phần đầu thay vì lỗi. */
+  truncate: boolean;
+};
+
+type CoreResult =
+  | { ok: true; log: FetchLogRequest; body: Buffer; contentType: string; finalUrl: string }
+  | { ok: false; log: FetchLogRequest };
+
+/**
+ * Lõi chung của mọi fetch ra ngoài: kiểm host từng hop, chặn địa chỉ không công khai, nối đúng địa chỉ đã kiểm,
+ * giới hạn redirect, thời gian, dung lượng, loại nội dung.
+ */
+async function fetchVerified(
+  rawUrl: string,
+  options: SafeFetchOptions,
+  kind: FetchKind,
+): Promise<CoreResult> {
   const resolver = options.resolver ?? defaultResolver;
   const isAllowed = options.isAddressAllowed ?? isPublicAddress;
   const maxRedirects = options.maxRedirects ?? FETCH_LIMITS.maxRedirects;
   const maxBytes = options.maxBytes ?? FETCH_LIMITS.maxBytes;
+  const allowed = options.allowedHosts;
+  const hostAllowed = (url: URL) => allowed === "any-public" || allowed.has(hostnameOf(url));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? FETCH_LIMITS.timeoutMs);
   let current: URL | null = null;
   let status: number | null = null;
 
-  const failure = (code: FetchErrorCode): SafeFetchResult => ({
+  const failure = (code: FetchErrorCode): CoreResult => ({
+    ok: false,
     log: { url: rawUrl, finalUrl: current?.href ?? null, status, contentHash: null, error: code },
   });
 
   try {
     current = parseHopUrl(rawUrl);
     for (let hop = 0; ; hop++) {
-      if (!options.allowedHosts.has(hostnameOf(current))) {
+      if (!hostAllowed(current)) {
         throw new FetchFailure("host_not_allowed");
       }
       const addresses = await resolveChecked(hostnameOf(current), resolver, isAllowed);
-      const response = await requestOnce(current, addresses, controller.signal);
+      const response = await requestOnce(current, addresses, controller.signal, kind.accept);
       status = response.statusCode ?? null;
       const location = response.headers.location;
       if (status !== null && REDIRECT_STATUSES.has(status) && location !== undefined) {
@@ -303,27 +342,25 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions): Prom
         response.resume();
         throw new FetchFailure("http_error");
       }
-      const contentType = (response.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
-      if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
+      const contentType =
+        (response.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
+      if (!kind.contentTypes.includes(contentType)) {
         response.resume();
         throw new FetchFailure("unsupported_content_type");
       }
       const declared = Number(response.headers["content-length"]);
-      if (Number.isFinite(declared) && declared > maxBytes) {
+      if (!kind.truncate && Number.isFinite(declared) && declared > maxBytes) {
         response.destroy();
         throw new FetchFailure("too_large");
       }
-      const body = await readBody(response, maxBytes);
+      const body = await readBody(response, maxBytes, kind.truncate);
       const contentHash = createHash("sha256").update(body).digest("hex");
-      const decoded = new TextDecoder("utf-8").decode(body);
-      const extracted =
-        contentType === "text/html" || contentType === "application/xhtml+xml"
-          ? htmlToText(decoded)
-          : { text: decoded.trim() };
       return {
+        ok: true,
         log: { url: rawUrl, finalUrl: current.href, status, contentHash },
-        text: extracted.text.slice(0, MAX_TEXT_CHARS),
-        ...(extracted.title === undefined ? {} : { title: extracted.title }),
+        body,
+        contentType,
+        finalUrl: current.href,
       };
     }
   } catch (error) {
@@ -337,4 +374,60 @@ export async function safeFetch(rawUrl: string, options: SafeFetchOptions): Prom
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function safeFetch(
+  rawUrl: string,
+  options: SafeFetchOptions,
+): Promise<SafeFetchResult> {
+  const result = await fetchVerified(rawUrl, options, {
+    contentTypes: ALLOWED_CONTENT_TYPES,
+    accept: TEXT_ACCEPT,
+    truncate: false,
+  });
+  if (!result.ok) {
+    return { log: result.log };
+  }
+  const decoded = new TextDecoder("utf-8").decode(result.body);
+  const extracted =
+    result.contentType === "text/html" || result.contentType === "application/xhtml+xml"
+      ? htmlToText(decoded)
+      : { text: decoded.trim() };
+  return {
+    log: result.log,
+    text: extracted.text.slice(0, MAX_TEXT_CHARS),
+    ...(extracted.title === undefined ? {} : { title: extracted.title }),
+  };
+}
+
+export type SafeFetchBytesResult =
+  | { ok: true; body: Buffer; contentType: string; finalUrl: string }
+  | { ok: false; error: FetchErrorCode };
+
+/**
+ * Tải thô (trang HTML để đọc `og:image`, hoặc file ảnh) qua cùng lớp chặn SSRF (ADR-032). `contentTypes` là loại
+ * nội dung được nhận; `truncate` lấy phần đầu của trang lớn thay vì lỗi.
+ */
+export async function safeFetchBytes(
+  rawUrl: string,
+  options: SafeFetchOptions & {
+    contentTypes: readonly string[];
+    accept: string;
+    truncate?: boolean;
+  },
+): Promise<SafeFetchBytesResult> {
+  const result = await fetchVerified(rawUrl, options, {
+    contentTypes: options.contentTypes,
+    accept: options.accept,
+    truncate: options.truncate ?? false,
+  });
+  if (!result.ok) {
+    return { ok: false, error: result.log.error ?? "network_error" };
+  }
+  return {
+    ok: true,
+    body: result.body,
+    contentType: result.contentType,
+    finalUrl: result.finalUrl,
+  };
 }

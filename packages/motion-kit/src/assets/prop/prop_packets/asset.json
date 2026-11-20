@@ -1,0 +1,12 @@
+{
+  "id": "prop_packets",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Đồ vật bay: dòng phong bì nhỏ bay dồn dập về đồ vật đứng đầu tiên trong shot (gói tin, yêu cầu, tin nhắn).",
+  "tags": ["gói tin", "yêu cầu", "dữ liệu", "bay"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

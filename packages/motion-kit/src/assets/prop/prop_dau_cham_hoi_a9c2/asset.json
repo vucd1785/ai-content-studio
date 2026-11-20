@@ -1,0 +1,19 @@
+{
+  "id": "prop_dau_cham_hoi_a9c2",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Dấu chấm hỏi khổng lồ màu vàng phẳng phát sáng nhẹ, lơ lửng nhún lên xuống nhịp nhàng (dấu chấm bên dưới nhún trễ một nhịp) và hơi nghiêng qua lại, xung quanh có các đốm sao lấp lánh nhấp nháy.",
+  "tags": [
+    "dấu chấm hỏi",
+    "câu hỏi",
+    "thắc mắc",
+    "phát sáng",
+    "lấp lánh",
+    "tò mò"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "2ef07b31-ea54-4786-9a9d-0fdea0ddf92d:1:r5",
+  "licenses": []
+}

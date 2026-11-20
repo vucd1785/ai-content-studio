@@ -1,0 +1,12 @@
+{
+  "id": "cam_low_angle",
+  "kind": "camera",
+  "version": "0.1.0",
+  "description": "Góc thấp: máy hạ thấp nhìn ngước lên, nhân vật trông lớn và mạnh mẽ. Dùng cho câu chốt, lúc quyết tâm, tự hào.",
+  "tags": ["góc thấp", "hùng dũng", "quyết tâm"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

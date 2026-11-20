@@ -1,6 +1,6 @@
-import { and, asc, count, eq, gte, lt, sum } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNull, lt, ne, or, sum } from "drizzle-orm";
 import type { StudioDb } from "./db.js";
-import { approvals, usageRecords } from "./schema/index.js";
+import { agentRuns, approvals, usageRecords } from "./schema/index.js";
 
 /**
  * `usage_records` (P3-09, docs/03-DATABASE-DESIGN.md). Mỗi lần gọi LLM có response là một hàng.
@@ -26,6 +26,10 @@ export async function insertUsageRecord(db: StudioDb, record: NewUsageRecord) {
 }
 
 /** Số lần gọi LLM đã ghi cho run: dùng để chặn trần trước khi gọi provider. */
+/**
+ * Số lần gọi LLM tính vào trần của run (P3-09). Lần gọi tạo tài sản của vai `visual` (ADR-017) có trần riêng
+ * (3 tài sản, 2 lần thử) nên không tính, để tạo tài sản không chặn lượt viết lại kịch bản.
+ */
 export async function countUsageRecordsForRun(
   db: StudioDb,
   workflowRunId: string,
@@ -33,7 +37,13 @@ export async function countUsageRecordsForRun(
   const [row] = await db
     .select({ value: count() })
     .from(usageRecords)
-    .where(eq(usageRecords.workflowRunId, workflowRunId));
+    .leftJoin(agentRuns, eq(agentRuns.id, usageRecords.agentRunId))
+    .where(
+      and(
+        eq(usageRecords.workflowRunId, workflowRunId),
+        or(isNull(agentRuns.role), ne(agentRuns.role, "visual")),
+      ),
+    );
   return row?.value ?? 0;
 }
 

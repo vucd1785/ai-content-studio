@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_day_9672e4",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật dãy tủ máy chủ trong trung tâm dữ liệu, đèn xanh dương và xanh lá nhấp nháy.",
+  "tags": [
+    "data center server racks",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": "7c50ffb2-d09c-4285-a8dd-bd6a7f0f6080:70821d45:1:r3",
+  "licenses": [
+    {
+      "name": "CC BY-SA 4.0",
+      "source": "Wikimedia Commons",
+      "author": "Joël van der Loo",
+      "url": "https://commons.wikimedia.org/wiki/File:Duga-1_radar_data_center_inside_empty_server_racks_2018.jpg",
+      "attribution": "\"Duga-1 radar data center inside empty server racks 2018.jpg\" – Joël van der Loo, CC BY-SA 4.0, Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Duga-1_radar_data_center_inside_empty_server_racks_2018.jpg)"
+    }
+  ]
+}

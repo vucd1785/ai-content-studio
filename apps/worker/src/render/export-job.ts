@@ -5,6 +5,7 @@ import {
   findParentArtifact,
   findRunApproval,
   getArtifactById,
+  publishJobKeyAfterExport,
   type StudioDb,
 } from "@studio/db";
 import { stickStoryRenderPropsSchema } from "@studio/video/stick-story/props";
@@ -12,6 +13,9 @@ import { readJsonArtifact } from "../jobs/job-support.js";
 import type { RenderBackend } from "./render-backend.js";
 import { renderProgressRecorder } from "./render-progress.js";
 import { runStageJob, type StageJobResult } from "./stage-job.js";
+
+/** Thời điểm cắt ảnh bìa: thẻ tiêu đề đã bật xong, chưa tắt (thẻ hiện 0–2,4 giây, ADR-021). */
+export const THUMBNAIL_AT_MS = 1200;
 
 /**
  * Job export (P3-06, role `video`, queue `render`): `exporting` → `exported`. Chỉ export preview mà approval
@@ -75,6 +79,19 @@ export function runExportJob(
         audioSha,
         renderProgressRecorder(db, jobId),
       );
+      // Ảnh bìa (ADR-021): khung lúc thẻ tiêu đề đã hiện rõ. Lỗi ảnh bìa không làm hỏng bản xuất.
+      let thumbnailKey: string | null = null;
+      if (deps.backend.thumbnail !== undefined) {
+        const key = `artifacts/${runId}/thumbnail-${rendered.contentHash.slice(0, 16)}.jpg`;
+        try {
+          await deps.backend.thumbnail(rendered.storageKey, THUMBNAIL_AT_MS, key);
+          thumbnailKey = key;
+        } catch (error) {
+          console.error(
+            `export: không tạo được ảnh bìa: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
       return {
         ok: true,
         artifacts: [
@@ -90,10 +107,17 @@ export function runExportJob(
               previewArtifactId: preview.id,
               purpose: "export",
               cacheHit: rendered.cacheHit,
+              thumbnailKey,
             },
           },
         ],
         parentArtifacts: [[0, preview.id]],
+        // ADR-018: xuất xong thì viết bộ đăng bài (queue `llm`); lỗi ở đó không làm hỏng video đã xuất.
+        nextJob: (exportJobId) => ({
+          role: "publish",
+          queue: "llm",
+          idempotencyKey: publishJobKeyAfterExport(runId, exportJobId),
+        }),
       };
     },
   );

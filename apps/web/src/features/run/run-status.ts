@@ -19,6 +19,11 @@ const WORKING = new Set([
   "exporting",
 ]);
 
+/** Máy đang chạy: web đọc lại run và dự án định kỳ để thấy bước kế tiếp mà không cần đổi tab. */
+export function isWorkingStatus(status: string | null | undefined): boolean {
+  return status !== null && status !== undefined && WORKING.has(status);
+}
+
 export function runTone(status: string | null): RunTone {
   if (status === null || status === "cancelled") {
     return "idle";
@@ -42,7 +47,7 @@ export function runStatusLabel(status: string | null): string {
 /** Lớp màu chấm và chữ theo tone (Tailwind, token ở index.css). */
 export const TONE_DOT: Record<RunTone, string> = {
   waiting: "bg-warning",
-  working: "bg-primary",
+  working: "bg-info",
   done: "bg-success",
   failed: "bg-destructive",
   idle: "border border-muted-foreground bg-transparent",
@@ -50,7 +55,7 @@ export const TONE_DOT: Record<RunTone, string> = {
 
 export const TONE_TEXT: Record<RunTone, string> = {
   waiting: "text-warning",
-  working: "text-primary",
+  working: "text-info",
   done: "text-success",
   failed: "text-destructive",
   idle: "text-muted-foreground",

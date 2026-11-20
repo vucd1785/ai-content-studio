@@ -1,0 +1,19 @@
+{
+  "id": "prop_hang_tram_phu_6db4",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Bốn hàng quầy gỗ xếp bậc, mỗi hàng có năm phụ bếp người que tí hon đội mũ trắng. Tất cả cùng giơ dao lên rồi chặt xuống thớt nhỏ theo một nhịp, có độ lệch rất nhẹ giữa các hàng, mũ và người nảy theo sau mỗi nhát dao.",
+  "tags": [
+    "phụ bếp",
+    "đầu bếp tí hon",
+    "xử lý song song",
+    "thái rau",
+    "đồng loạt",
+    "GPU"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "726356ab-b945-48b0-8e3b-98fd16b1ee9b:1:r4",
+  "licenses": []
+}

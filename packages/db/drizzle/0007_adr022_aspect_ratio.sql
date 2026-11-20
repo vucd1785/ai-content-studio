@@ -1,0 +1,2 @@
+ALTER TABLE "workflow_runs" ADD COLUMN "aspect_ratio" text DEFAULT '9:16' NOT NULL;--> statement-breakpoint
+ALTER TABLE "workflow_runs" ADD CONSTRAINT "workflow_runs_aspect_ratio_valid" CHECK ("workflow_runs"."aspect_ratio" IN ('9:16', '16:9'));

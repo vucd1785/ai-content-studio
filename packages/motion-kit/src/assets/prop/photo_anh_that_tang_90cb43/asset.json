@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_tang_90cb43",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật tầng đẩy Falcon 9 hạ cánh thẳng đứng trên sà lan giữa biển, lửa cam dưới đáy.",
+  "tags": [
+    "Falcon 9 booster landing",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "6c1fda1a-03e7-4ad8-a2af-577c9125413d:acb986ca:2:r2",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "petapixel.com",
+      "url": "https://petapixel.com/2017/01/19/spacex-snaps-picture-perfect-photo-rocket-landing-sea/",
+      "file": "https://petapixel.com/assets/uploads/2017/01/rocketlandingfeat.jpg",
+      "attribution": "Ảnh: SpaceX Snaps Picture-Perfect Photo of Its Rocket Landing at Sea (https://petapixel.com/2017/01/19/spacex-snaps-picture-perfect-photo-rocket-landing-sea/)"
+    }
+  ]
+}

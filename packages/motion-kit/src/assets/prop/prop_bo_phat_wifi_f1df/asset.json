@@ -1,0 +1,19 @@
+{
+  "id": "prop_bo_phat_wifi_f1df",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Bộ phát wifi phẳng màu trắng có hai râu ăng-ten khẽ đung đưa và đèn xanh nhấp nháy, phía trên có biểu tượng sóng wifi: chấm tròn rồi ba vạch cong lần lượt sáng lên rồi cùng mờ đi theo vòng lặp.",
+  "tags": [
+    "bộ phát wifi",
+    "router",
+    "sóng wifi",
+    "ăng-ten",
+    "mạng internet",
+    "định vị"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "74229f27-057f-4ddd-a62b-c5c8faa83225:1:r4",
+  "licenses": []
+}

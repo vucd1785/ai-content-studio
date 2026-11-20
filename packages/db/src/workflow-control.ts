@@ -1,8 +1,8 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { insertQueuedJob } from "./agent-jobs.js";
+import { insertQueuedJob, redoJobKey } from "./agent-jobs.js";
 import type { StudioDb } from "./db.js";
 import { type EventInsert, publishEvents } from "./events.js";
-import { agentRuns, briefs, jobs, projects, workflowRuns } from "./schema/index.js";
+import { agentRuns, approvals, briefs, jobs, projects, workflowRuns } from "./schema/index.js";
 import { mapWorkflowRunRow, type StudioTx } from "./workflow.js";
 
 /**
@@ -22,7 +22,8 @@ export class WorkflowControlError extends Error {
     | "invalid_transition"
     | "nothing_to_resume"
     | "no_brief"
-    | "run_active";
+    | "run_active"
+    | "no_approved_script";
 
   constructor(code: WorkflowControlError["code"], message: string) {
     super(message);
@@ -239,7 +240,12 @@ export async function startWorkflowRun(
   projectId: string,
   /** Model đã được route kiểm trong danh sách cho phép; không có là mặc định của worker (P3-12). */
   /** `creativeMode` (ADR-016, P6-07): không có là `standard`. */
-  options: { llmModel?: string; creativeMode?: "standard" | "creative" } = {},
+  /** `aspectRatio` (ADR-022): không có là khung dọc `9:16`. */
+  options: {
+    llmModel?: string;
+    creativeMode?: "standard" | "creative";
+    aspectRatio?: "9:16" | "16:9";
+  } = {},
 ) {
   return db.transaction(async (tx) => {
     // Khóa hàng project: hai request cùng lúc không tạo hai run.
@@ -278,6 +284,7 @@ export async function startWorkflowRun(
         status: "idea_submitted",
         llmModel: options.llmModel ?? null,
         creativeMode: options.creativeMode ?? "standard",
+        aspectRatio: options.aspectRatio ?? "9:16",
       })
       .returning();
     if (run === undefined) {
@@ -290,5 +297,64 @@ export async function startWorkflowRun(
     });
     await publishEvents(tx, [created.event]);
     return { workflowRun: mapWorkflowRunRow(run), researchJobId: created.job.id };
+  });
+}
+
+/**
+ * Làm lại một phần ở Cổng 2 (ADR-021): run `waiting_final_approval` → `target`, tạo đúng một job trong cùng
+ * transaction. Đọc lại một cảnh: job `voice` (queue `media`), xong thì rào phụ thuộc tạo job render cùng `redoId`.
+ * Việc khác: thẳng job render (queue `render`). File yêu cầu do route ghi trước, theo `redoId`. Không ghi approval.
+ */
+export async function requestRedo(
+  db: StudioDb,
+  input: {
+    workflowRunId: string;
+    redoId: string;
+    target: "producing_assets" | "preview_rendering";
+  },
+) {
+  return db.transaction(async (tx) => {
+    const run = await lockRun(tx, input.workflowRunId);
+    if (run.status !== "waiting_final_approval") {
+      throw new WorkflowControlError("invalid_transition", `workflow run is ${run.status}`);
+    }
+    const [approval] = await tx
+      .select({ id: approvals.id })
+      .from(approvals)
+      .where(
+        and(
+          eq(approvals.workflowRunId, run.id),
+          eq(approvals.gate, "script"),
+          eq(approvals.decision, "approved"),
+        ),
+      )
+      .orderBy(desc(approvals.createdAt))
+      .limit(1);
+    if (approval === undefined) {
+      throw new WorkflowControlError("no_approved_script", "run has no approved script");
+    }
+    const revoice = input.target === "producing_assets";
+    const queued = await insertQueuedJob(tx, run.id, {
+      role: revoice ? "voice" : "video",
+      queue: revoice ? "media" : "render",
+      idempotencyKey: redoJobKey(revoice ? "voice" : "render", run.id, approval.id, input.redoId),
+    });
+    const [updated] = await tx
+      .update(workflowRuns)
+      .set({ status: input.target, updatedAt: new Date() })
+      .where(eq(workflowRuns.id, run.id))
+      .returning();
+    if (updated === undefined) {
+      throw new Error("update_workflow_run_failed");
+    }
+    await publishEvents(tx, [
+      {
+        workflowRunId: run.id,
+        type: "workflow.transition",
+        payload: { from: run.status, to: input.target, cause: "redo" },
+      },
+      queued.event,
+    ]);
+    return { workflowRun: mapWorkflowRunRow(updated), jobId: queued.job.id };
   });
 }

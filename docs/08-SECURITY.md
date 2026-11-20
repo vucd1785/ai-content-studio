@@ -4,7 +4,7 @@ Kiểm soát này áp dụng từ task đầu tiên có I/O. Kiểm thử tươn
 
 ## Secret
 
-Mọi secret đến từ environment: `STUDIO_PASSWORD`, `STUDIO_SESSION_SECRET`, `DATABASE_URL`, `REDIS_URL`, `GEMINI_API_KEY`, khóa provider khác. `.env` không commit. `.env.example` chỉ chứa tên biến và giá trị trống.
+Mọi secret đến từ environment: `STUDIO_PASSWORD`, `STUDIO_SESSION_SECRET`, `DATABASE_URL`, `REDIS_URL`, `GEMINI_API_KEY`, `YOUTUBE_CLIENT_SECRET`, `STUDIO_TOKEN_KEY` (ADR-031), khóa provider khác. `.env` không commit. `.env.example` chỉ chứa tên biến và giá trị trống.
 
 Log cấu trúc có `workflowRunId` và `jobId`. Log không chứa API key, cookie, hay nguyên văn `Authorization`.
 
@@ -38,7 +38,22 @@ Nội dung tài liệu và trang fetch nằm trong khối dữ liệu, có nhãn
 - Remotion chỉ bundle code nằm trong repo: `apps/video` và `packages/motion-kit`. Không nạp component, module hay chuỗi code từ `DATA_DIR`, DB hay response LLM; không `eval`, `new Function`, `import()` động theo dữ liệu.
 - Tài sản mới của chế độ sáng tạo (cách A) do phiên Claude Code của Director viết bằng skill `create-motion-asset`, vào repo dưới dạng `candidate`, qua test, typecheck và Director duyệt rồi mới được shot list dùng. Commit chỉ khi Director yêu cầu.
 - Tài sản motion kit là hàm thuần của frame: không mạng, không `Math.random`, không đọc file, không `process`, không truy cập DOM ngoài SVG của chính nó. Skill và review kiểm các điều này.
-- Worker gọi Claude API để sinh code lúc chạy (cách B) bị cấm cho đến khi có ADR riêng, sau khi bảo mật mục C xong; ADR đó phải có sandbox không mạng, kiểm AST, trần chi phí.
+- Từ [ADR-017](decisions/ADR-017-auto-asset-generation.md) (Director duyệt 2026-11-10): worker được tự tạo tài sản `prop`, `background`, `action` và `pose` bằng **Claude Code CLI headless** trong job storyboard, với các rào sau:
+  - **Cách chạy.** Claude Code chạy trong thư mục tạm, không công cụ, không MCP, chỉ trả JSON. Nó không ghi file.
+  - **Kiểm tĩnh AST trước khi ghi** (`apps/worker/src/assets/generate/static-check.ts`):
+    - chỉ import `react`, `remotion` và module thuần của kit;
+    - cấm định danh mạng, hệ thống, thời gian, ngẫu nhiên, thực thi động, `constructor` và `prototype`;
+    - cấm truy cập phần tử bằng chuỗi;
+    - cấm URL;
+    - cấm `<text>`, `<image>`, `<foreignObject>`, `<script>`;
+    - cấm thuộc tính `on*` và `href`;
+    - đồ vật phải có kích thước trong giới hạn.
+  - **Typecheck** bằng compiler API, không chạy code.
+  - **Render thử trong Chromium của Remotion:** cùng frame ra cùng ảnh, đồ vật có chuyển động. Đạt mới được đăng ký vào `generated.ts` và nạp vào tiến trình worker.
+  - **Giới hạn:** tối đa 3 tài sản mới mỗi run, 2 lần thử mỗi tài sản. Mỗi lần gọi ghi `usage_records`.
+  - **Duyệt.** Tài sản là `candidate` cho tới khi Director duyệt phương án dùng nó ở Cổng 1. Export chỉ dùng tài sản đã duyệt.
+  - **Giới hạn của rào:** kiểm AST là danh sách cấm, không phải sandbox OS. Phần còn lại của bảo mật mục C (sandbox, bind cổng) vẫn để sau.
+- Gọi Claude API trả phí để sinh code vẫn cần ADR riêng.
 - Không cài skill, package hay repo bên ngoài (ví dụ `kelano86/*`) khi chưa kiểm license và chưa có Director cho phép.
 
 ## Media và giọng
@@ -59,4 +74,13 @@ Approval và đổi trạng thái workflow cùng transaction. Không có hàm n�
 
 ## Xuất bản
 
-Không có client đăng YouTube, TikTok hay mạng khác. Thêm đường đó cần ADR mới và một hành động xác nhận riêng của Director, không gắn vào export.
+Chỉ có đường đăng YouTube theo [ADR-031](decisions/ADR-031-youtube-upload.md); Facebook, TikTok vẫn đăng tay. Thêm mạng khác cần ADR mới.
+
+- **Xác nhận riêng:** mỗi lần đăng đi qua hộp xác nhận của Director (tên kênh, chế độ hiển thị mặc định Riêng tư, khai báo "Dành cho trẻ em" bắt buộc chọn). Không đăng tự động sau export, không gắn vào route approval.
+- **OAuth:** dự án Google Cloud của Director, client "Desktop app", PKCE S256, `state` ngẫu nhiên 32 byte, sống 10 phút, dùng một lần, chỉ phiên đã đăng nhập tạo được. Callback `/api/youtube/oauth/callback` không cần cookie (Google chuyển về host của API) và chỉ nhận `state` còn hiệu lực.
+- **Scope:** `youtube.upload` và `youtube.readonly`; không xin quyền sửa hay xóa video.
+- **Token:** refresh token mã hóa AES-256-GCM bằng `STUDIO_TOKEN_KEY`, AAD là id kênh trong Studio; access token chỉ trong bộ nhớ worker. Không route nào trả token.
+- **Ghi `.env` từ giao diện** (bổ sung 2026-11-16): `PUT /api/youtube/config` chỉ ghi `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` và tạo `STUDIO_TOKEN_KEY` khi chưa có. Giá trị kiểm bằng regex, không có ký tự điều khiển, nên không chèn được biến khác. Không trả secret; log che `req.body.clientSecret`.
+- **Log:** query của URL callback (`code`, `state`) bị thay bằng `[REDACTED]` trong log request; lỗi Google chỉ ghi mã.
+- **Mạng:** chỉ gọi `oauth2.googleapis.com`, `www.googleapis.com`, `youtube.googleapis.com` qua https; không theo redirect. URI phiên upload phải ở `www.googleapis.com`.
+- **Để sau (mục C):** xoay khóa `STUDIO_TOKEN_KEY`, keychain của hệ điều hành, tách quyền đọc bảng `youtube_connections`.

@@ -1,0 +1,18 @@
+{
+  "id": "prop_hang_ba_tam_acd0",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ba tấm thẻ giấy trắng dựng thẳng hàng ngang trên một thanh gỗ: hai tấm đầu có những vạch chữ nhòe, tấm cuối để trống với viền nét đứt nhấp nháy và chạy vòng, còn một dấu chấm hỏi nhỏ nảy lên trên tấm trống, co giãn nhẹ khi chạm xuống.",
+  "tags": [
+    "thẻ giấy",
+    "dữ liệu học",
+    "chấm hỏi",
+    "ô trống",
+    "điền từ tiếp theo"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "57967d5b-e492-4445-a685-e90dc9c30c69:1:r1",
+  "licenses": []
+}

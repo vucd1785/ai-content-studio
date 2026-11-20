@@ -1,0 +1,18 @@
+{
+  "id": "prop_canh_tay_robot_38c5",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Cánh tay robot công nghiệp màu cam gắn trên đế xám, các khớp vai, khuỷu và cổ tay xoay nhịp nhàng để hạ xuống kẹp lắp chi tiết trên bàn nhỏ, tóe tia lửa rồi nhấc lên hơi nảy, còn đèn trạng thái trên đế nhấp nháy.",
+  "tags": [
+    "cánh tay robot",
+    "robot công nghiệp",
+    "dây chuyền lắp ráp",
+    "nhà máy",
+    "tự động hóa"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "c5835454-59d6-494f-b58a-66387295c94f:1:r1",
+  "licenses": []
+}

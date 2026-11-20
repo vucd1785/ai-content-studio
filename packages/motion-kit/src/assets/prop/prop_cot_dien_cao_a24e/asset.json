@@ -1,0 +1,19 @@
+{
+  "id": "prop_cot_dien_cao_a24e",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Cột điện cao thế bằng thép vẽ phẳng, có xà ngang và sứ cách điện; tia điện xanh dương chạy dọc các dây và nhấp nháy theo nhịp, kèm tia lửa nhỏ lóe sáng ở đầu sứ.",
+  "tags": [
+    "cột điện",
+    "điện cao thế",
+    "dây điện",
+    "tiền điện",
+    "năng lượng",
+    "tia điện"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "e711ea11-dd75-47a9-abf0-8c340b55b18e:962dff59:1:r3",
+  "licenses": []
+}

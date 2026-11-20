@@ -23,11 +23,14 @@ describe("project contracts", () => {
     expect(projectCreateBodySchema.safeParse({ title: "Dự án" }).success).toBe(true);
   });
 
-  it("brief chặn duration ngoài 30–90 và language khác vi", () => {
+  it("brief chặn duration ngoài 30–180 (story v2) và language khác vi", () => {
     expect(briefWriteBodySchema.safeParse(validBrief).success).toBe(true);
     expect(briefWriteBodySchema.safeParse({ ...validBrief, durationSec: 29 }).success).toBe(false);
-    expect(briefWriteBodySchema.safeParse({ ...validBrief, durationSec: 91 }).success).toBe(false);
-    expect(briefWriteBodySchema.safeParse({ ...validBrief, durationSec: 45.5 }).success).toBe(false);
+    expect(briefWriteBodySchema.safeParse({ ...validBrief, durationSec: 180 }).success).toBe(true);
+    expect(briefWriteBodySchema.safeParse({ ...validBrief, durationSec: 181 }).success).toBe(false);
+    expect(briefWriteBodySchema.safeParse({ ...validBrief, durationSec: 45.5 }).success).toBe(
+      false,
+    );
     expect(briefWriteBodySchema.safeParse({ ...validBrief, language: "en" }).success).toBe(false);
     expect(briefWriteBodySchema.safeParse({ ...validBrief, notes: "x".repeat(8001) }).success).toBe(
       false,

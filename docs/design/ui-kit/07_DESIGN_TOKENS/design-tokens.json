@@ -1,0 +1,88 @@
+{
+  "brand": {
+    "paper": "#f4efe6",
+    "ink": "#1f2a44",
+    "outline": "#0b0d12",
+    "orange": "#f26b3a",
+    "screenBlue": "#8fe9ff",
+    "green": "#6cc04a",
+    "dau": "#2bb3a3"
+  },
+  "light": {
+    "background": "#f4efe6",
+    "surface": "#fffaf3",
+    "surfaceMuted": "#f1e7db",
+    "text": "#1f2a44",
+    "textMuted": "#48536a",
+    "border": "#a9a7a5",
+    "primaryBg": "#f26b3a",
+    "primaryText": "#23130d",
+    "focus": "#0d5977",
+    "okBg": "#e0f3e5",
+    "okText": "#205b39",
+    "warningBg": "#fff0c9",
+    "warningText": "#714a04",
+    "errorBg": "#fce6e4",
+    "errorText": "#892629",
+    "infoBg": "#dbf4fc",
+    "infoText": "#16536c"
+  },
+  "dark": {
+    "background": "#0f172a",
+    "surface": "#1c2940",
+    "surfaceMuted": "#27364f",
+    "text": "#f2f5fb",
+    "textMuted": "#c1c9d6",
+    "border": "#55647b",
+    "primaryBg": "#ff9569",
+    "primaryText": "#29160e",
+    "focus": "#8fe9ff",
+    "okBg": "#204235",
+    "okText": "#9eedb7",
+    "warningBg": "#493c1d",
+    "warningText": "#ffe1a0",
+    "errorBg": "#542c36",
+    "errorText": "#ffbec1",
+    "infoBg": "#1c4655",
+    "infoText": "#a6ebff"
+  },
+  "fontFamily": "Be Vietnam Pro, system-ui, sans-serif",
+  "typeScalePx": {
+    "caption": 12,
+    "small": 14,
+    "body": 16,
+    "h3": 20,
+    "h2": 24,
+    "h1": 32
+  },
+  "spacingPx": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    40,
+    48
+  ],
+  "radiusPx": {
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24
+  },
+  "layout": {
+    "topbar": 64,
+    "sidebar1440": 224,
+    "sidebar1280": 208,
+    "inspector1440": 336,
+    "inspector1280": 288,
+    "minDesktop": 1280
+  },
+  "a11y": {
+    "minimumBodyContrast": "4.5:1",
+    "minimumLargeTextContrast": "3:1",
+    "minimumInteractiveTargetPx": 40,
+    "keyboardFocus": "2px solid focus color plus 2px outline-offset"
+  }
+}

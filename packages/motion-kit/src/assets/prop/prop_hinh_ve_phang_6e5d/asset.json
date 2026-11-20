@@ -1,0 +1,18 @@
+{
+  "id": "prop_hinh_ve_phang_6e5d",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Một hàng sáu quân domino nhiều màu xếp liền nhau; quân đầu tiên đổ và lần lượt đẩy các quân sau ngã theo, mỗi lần chạm lại lóe tia sáng nhỏ, rồi cả hàng dựng lại và lặp tiếp.",
+  "tags": [
+    "domino",
+    "hiệu ứng domino",
+    "đổ dây chuyền",
+    "truyền năng lượng",
+    "sóng âm"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "ed6414d9-9b9e-4b67-84f0-696299f759e5:1:r2",
+  "licenses": []
+}

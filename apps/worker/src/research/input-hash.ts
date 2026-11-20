@@ -34,7 +34,13 @@ export function researchInputHash(input: {
       brief.visualStyle,
       brief.notes ?? null,
     ],
-    input.documents.map((doc) => [doc.sourceId, doc.origin, doc.title, urlBySource.get(doc.sourceId) ?? null, sha256(doc.text)]),
+    input.documents.map((doc) => [
+      doc.sourceId,
+      doc.origin,
+      doc.title,
+      urlBySource.get(doc.sourceId) ?? null,
+      sha256(doc.text),
+    ]),
   ];
   return sha256(JSON.stringify(canonical));
 }

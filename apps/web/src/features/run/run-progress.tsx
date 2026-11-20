@@ -9,12 +9,12 @@ import {
 } from "./run-steps";
 
 const STATE_STYLE: Record<RunStep["state"], string> = {
-  done: "border-emerald-500/60 bg-emerald-500/10 text-emerald-300",
-  active: "border-sky-400/70 bg-sky-400/10 text-sky-200",
-  waiting_you: "border-amber-400/70 bg-amber-400/10 text-amber-200",
-  failed: "border-destructive/70 bg-destructive/10 text-destructive",
-  stopped: "border-border bg-muted/40 text-muted-foreground",
-  todo: "border-border text-muted-foreground",
+  done: "border-success/40 bg-success-bg text-success",
+  active: "border-info/50 bg-info-bg text-info",
+  waiting_you: "border-warning/70 border-dashed bg-warning-bg text-warning",
+  failed: "border-destructive/50 bg-destructive-bg text-destructive",
+  stopped: "border-border bg-muted text-muted-foreground",
+  todo: "border-border bg-card text-muted-foreground",
 };
 
 /**
@@ -46,21 +46,24 @@ export function RunProgress({
 
   return (
     <section aria-label={vi.runSteps.heading} className="flex flex-col gap-2">
-      <ol className="grid grid-cols-7 gap-1.5" data-testid="run-steps">
+      <ol
+        className="grid grid-cols-4 gap-1.5 @3xl:grid-cols-7 xl:grid-cols-7"
+        data-testid="run-steps"
+      >
         {steps.map((step, index) => (
           <li
             key={step.id}
             data-testid={`step-${step.id}`}
             data-state={step.state}
             className={cn(
-              "flex min-w-0 flex-col gap-0.5 rounded-md border px-2 py-1.5 text-xs",
+              "flex min-w-0 flex-col gap-0.5 rounded-xl border px-2 py-1.5 text-xs",
               STATE_STYLE[step.state],
             )}
           >
-            <span className="truncate font-medium">
+            <span className="leading-snug font-semibold break-words">
               {index + 1}. {vi.runSteps.steps[step.id]}
             </span>
-            <span className="truncate opacity-90">{vi.runSteps.states[step.state]}</span>
+            <span className="opacity-90">{vi.runSteps.states[step.state]}</span>
             <StepTiming step={step} />
             {step.progress === null ? null : <StepProgressBar step={step} />}
           </li>
@@ -83,19 +86,38 @@ export function RunProgress({
   );
 }
 
+/** Dòng chữ dưới thanh tiến trình: đếm thật theo đơn vị của bước. */
+export function progressDetail(progress: NonNullable<RunStep["progress"]>): string | null {
+  const t = vi.runSteps;
+  if (progress.unit === "frame") {
+    return `${progress.done}/${progress.total} ${t.frames}`;
+  }
+  if (progress.unit === "image") {
+    return progress.phase === "assets"
+      ? t.phases.assets
+      : `${t.imageOf} ${progress.done}/${progress.total}`;
+  }
+  const parts: string[] = [];
+  if (progress.sceneIndex !== null && progress.sceneCount !== null) {
+    parts.push(`${t.sceneOf} ${progress.sceneIndex}/${progress.sceneCount}`);
+  }
+  if (progress.lineIndex !== null && progress.lineCount !== null) {
+    parts.push(`${t.lineOf} ${progress.lineIndex}/${progress.lineCount}`);
+  }
+  if (progress.phase !== null) {
+    parts.push(t.phases[progress.phase]);
+  }
+  return parts.length === 0
+    ? `${progress.done}/${progress.total} ${t.stepUnit}`
+    : parts.join(" · ");
+}
+
 function StepProgressBar({ step }: { step: RunStep }) {
   const progress = step.progress;
   if (progress === null) {
     return null;
   }
-  const detail =
-    progress.unit === "frame"
-      ? `${progress.done}/${progress.total} ${vi.runSteps.frames}`
-      : progress.currentScene !== null &&
-          progress.sceneCount !== null &&
-          progress.currentPhase !== null
-        ? `${vi.runSteps.sceneOf} ${progress.currentScene}/${progress.sceneCount} · ${vi.runSteps.phases[progress.currentPhase]}`
-        : null;
+  const detail = progressDetail(progress);
   return (
     <div className="mt-1 flex flex-col gap-0.5" data-testid={`progress-${step.id}`}>
       <div
@@ -104,11 +126,11 @@ function StepProgressBar({ step }: { step: RunStep }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progress.percent}
-        className="h-1.5 overflow-hidden rounded-full bg-white/10"
+        className="h-1.5 overflow-hidden rounded-full bg-black/10 dark:bg-white/15"
       >
         <div className="h-full rounded-full bg-current" style={{ width: `${progress.percent}%` }} />
       </div>
-      <span className="truncate font-medium">
+      <span className="leading-snug font-medium break-words">
         {progress.percent}%{detail === null ? null : ` · ${detail}`}
       </span>
     </div>
@@ -139,38 +161,54 @@ function StepErrorPanel({ step }: { step: RunStep }) {
     <div
       role="alert"
       data-testid="run-error"
-      className="border-destructive/60 bg-destructive/10 flex flex-col gap-1 rounded-md border px-3 py-2 text-sm"
+      className="border-destructive/40 bg-destructive-bg flex gap-4 rounded-2xl border px-4 py-3 text-sm"
     >
-      <p className="text-destructive font-medium">
-        {vi.runSteps.errorHeading} {vi.runSteps.steps[step.id]} ·{" "}
-        {vi.runSteps.errors[error.code] ?? error.code}
-      </p>
-      <p className="text-muted-foreground text-xs">
-        {vi.runSteps.errorCode}: <code>{error.code}</code>
-        {error.role === null ? null : ` · ${error.role}`}
-      </p>
-      <p className="text-xs break-words whitespace-pre-wrap">
-        {vi.runSteps.errorDetail}: {error.message ?? vi.runSteps.errorNoDetail}
-      </p>
-      {TTS_ERRORS.has(error.code) ? (
-        <p className="text-muted-foreground text-xs">{vi.runSteps.errorHints.tts}</p>
-      ) : null}
-      {isClaudeCodeError(error.code, error.message) ? (
-        <p className="text-muted-foreground text-xs">{vi.runSteps.errorHints.claudeCode}</p>
-      ) : null}
+      <img
+        src="/assets/characters/bit_error.svg"
+        alt=""
+        className="hidden size-20 shrink-0 sm:block"
+      />
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <p className="text-destructive text-base font-semibold">
+          {vi.runSteps.errorHeading} {vi.runSteps.steps[step.id]} ·{" "}
+          {vi.runSteps.errors[error.code] ?? error.code}
+        </p>
+        {TTS_ERRORS.has(error.code) ? (
+          <p className="text-foreground text-sm">{vi.runSteps.errorHints.tts}</p>
+        ) : null}
+        {isClaudeCodeError(error.code, error.message) ? (
+          <p className="text-foreground text-sm">{vi.runSteps.errorHints.claudeCode}</p>
+        ) : null}
+        <details className="text-foreground text-xs">
+          <summary className="cursor-pointer font-semibold">{vi.runSteps.technical}</summary>
+          <p className="mt-1">
+            {vi.runSteps.errorCode}: <code>{error.code}</code>
+            {error.role === null ? null : ` · ${error.role}`}
+          </p>
+          <p className="break-words whitespace-pre-wrap">
+            {vi.runSteps.errorDetail}: {error.message ?? vi.runSteps.errorNoDetail}
+          </p>
+        </details>
+      </div>
     </div>
   );
 }
 
+/**
+ * Thời gian của một bước. Chỉ bước đang chạy (và cổng đang chờ bạn) hiện chữ, để thẻ bước gọn (ADR-020);
+ * thời gian còn lại của cả lượt nằm ở dòng dưới thanh bước.
+ */
 function StepTiming({ step }: { step: RunStep }) {
   if (step.gate) {
-    return <span className="truncate opacity-70">{vi.runSteps.gateNoEstimate}</span>;
+    return step.state === "waiting_you" ? (
+      <span className="leading-snug opacity-80">{vi.runSteps.gateNoEstimate}</span>
+    ) : null;
   }
-  if (step.estimateSec === null || step.state === "done" || step.state === "stopped") {
+  if (step.estimateSec === null || step.state !== "active") {
     return null;
   }
   return (
-    <span className="truncate opacity-70">
+    <span className="leading-snug opacity-80">
       {step.elapsedSec !== null
         ? `${vi.runSteps.elapsed} ${formatDurationRange([step.elapsedSec, step.elapsedSec])} / ${formatDurationRange(step.estimateSec)}`
         : `${vi.runSteps.estimate} ${formatDurationRange(step.estimateSec)}`}

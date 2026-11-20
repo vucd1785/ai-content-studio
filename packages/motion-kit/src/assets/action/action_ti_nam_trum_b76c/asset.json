@@ -1,0 +1,18 @@
+{
+  "id": "action_ti_nam_trum_b76c",
+  "kind": "action",
+  "version": "0.1.0",
+  "description": "Tí khom người, cúi đầu, hai tay đưa điện thoại sát ngực rồi lặp lại cử động ngón cái lướt màn hình liên tục, kèm đầu gật gà gật gù vì buồn ngủ; tư thế này dùng cho cảnh Tí nằm trùm chăn thức khuya.",
+  "tags": [
+    "thức khuya",
+    "lướt điện thoại",
+    "thiếu ngủ",
+    "trùm chăn",
+    "buồn ngủ"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:2:r1",
+  "licenses": []
+}

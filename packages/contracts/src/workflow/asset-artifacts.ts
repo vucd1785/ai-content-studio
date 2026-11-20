@@ -53,6 +53,9 @@ export const qaCheckCodeSchema = z.enum([
   "low_alignment_confidence",
   "research_stale",
   "long_silence",
+  // ADR-020: QA hình trên mọi shot của bản cuối (cùng luật hình học với storyboard), chỉ cảnh báo.
+  "visual_unsafe_area",
+  "visual_overlap",
 ]);
 
 /** `qa_report` của một preview. `passed` là true khi không có check `error`. QA không ghi approval. */

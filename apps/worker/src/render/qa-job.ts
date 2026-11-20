@@ -8,6 +8,7 @@ import {
 import { readJsonArtifact, writeJsonArtifact } from "../jobs/job-support.js";
 import type { Mp4Info, RenderBackend } from "./render-backend.js";
 import { runStageJob, type StageJobResult } from "./stage-job.js";
+import { checkStill } from "./storyboard-checks.js";
 
 /** Khoảng duration hợp lệ của video, giống giới hạn `durationSec` của brief (30–90 giây). */
 export const QA_DURATION_RANGE_MS = { min: 30_000, max: 90_000 } as const;
@@ -82,7 +83,65 @@ export function runQaChecks(props: StickStoryRenderProps | null, mp4: Mp4Info | 
       }
     }
   }
+  checks.push(...visualChecks(props));
   return checks;
+}
+
+/** Số shot tối đa liệt kê trong một cảnh báo hình, để report gọn. */
+const VISUAL_LIST_MAX = 6;
+
+/**
+ * QA hình (ADR-020): chạy luật hình học của storyboard (đầu bị mép cắt, mặt dưới phụ đề, hai người chồng nhau)
+ * trên mọi shot của bản render, không chỉ một ảnh mỗi cảnh. Chỉ cảnh báo, không chặn duyệt; gộp theo loại.
+ */
+export function visualChecks(props: StickStoryRenderProps): Check[] {
+  const found = new Map<"visual_unsafe_area" | "visual_overlap", string[]>();
+  // Props đọc từ file đã qua schema; test truyền props rút gọn, nên thiếu `shots` thì bỏ qua QA hình.
+  for (const shot of Array.isArray(props.shots) ? props.shots : []) {
+    let issues: ReturnType<typeof checkStill> = [];
+    try {
+      issues = checkStill({
+        background: shot.background,
+        shotSize: shot.shotSize,
+        camera: shot.camera,
+        focus: shot.focus,
+        actors: shot.actors.map((a) => ({
+          character: a.character,
+          skin: a.skin,
+          action: a.action,
+          expression: a.expression,
+          ...(a.outfit === undefined ? {} : { outfit: a.outfit }),
+          slot: a.slot,
+        })),
+        props: shot.props,
+        // Phụ đề do composition vẽ và đã có check riêng; ở đây chỉ kiểm hình.
+        caption: { speaker: shot.focus, text: "", color: "#ffffff" },
+        placeholderAssetIds: [],
+      });
+    } catch {
+      continue;
+    }
+    for (const issue of issues) {
+      const code =
+        issue.code === "storyboard_unsafe_area"
+          ? "visual_unsafe_area"
+          : issue.code === "storyboard_overlap"
+            ? "visual_overlap"
+            : null;
+      if (code !== null) {
+        found.set(code, [...(found.get(code) ?? []), `${shot.shotId} (${issue.message})`]);
+      }
+    }
+  }
+  return [...found.entries()].map(([code, shots]) => ({
+    code,
+    severity: "warning" as const,
+    message:
+      `${shots.length} shot: ${shots.slice(0, VISUAL_LIST_MAX).join("; ")}${shots.length > VISUAL_LIST_MAX ? "; …" : ""}`.slice(
+        0,
+        500,
+      ),
+  }));
 }
 
 /**

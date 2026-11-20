@@ -41,7 +41,7 @@ def align_transcript_to_wav(
     else:
         raise ValueError(f"unknown alignment engine: {engine}")
 
-    words, validation = validate_with_repair(words, expected, duration_ms)
+    words, validation = validate_with_repair(words, expected, duration_ms, wav_path)
     elapsed_ms = int(round((time.perf_counter() - started) * 1000))
 
     return AlignmentArtifact(

@@ -1,0 +1,19 @@
+{
+  "id": "prop_hinh_ve_phang_cda1",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Hộp router nhỏ đứng giữa ngã tư bốn ngả đường; các đèn xanh nhấp nháy nối đuôi nhau, mũi tên chỉ đường trên đầu xoay bật lần lượt sang từng ngả, và các gói dữ liệu nhỏ chạy dọc mặt đường.",
+  "tags": [
+    "router",
+    "ngã tư",
+    "định tuyến",
+    "mũi tên chỉ đường",
+    "internet",
+    "đèn xanh"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "e285c0f2-dfd7-4b3b-918f-bcb3546b1435:1:r2",
+  "licenses": []
+}

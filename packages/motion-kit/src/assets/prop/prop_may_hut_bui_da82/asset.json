@@ -1,0 +1,18 @@
+{
+  "id": "prop_may_hut_bui_da82",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Robot hút bụi hình tròn dẹt nhìn nghiêng ba phần tư: chạy qua lại và xoay vòng trên sàn, chổi bên hông quay tít, đèn xanh trên nắp nhấp nháy và các hạt bụi bị hút vào.",
+  "tags": [
+    "máy hút bụi",
+    "robot hút bụi",
+    "đồ gia dụng",
+    "robot",
+    "dọn nhà"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "c5835454-59d6-494f-b58a-66387295c94f:1:r2",
+  "licenses": []
+}

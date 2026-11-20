@@ -407,6 +407,8 @@ describe("tiến độ thật và hủy giữa chừng của voice (P3-17)", () 
       unit: "scene_step",
       sceneIndex: 1,
       sceneCount,
+      lineIndex: null,
+      lineCount: null,
       phase: "align",
     });
     const voice = (await getWorkflowRunDetail(db, seeded.runId))?.agentRuns.find(

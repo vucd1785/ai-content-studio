@@ -1,0 +1,12 @@
+{
+  "id": "action_keo_thuoc_day_3f3b",
+  "kind": "action",
+  "version": "0.1.1",
+  "description": "Nhân vật vươn hai tay về bên phải nắm chặt đầu thước dây rồi ngả người ra sau, bước lùi kéo căng dây, và giật kéo lặp đi lặp lại như đang cố kéo dây thước bung dài ra.",
+  "tags": ["kéo thước dây", "đo chiều dài", "bước lùi", "kéo căng", "đo sông"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "e8143c46-a356-4dca-a7a8-781fd5fac54c:1:r3",
+  "licenses": []
+}

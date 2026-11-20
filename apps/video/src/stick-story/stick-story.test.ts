@@ -6,7 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderStickStoryWithCache } from "./cached-render";
-import { characterSeed, previousPose } from "./StickStoryComposition";
+import { cardOpacity, characterSeed, previousPose } from "./StickStoryComposition";
 import { STICK_STORY_FIXTURE_PROPS } from "./stick-story-fixture";
 import { hashStickStoryRenderProps } from "./stick-story-hash";
 import {
@@ -19,10 +19,38 @@ import {
 
 const fixture = STICK_STORY_FIXTURE_PROPS;
 
+describe("thẻ mở đầu, kết thúc (ADR-021)", () => {
+  it("nhận thẻ một dòng, chặn chữ xuống dòng và chữ quá dài", () => {
+    expect(fixture.cards?.intro?.title).toBe("Vì sao nước biển mặn?");
+    const withCards = (cards: unknown) =>
+      stickStoryRenderPropsSchema.safeParse({ ...fixture, cards }).success;
+    expect(withCards({ outro: { channel: null, cta: "Theo dõi nhé!" } })).toBe(true);
+    expect(withCards({ intro: { title: "Dòng 1\nDòng 2" } })).toBe(false);
+    expect(withCards({ intro: { title: "x".repeat(81) } })).toBe(false);
+    expect(withCards({ outro: { channel: "Kênh", cta: "" } })).toBe(false);
+    const { cards: _omit, ...noCards } = fixture;
+    expect(stickStoryRenderPropsSchema.safeParse(noCards).success).toBe(true);
+  });
+
+  it("thẻ hiện dần, tắt dần, ngoài khoảng thì ẩn", () => {
+    expect(cardOpacity(-1, 72)).toBe(0);
+    expect(cardOpacity(0, 72)).toBeCloseTo(1 / 8);
+    expect(cardOpacity(30, 72)).toBe(1);
+    expect(cardOpacity(71, 72)).toBeCloseTo(1 / 10);
+    expect(cardOpacity(72, 72)).toBe(0);
+  });
+
+  it("thẻ có trong markup ở đầu và cuối video", () => {
+    expect(hashStickStoryRenderProps(fixture, { audioContentSha256: "a" })).not.toBe(
+      hashStickStoryRenderProps({ ...fixture, cards: undefined }, { audioContentSha256: "a" }),
+    );
+  });
+});
+
 describe("render props StickStory", () => {
   it("version kit ghim trong props bằng MOTION_KIT_VERSION của packages/motion-kit", () => {
     expect(STICK_STORY_MOTION_KIT_VERSION).toBe(MOTION_KIT_VERSION);
-    expect(fixture.templateVersion).toBe(`1.1.0+kit.${MOTION_KIT_VERSION}`);
+    expect(fixture.templateVersion).toBe(`1.13.0+kit.${MOTION_KIT_VERSION}`);
     expect(fixture.motionKitVersion).toBe(MOTION_KIT_VERSION);
   });
 

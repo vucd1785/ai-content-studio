@@ -1,0 +1,12 @@
+{
+  "id": "cam_pan",
+  "kind": "camera",
+  "version": "0.1.0",
+  "description": "Lia ngang chậm từ trái sang phải.",
+  "tags": ["lia ngang"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

@@ -38,8 +38,10 @@ function renderShell() {
 async function openProject() {
   // applyAccept: false để thử cả tệp mà input `accept` sẽ lọc (kiểm chặn phía client).
   const user = userEvent.setup({ applyAccept: false });
+  // P7-04: tên dự án có cả ở điều hướng trái; bấm dòng trong vùng chính.
+  const main = screen.getByRole("main", { name: vi.shell.regionWorkspace });
   await user.click(
-    await screen.findByRole("button", { name: projectRow.title }, { timeout: 5000 }),
+    await within(main).findByRole("button", { name: projectRow.title }, { timeout: 5000 }),
   );
   const form = await screen.findByRole("form", { name: vi.brief.heading }, { timeout: 5000 });
   return { user, form };
@@ -60,7 +62,7 @@ afterEach(() => {
 });
 
 describe("Form brief (P2-06)", () => {
-  it("duration ngoài 30–90 không gửi request và hiện lỗi tiếng Việt", async () => {
+  it("duration ngoài 30–180 không gửi request và hiện lỗi tiếng Việt", async () => {
     const api = installFakeApi({
       "GET /api/projects": listWithProject,
       [`GET /api/projects/${PROJECT_ID}`]: () => jsonResponse(200, projectDetailBody()),
@@ -69,11 +71,11 @@ describe("Form brief (P2-06)", () => {
     const { user, form } = await openProject();
     await fillValidBrief(user, form);
     const duration = within(form).getByLabelText(vi.brief.durationSec);
-    for (const bad of ["10", "29", "91", "45.5", ""]) {
+    for (const bad of ["10", "29", "181", "45.5", ""]) {
       await user.clear(duration);
       if (bad !== "") await user.type(duration, bad);
       await user.click(within(form).getByRole("button", { name: vi.brief.save }));
-      expect(within(form).getByText(vi.brief.durationRangeFor(30, 90))).toBeTruthy();
+      expect(within(form).getByText(vi.brief.durationRangeFor(30, 180))).toBeTruthy();
     }
     expect(api.callsTo(BRIEF_PUT)).toHaveLength(0);
   });

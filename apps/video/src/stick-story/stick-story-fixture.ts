@@ -38,7 +38,7 @@ const SPEC: SceneSpec[] = [
         shotSize: "wide",
         camera: "cam_push_in",
         focus: "ti",
-        props: [],
+        props: ["prop_server", "prop_packets"],
         ambience: [],
         actors: [
           {
@@ -145,7 +145,7 @@ const SPEC: SceneSpec[] = [
         shotSize: "wide",
         camera: "cam_static",
         focus: "bit",
-        props: [],
+        props: ["prop_shield"],
         ambience: [],
         actors: [
           {
@@ -183,7 +183,7 @@ const SPEC: SceneSpec[] = [
         shotSize: "high",
         camera: "cam_push_in",
         focus: "ti",
-        props: [],
+        props: ["prop_server_overload", "prop_packets"],
         ambience: ["dust"],
         actors: [
           {
@@ -300,6 +300,10 @@ function buildFixture(): StickStoryRenderProps {
     scenes,
     shots,
     captions,
+    cards: {
+      intro: { title: "Vì sao nước biển mặn?" },
+      outro: { channel: "Tí Bit Khám Phá", cta: "Theo dõi để xem tiếp nhé!" },
+    },
     sfx: [],
   });
 }

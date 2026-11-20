@@ -1,0 +1,23 @@
+{
+  "id": "photo_ten_lua_starship_ca577d",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Tên lửa Starship thân thép bạc, cao lớn, đứng trên bệ phóng.",
+  "tags": [
+    "SpaceX Starship",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "d2086fde-170a-441c-acb4-a57a668bb938:1:r5",
+  "licenses": [
+    {
+      "name": "CC BY 2.0",
+      "source": "Wikimedia Commons",
+      "author": "Steve Jurvetson",
+      "url": "https://commons.wikimedia.org/wiki/File:SpaceX_Starship_ignition_during_IFT-5.jpg",
+      "attribution": "\"SpaceX Starship ignition during IFT-5.jpg\" – Steve Jurvetson, CC BY 2.0, Wikimedia Commons (https://commons.wikimedia.org/wiki/File:SpaceX_Starship_ignition_during_IFT-5.jpg)"
+    }
+  ]
+}

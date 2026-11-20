@@ -11,6 +11,7 @@ type Manifest = {
   brandProfile?: unknown;
   description?: unknown;
   tags?: unknown;
+  requestKey?: unknown;
 };
 
 /**
@@ -52,6 +53,8 @@ export function loadApprovedAssetCatalog(
         tags: Array.isArray(manifest.tags)
           ? manifest.tags.filter((t) => typeof t === "string")
           : [],
+        // Tài sản tự tạo theo yêu cầu của một run có `requestKey` (ADR-017); tài sản làm tay thì null.
+        ...(typeof manifest.requestKey === "string" ? { generated: true } : {}),
       });
     }
   }

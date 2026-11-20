@@ -1,12 +1,16 @@
+import { WIDE_FRAME } from "@studio/motion-kit";
 import { describe, expect, it } from "vitest";
+import { stillRenderProps } from "./storyboard-backend.js";
 import {
   CAPTION_TEXT_WIDTH,
+  CAPTION_TOP_Y,
   checkStill,
   contrastRatio,
   type StillSpec,
   screenLayout,
   widestCaptionGroupPx,
 } from "./storyboard-checks.js";
+import { extraStillShots, primaryStillShot } from "./storyboard-job.js";
 
 const base: StillSpec = {
   background: "bg_room",
@@ -29,6 +33,7 @@ const base: StillSpec = {
       slot: "right",
     },
   ],
+  props: [],
   caption: { speaker: "ti", text: "Bit ơi, nếu mình không cần ngủ thì sao?", color: "#f26b3a" },
   placeholderAssetIds: [],
 };
@@ -64,6 +69,26 @@ describe("kiểm storyboard bằng hình học", () => {
     expect(checkStill(clash).map((i) => i.message)).toEqual(["bit và dau chồng lên nhau"]);
   });
 
+  it("đồ vật chiếm chỗ giữa: hai người và máy chủ không chồng nhau, không vấn đề (P6-19)", () => {
+    const spec = { ...base, props: ["prop_server_overload", "prop_packets"] };
+    expect(codes(spec)).toEqual([]);
+    expect(codes({ ...spec, shotSize: "high" })).toEqual([]);
+  });
+
+  it("cỡ trung một người và một đồ vật: người dời theo chỗ đồ vật, cả hai trong khung (P6-19)", () => {
+    const spec: StillSpec = {
+      ...base,
+      shotSize: "medium",
+      actors: [base.actors[0] as StillSpec["actors"][number]],
+      props: ["prop_shield"],
+    };
+    expect(codes(spec)).toEqual([]);
+    const [ti] = screenLayout(spec);
+    // Tí bên trái, khiên lấy chỗ giữa rồi sang phải: Tí nằm nửa trái khung.
+    expect(ti?.body.x1 ?? 0).toBeLessThan(540);
+    expect(ti?.body.x0 ?? -1).toBeGreaterThanOrEqual(0);
+  });
+
   it("hai nhân vật cùng một vị trí: storyboard_overlap", () => {
     const spec: StillSpec = {
       ...base,
@@ -84,6 +109,26 @@ describe("kiểm storyboard bằng hình học", () => {
     expect(medium[0]?.headRadius ?? 0).toBeGreaterThan(wide[0]?.headRadius ?? 0);
   });
 
+  it("khung ngang 16:9 (ADR-022): mọi cỡ cảnh không cắt đầu, mặt trên phụ đề; props ảnh tĩnh 1920×1080", () => {
+    const one: StillSpec = { ...base, actors: [base.actors[0] as StillSpec["actors"][number]] };
+    for (const shotSize of ["wide", "high", "medium", "close"] as const) {
+      expect(checkStill({ ...base, shotSize }, WIDE_FRAME)).toEqual([]);
+      expect(checkStill({ ...one, shotSize }, WIDE_FRAME)).toEqual([]);
+    }
+    const props = stillRenderProps(
+      base,
+      { fontFamily: "system-ui", textColor: "#ffffff", speakerColors: {} },
+      "16:9",
+    );
+    expect([props.width, props.height]).toEqual([1920, 1080]);
+    const vertical = stillRenderProps(base, {
+      fontFamily: "system-ui",
+      textColor: "#ffffff",
+      speakerColors: {},
+    });
+    expect([vertical.width, vertical.height]).toEqual([1080, 1920]);
+  });
+
   it("cỡ cận: người không được lấy nét lộ ở mép là chủ ý, không báo", () => {
     expect(checkStill({ ...base, shotSize: "close", focus: "bit" })).toEqual([]);
   });
@@ -96,7 +141,7 @@ describe("kiểm storyboard bằng hình học", () => {
     };
     expect(codes(spec)).toEqual([]);
     const [ti] = screenLayout(spec);
-    expect(ti?.head.y).toBeLessThan(1650);
+    expect(ti?.head.y).toBeLessThan(CAPTION_TOP_Y);
   });
 
   it("màu phụ đề tối trên nền tối: storyboard_low_contrast", () => {
@@ -119,5 +164,31 @@ describe("kiểm storyboard bằng hình học", () => {
     expect(codes({ ...base, placeholderAssetIds: ["action_wave"] })).toContain(
       "storyboard_placeholder_asset",
     );
+  });
+});
+
+describe("ảnh storyboard không có thẻ chữ (ADR-021)", () => {
+  it("props ảnh tĩnh ghi rõ cards rỗng, để Remotion không lấy thẻ của fixture mặc định", () => {
+    const props = stillRenderProps(base, {
+      fontFamily: "system-ui",
+      textColor: "#ffffff",
+      speakerColors: { ti: "#f26b3a" },
+    });
+    expect(props.cards).toEqual({});
+  });
+});
+
+describe("ảnh thêm của cảnh (bổ sung 2026-11-12)", () => {
+  it("chụp thêm shot có minh họa hoặc đồ vật, bỏ shot cận và shot đã là ảnh chính", () => {
+    const shots = [
+      { id: "s11", shotSize: "high", illustration: { items: ["r2"] } },
+      { id: "s12", shotSize: "medium", illustration: { items: ["r4"] } },
+      { id: "s13", shotSize: "close", illustration: { items: ["r4"] } },
+      { id: "s14", shotSize: "wide", props: ["prop_laptop"] },
+      { id: "s15", shotSize: "wide", props: [] },
+    ];
+    expect(primaryStillShot(shots)?.id).toBe("s11");
+    expect(extraStillShots(shots).map((s) => s.id)).toEqual(["s12", "s14"]);
+    expect(extraStillShots([{ id: "s1", shotSize: "wide" }])).toEqual([]);
   });
 });

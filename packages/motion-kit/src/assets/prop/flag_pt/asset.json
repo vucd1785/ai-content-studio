@@ -1,0 +1,25 @@
+{
+  "id": "flag_pt",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Bồ Đào Nha bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Bồ Đào Nha.",
+  "tags": [
+    "cờ Bồ Đào Nha",
+    "nước Bồ Đào Nha",
+    "người Bồ Đào Nha",
+    "Bồ Đào Nha",
+    "Portugal",
+    "quốc kỳ Bồ Đào Nha"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

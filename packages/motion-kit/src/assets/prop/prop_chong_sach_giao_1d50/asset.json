@@ -1,0 +1,18 @@
+{
+  "id": "prop_chong_sach_giao_1d50",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chồng bốn cuốn sách giáo khoa nhiều màu xếp lệch nhau, trên cùng có cây bút chì vàng; các cuốn sách lần lượt nảy nhẹ như gợn sóng, bút chì khẽ lắc lư và một ngôi sao nhỏ lấp lánh.",
+  "tags": [
+    "chồng sách",
+    "sách giáo khoa",
+    "bút chì",
+    "học tập",
+    "trường học"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "f035f163-cf05-49b6-bbb8-ff17eb71317f:1:r4",
+  "licenses": []
+}

@@ -9,10 +9,18 @@ import {
   JobStateError,
   loadJobContext,
   loadRunBrandProfile,
+  recordJobProgress,
   type StudioDb,
 } from "@studio/db";
+import { frameDimensions } from "@studio/video/render-props/common";
 import type { z } from "zod/v4";
-import { assignSlots } from "../cli/build-stick-story-props.js";
+import {
+  prepareStoryboardAssets,
+  type ResolveAssets,
+} from "../assets/generate/storyboard-assets.js";
+import { applyAssetSubstitutions } from "../assets/generate/substitute.js";
+import { runAspectRatio, sceneSlots } from "../cli/build-stick-story-props.js";
+import { resolveRepoRoot } from "../cli/paths.js";
 import { advanceTransition, readJsonArtifact, writeJsonArtifact } from "../jobs/job-support.js";
 import { loadApprovedAssetCatalog } from "../llm/asset-catalog.js";
 import type { CatalogEntry } from "../llm/script-v2-prompt.js";
@@ -40,6 +48,10 @@ export type StoryboardJobDeps = {
   dataDir: string;
   renderer?: StoryboardRenderer;
   loadAssetCatalog?: (brandSlug: string) => CatalogEntry[];
+  /** ADR-017: dùng lại hoặc tạo tài sản cho yêu cầu `creative`. Không có thì cảnh dùng tài sản thay thế. */
+  resolveAssets?: ResolveAssets;
+  /** `packages/motion-kit/src`; test đặt thư mục tạm. */
+  kitSrc?: string;
 };
 
 export type StoryboardJobResult =
@@ -59,20 +71,59 @@ export function speakerColors(
   );
 }
 
-/** Ảnh tĩnh của một cảnh: shot đầu, câu neo của shot đó làm phụ đề mẫu (05). */
+type StillShot = {
+  id: string;
+  shotSize: string;
+  illustration?: unknown;
+  props?: readonly string[] | undefined;
+};
+
+/** Shot chụp ảnh chính của cảnh: shot đầu có minh họa, không có thì shot đầu. */
+export function primaryStillShot<T extends StillShot>(shots: readonly T[]): T | undefined {
+  return shots.find((s) => s.illustration !== undefined) ?? shots[0];
+}
+
+/** Tối đa số ảnh thêm mỗi cảnh. */
+export const MAX_EXTRA_STILLS = 3;
+
+/**
+ * Shot cần ảnh thêm (bổ sung 2026-11-12): các shot khác ảnh chính có minh họa hoặc đồ vật, trừ cỡ cận (không vẽ
+ * minh họa, đồ vật). Ví dụ cầu vồng ở shot thứ hai của cảnh giải thích.
+ */
+export function extraStillShots<T extends StillShot>(shots: readonly T[]): T[] {
+  const primary = primaryStillShot(shots);
+  return shots
+    .filter(
+      (s) =>
+        s !== primary &&
+        s.shotSize !== "close" &&
+        (s.illustration !== undefined || (s.props ?? []).length > 0),
+    )
+    .slice(0, MAX_EXTRA_STILLS);
+}
+
+/** Ảnh tĩnh của một cảnh: shot chính (hoặc `shotId`), câu neo của shot đó làm phụ đề mẫu (05). */
 export function sceneStillSpec(
   script: ScriptV2,
   sceneIndex: number,
   cast: ReadonlyMap<string, { skinAssetId: string }>,
   colors: Record<string, string>,
+  shotId?: string,
 ): StillSpec | null {
   const scene = script.scenes[sceneIndex];
-  const shot = scene?.shots[0];
+  // Cảnh có minh họa thì chụp shot có minh họa để Director thấy nó ở Cổng 1.
+  const shot =
+    shotId === undefined
+      ? primaryStillShot(scene?.shots ?? [])
+      : scene?.shots.find((s) => s.id === shotId);
   if (scene === undefined || shot === undefined) {
     return null;
   }
   const line = scene.lines.find((l) => l.id === shot.lineId) ?? scene.lines[0];
-  const slots = assignSlots(scene.shots);
+  const slots = sceneSlots(
+    scene,
+    (character) => cast.get(character)?.skinAssetId ?? `skin_${character}`,
+  );
   const placeholders = (script.assetRequests ?? [])
     .filter((req) => req.sceneIds.includes(scene.id))
     .map((req) => req.fallbackAssetId)
@@ -81,6 +132,7 @@ export function sceneStillSpec(
         shot.background,
         shot.camera,
         ...(shot.props ?? []),
+        ...(shot.illustration?.items ?? []),
         ...shot.actors.flatMap((a) => [a.action, a.expression]),
       ].includes(id),
     );
@@ -89,11 +141,18 @@ export function sceneStillSpec(
     shotSize: shot.shotSize,
     camera: shot.camera ?? "cam_static",
     focus: shot.focus,
+    props: shot.props ?? [],
+    ...(shot.mood === undefined ? {} : { mood: shot.mood }),
+    ...(shot.effects === undefined ? {} : { effects: [...shot.effects] }),
+    ...(shot.illustration === undefined
+      ? {}
+      : { illustration: { ...shot.illustration, items: [...shot.illustration.items] } }),
     actors: shot.actors.map((a) => ({
       character: a.character,
       skin: cast.get(a.character)?.skinAssetId ?? `skin_${a.character}`,
       action: a.action,
       expression: a.expression,
+      ...(a.outfit === undefined ? {} : { outfit: a.outfit }),
       slot: slots.get(a.character) ?? "center",
     })),
     caption: {
@@ -175,10 +234,51 @@ export async function runStoryboardJob(
     const cast = new Map(brand.characters.map((c) => [c.characterKey, c]));
     const colors = speakerColors(brand.palette, brand.characters);
     const fontFamily = brand.fonts.body ?? "system-ui, 'Segoe UI', sans-serif";
+    // Tiến độ thật (ADR-009): số ảnh đã chụp trên tổng cảnh của hai phương án.
+    const totalStills = script.variants.reduce((n, v) => n + v.scenes.length, 0);
+    let doneStills = 0;
+    const progress = (phase: "assets" | "stills") =>
+      totalStills > 0
+        ? recordJobProgress(db, jobId, {
+            done: doneStills,
+            total: totalStills,
+            unit: "image",
+            phase,
+          })
+        : Promise.resolve(false);
+    // ADR-017 mục 2: tài sản mới tạo xong trước khi chụp ảnh; renderer tạo sau để bundle thấy kho mới.
+    if (meta.creativeMode === "creative") {
+      await progress("assets");
+    }
+    const assets =
+      meta.creativeMode === "creative"
+        ? await prepareStoryboardAssets(db, {
+            runId,
+            agentRunId: context.agentRun.id,
+            scriptArtifactId: scriptRow.id,
+            topic: context.brief.topic,
+            variants: script.variants,
+            kitSrc:
+              deps.kitSrc ??
+              join(resolveRepoRoot(import.meta.url), "packages", "motion-kit", "src"),
+            ...(deps.resolveAssets === undefined ? {} : { resolveAssets: deps.resolveAssets }),
+          })
+        : { substitutions: new Map(), changed: false, errors: [] };
+    for (const e of assets.errors) {
+      artifact.errors.push({ variantIndex: e.variantIndex, sceneId: null, message: e.message });
+    }
     const renderer = deps.renderer ?? createDefaultStoryboardRenderer();
-    for (const [vi, variant] of script.variants.entries()) {
+    await progress("stills");
+    for (const [vi, original] of script.variants.entries()) {
       const variantIndex = (vi + 1) as 1 | 2;
+      const variant = applyAssetSubstitutions(
+        original,
+        assets.substitutions.get(variantIndex) ?? [],
+      );
       const scenes: StoryboardV2Artifact["variants"][number]["scenes"] = [];
+      // ADR-022: ảnh storyboard cùng khung với video của run.
+      const aspect = runAspectRatio(context.workflowRun.aspectRatio);
+      const frameSize = frameDimensions(aspect);
       for (const [si, scene] of variant.scenes.entries()) {
         if (await isJobCancelled(db, jobId)) {
           return { status: "skipped", reason: "cancelled" };
@@ -186,11 +286,12 @@ export async function runStoryboardJob(
         const spec = sceneStillSpec(variant, si, cast, colors);
         if (spec === null) {
           artifact.errors.push({ variantIndex, sceneId: scene.id, message: "cảnh không có shot" });
+          doneStills += 1;
           continue;
         }
         let issues: ReturnType<typeof checkStill> = [];
         try {
-          issues = checkStill(spec);
+          issues = checkStill(spec, frameSize);
         } catch (error) {
           artifact.errors.push({
             variantIndex,
@@ -202,7 +303,11 @@ export async function runStoryboardJob(
         let rendered: string | null = stillKey;
         try {
           await renderer.renderStill(
-            stillRenderProps(spec, { fontFamily, textColor: "#ffffff", speakerColors: colors }),
+            stillRenderProps(
+              spec,
+              { fontFamily, textColor: "#ffffff", speakerColors: colors },
+              aspect,
+            ),
             STILL_HOLD_FRAME,
             join(deps.dataDir, stillKey),
           );
@@ -214,12 +319,46 @@ export async function runStoryboardJob(
             message: `render ảnh: ${message(error)}`,
           });
         }
+        const extraStills: { shotId: string; stillKey: string | null }[] = [];
+        for (const extra of extraStillShots(scene.shots)) {
+          const extraSpec = sceneStillSpec(variant, si, cast, colors, extra.id);
+          if (extraSpec === null) {
+            continue;
+          }
+          const extraKey = `artifacts/${runId}/storyboard/v${variantIndex}-${scene.id}-${extra.id}.png`;
+          try {
+            await renderer.renderStill(
+              stillRenderProps(
+                extraSpec,
+                {
+                  fontFamily,
+                  textColor: "#ffffff",
+                  speakerColors: colors,
+                },
+                aspect,
+              ),
+              STILL_HOLD_FRAME,
+              join(deps.dataDir, extraKey),
+            );
+            extraStills.push({ shotId: extra.id, stillKey: extraKey });
+          } catch (error) {
+            extraStills.push({ shotId: extra.id, stillKey: null });
+            artifact.errors.push({
+              variantIndex,
+              sceneId: scene.id,
+              message: `render ảnh ${extra.id}: ${message(error)}`,
+            });
+          }
+        }
         scenes.push({
           sceneId: scene.id,
-          shotId: scene.shots[0]?.id ?? "",
+          shotId: primaryStillShot(scene.shots)?.id ?? "",
           stillKey: rendered,
           issues,
+          ...(extraStills.length === 0 ? {} : { extraStills }),
         });
+        doneStills += 1;
+        await progress("stills");
       }
       artifact.variants.push({ variantIndex, scenes });
     }

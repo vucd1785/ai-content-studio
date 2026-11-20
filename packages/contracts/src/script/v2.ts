@@ -1,3 +1,4 @@
+import { MUSIC_MOODS } from "@studio/audio-kit";
 import { z } from "zod/v4";
 import type { FormatPack } from "../formats/packs.js";
 import { scriptSourceSchema } from "./schema.js";
@@ -8,6 +9,8 @@ import { normalizedWords, normalizeWord } from "./words.js";
  * tài sản, nên đây là hàm dựng schema thay vì một hằng số.
  * ADR-014 bổ sung 2026-11-03: không có `onScreenText` của shot và `board` của cảnh; video chỉ có
  * hoạt hình và phụ đề lời thoại. Object `.strict()` nên LLM trả hai trường này thì bị từ chối.
+ * ADR-014 bổ sung 2026-11-11: shot có thể có `illustration` (bong bóng nghĩ hoặc bảng trắng) chỉ chứa
+ * hình đồ vật, không chữ.
  */
 
 export const NARRATOR = "narrator";
@@ -41,6 +44,34 @@ export const MAX_ACTORS_BY_SHOT_SIZE: Record<ShotSize, number> = {
 
 export const AMBIENCE_KINDS = ["vignette", "dust", "foreground_blur"] as const;
 
+/** Tông ánh sáng của shot (ADR-023); khớp `Mood` của motion kit. */
+export const MOOD_KINDS = ["day", "warm", "cool", "night", "danger", "wonder"] as const;
+export type MoodKind = (typeof MOOD_KINDS)[number];
+
+/** Hiệu ứng điểm nhấn của shot (ADR-025); khớp `EffectKind` của motion kit. */
+export const EFFECT_KINDS = [
+  "flash",
+  "impact",
+  "speed_lines",
+  "sparkle",
+  "idea",
+  "confetti",
+  /** ADR-032: dấu hỏi nhỏ trên đầu nhân vật đang hỏi, thay đồ vật dấu hỏi to. */
+  "question",
+] as const;
+export type EffectKindName = (typeof EFFECT_KINDS)[number];
+
+/** Kiểu minh họa khi giải thích (ADR-014 bổ sung 2026-11-11). */
+export const ILLUSTRATION_STYLES = ["scene", "bubble", "board"] as const;
+
+/**
+ * Id yêu cầu tài sản mà `illustration.items` được dùng trong chế độ `creative` (ADR-014 bổ sung 2026-11-12):
+ * đồ vật chưa có được xin bằng `assetRequests` kind `prop` rồi nêu thẳng `rN`. Worker thay bằng tài sản mới,
+ * hoặc bỏ khỏi minh họa nếu không tạo được.
+ */
+export const ILLUSTRATION_REQUEST_IDS = ["r1", "r2", "r3", "r4", "r5"] as const;
+export const isRequestRef = (id: string) => /^r[0-9]{1,2}$/.test(id);
+
 /** Kind mà yêu cầu tài sản của chế độ `creative` được xin; lớp da và thẻ kênh do Director mở task. */
 export const REQUESTABLE_ASSET_KINDS = MOTION_ASSET_KINDS.filter(
   (k) => k !== "character_skin" && k !== "brand_card",
@@ -71,8 +102,17 @@ const lineSchema = z
   })
   .strict();
 
+/** Trang phục nhân vật mặc khi câu chuyện cần (ADR-032); khớp `OutfitKind` của motion kit. */
+export const OUTFIT_KINDS = ["spacesuit", "lab_coat", "hard_hat", "business_suit"] as const;
+export type OutfitKindName = (typeof OUTFIT_KINDS)[number];
+
 const actorSchema = z
-  .object({ character: characterKeySchema, action: assetIdSchema, expression: assetIdSchema })
+  .object({
+    character: characterKeySchema,
+    action: assetIdSchema,
+    expression: assetIdSchema,
+    outfit: z.enum(OUTFIT_KINDS).optional(),
+  })
   .strict();
 
 const shotSchema = z
@@ -87,6 +127,20 @@ const shotSchema = z
     actors: z.array(actorSchema).min(1).max(3),
     props: z.array(assetIdSchema).max(3).optional(),
     ambience: z.array(z.enum(AMBIENCE_KINDS)).max(3).optional(),
+    /** Tông ánh sáng (ADR-023); không có thì vẽ màu gốc của bối cảnh. */
+    mood: z.enum(MOOD_KINDS).optional(),
+    /** Hiệu ứng điểm nhấn (ADR-025), tối đa hai mỗi shot. */
+    effects: z.array(z.enum(EFFECT_KINDS)).max(2).optional(),
+    illustration: z
+      .object({
+        style: z.enum(ILLUSTRATION_STYLES),
+        /** Nhân vật đang nghĩ hoặc đang giảng; phải có mặt trong shot. */
+        owner: characterKeySchema,
+        /** Id tài sản `prop` hiện trong bong bóng hoặc trên bảng. */
+        items: z.array(assetIdSchema).min(1).max(3),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -107,6 +161,14 @@ const assetRequestSchema = z
     description: z.string().min(1).max(300),
     sceneIds: z.array(z.string().regex(/^[a-z0-9-]{1,40}$/)).min(1),
     fallbackAssetId: assetIdSchema,
+    /**
+     * ADR-030: thứ phải trông đúng như thật (bản đồ thật, địa danh, loài vật, tác phẩm, sơ đồ cơ thể) thì lấy ảnh có
+     * giấy phép mở thay vì để AI vẽ; `searchQuery` là vài từ tiếng Anh để tìm ảnh.
+     */
+    real: z.boolean().optional(),
+    searchQuery: z.string().min(2).max(80).optional(),
+    /** ADR-032: hình là chân dung một người có thật (kèm `real`); `searchQuery` là họ tên kèm "portrait". */
+    person: z.boolean().optional(),
   })
   .strict();
 
@@ -118,6 +180,8 @@ const baseShape = {
   title: z.string().min(1).max(80),
   scenes: z.array(sceneV2Schema).min(3).max(8),
   sources: z.array(scriptSourceSchema),
+  /** Không khí nhạc nền (ADR-019); thiếu thì worker dùng `DEFAULT_MUSIC_MOOD`. */
+  music: z.enum(MUSIC_MOODS).optional(),
 };
 
 export type ScriptV2Line = z.infer<typeof lineSchema>;
@@ -244,6 +308,29 @@ export function checkScriptV2Semantics(script: ScriptV2, opts: ScriptV2SchemaOpt
       (shot.props ?? []).forEach((id, i) => {
         needAsset(id, ["prop"], [...hp, "props", i]);
       });
+      if (shot.illustration !== undefined) {
+        const ip = [...hp, "illustration"];
+        if (shot.shotSize === "close") {
+          add("Minh họa không dùng ở cỡ close (đầu nhân vật chiếm khung)", [...ip, "style"]);
+        }
+        if (!shot.actors.some((a) => a.character === shot.illustration?.owner)) {
+          add(`owner ${shot.illustration.owner} phải là nhân vật trong shot`, [...ip, "owner"]);
+        }
+        shot.illustration.items.forEach((id, i) => {
+          if (isRequestRef(id)) {
+            const req = (script.assetRequests ?? []).find((r) => r.id === id);
+            if (mode !== "creative" || req === undefined || req.kind !== "prop") {
+              add(`${id} trong minh họa phải là một yêu cầu tài sản kind prop (chế độ creative)`, [
+                ...ip,
+                "items",
+                i,
+              ]);
+            }
+            return;
+          }
+          needAsset(id, ["prop"], [...ip, "items", i]);
+        });
+      }
 
       const inShot = new Set<string>();
       shot.actors.forEach((actor, ai) => {
@@ -293,6 +380,9 @@ export function checkScriptV2Semantics(script: ScriptV2, opts: ScriptV2SchemaOpt
   return issues;
 }
 
+/** Số yêu cầu tài sản tối đa mỗi phương án (ADR-027: 8, trước là 5). */
+export const MAX_ASSET_REQUESTS = 8;
+
 /**
  * Schema Zod của script `2` cho một kênh, một gói và một chế độ.
  * Chế độ `standard` không có `assetRequests`; `creative` có 0–5 yêu cầu.
@@ -300,7 +390,7 @@ export function checkScriptV2Semantics(script: ScriptV2, opts: ScriptV2SchemaOpt
 export function scriptV2Schema(opts: ScriptV2SchemaOptions) {
   const shape =
     opts.mode === "creative"
-      ? { ...baseShape, assetRequests: z.array(assetRequestSchema).max(5) }
+      ? { ...baseShape, assetRequests: z.array(assetRequestSchema).max(MAX_ASSET_REQUESTS) }
       : baseShape;
   return z
     .object(shape)

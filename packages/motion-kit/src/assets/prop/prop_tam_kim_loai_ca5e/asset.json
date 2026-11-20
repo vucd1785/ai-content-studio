@@ -1,0 +1,19 @@
+{
+  "id": "prop_tam_kim_loai_ca5e",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Bộ tản nhiệt bằng nước vẽ phẳng: tấm kim loại áp lên con chip trên bo mạch, có hai ống nước, ống xanh dương đưa nước mát vào và ống cam đưa nước nóng ra; dòng nước chảy theo nhịp, con chip ửng đỏ phập phồng và giọt nước lấp lánh.",
+  "tags": [
+    "tản nhiệt nước",
+    "con chip",
+    "ống nước",
+    "trung tâm dữ liệu",
+    "làm mát",
+    "tấm kim loại"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "79ce2a3f-6732-4a1f-9206-4f9586dc33b6:ef6bed6c:1:r5",
+  "licenses": []
+}

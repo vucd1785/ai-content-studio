@@ -95,6 +95,17 @@ export async function updateProjectTitle(db: StudioDb, projectId: string, title:
   return row === undefined ? null : mapProjectRow(row);
 }
 
+/** Chủ đề trong brief mà run dùng (brief lúc bắt đầu run, không phải brief mới nhất); không có run thì null. */
+export async function getRunBriefTopic(db: StudioDb, runId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ topic: briefs.topic })
+    .from(workflowRuns)
+    .innerJoin(briefs, eq(briefs.id, workflowRuns.briefId))
+    .where(eq(workflowRuns.id, runId))
+    .limit(1);
+  return row?.topic ?? null;
+}
+
 export async function getLatestBrief(db: StudioDb, projectId: string) {
   const [row] = await db
     .select()

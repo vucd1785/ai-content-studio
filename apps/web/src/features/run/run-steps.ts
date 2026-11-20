@@ -53,15 +53,19 @@ export type RunStep = {
   error: StepError | null;
 };
 
+type ProgressPhase = "synthesize" | "align" | "assets" | "stills";
+
 export type StepProgress = {
   percent: number;
   done: number;
   total: number;
-  unit: "scene_step" | "frame";
-  /** Voice: cảnh đang làm và pha đang làm (bước kế tiếp sau `done`). */
-  currentScene: number | null;
+  unit: "scene_step" | "frame" | "image";
+  /** Voice: cảnh và câu đang làm, do worker ghi (không tự suy từ `done`). */
+  sceneIndex: number | null;
   sceneCount: number | null;
-  currentPhase: "synthesize" | "align" | null;
+  lineIndex: number | null;
+  lineCount: number | null;
+  phase: ProgressPhase | null;
 };
 
 export type StepError = { role: string | null; code: string; message: string | null };
@@ -69,38 +73,41 @@ export type StepError = { role: string | null; code: string; message: string | n
 type AgentProgressInput = {
   done: number;
   total: number;
-  unit: "scene_step" | "frame";
+  unit: "scene_step" | "frame" | "image";
+  sceneIndex?: number | null;
   sceneCount?: number | null;
+  lineIndex?: number | null;
+  lineCount?: number | null;
+  phase?: ProgressPhase | null;
 } | null;
 
-/** Phần trăm và bước đang làm từ số đếm đã lưu (P3-17). */
+/**
+ * Phần trăm và việc đang làm từ số đếm đã lưu (P3-17). Cảnh, câu và pha lấy đúng giá trị worker ghi:
+ * story v2 đọc từng câu nên một cảnh có nhiều bước, không suy được từ `done` (lỗi "cảnh 15/8").
+ */
 export function stepProgress(progress: AgentProgressInput): StepProgress | null {
   if (progress === null || progress.total <= 0) {
     return null;
   }
   const done = Math.min(Math.max(progress.done, 0), progress.total);
-  const percent = Math.floor((done / progress.total) * 100);
-  if (progress.unit !== "scene_step" || done >= progress.total) {
-    return {
-      percent,
-      done,
-      total: progress.total,
-      unit: progress.unit,
-      currentScene: null,
-      sceneCount: progress.sceneCount ?? null,
-      currentPhase: null,
-    };
-  }
-  // Mỗi cảnh hai bước: đọc lời (lẻ) rồi căn chữ (chẵn). Bước đang làm là bước thứ `done + 1`.
-  const next = done + 1;
+  const finished = done >= progress.total;
+  const sceneCount = progress.sceneCount ?? null;
+  const sceneIndex =
+    progress.sceneIndex == null || finished
+      ? null
+      : sceneCount === null
+        ? progress.sceneIndex
+        : Math.min(progress.sceneIndex, sceneCount);
   return {
-    percent,
+    percent: Math.floor((done / progress.total) * 100),
     done,
     total: progress.total,
     unit: progress.unit,
-    currentScene: Math.ceil(next / 2),
-    sceneCount: progress.sceneCount ?? progress.total / 2,
-    currentPhase: next % 2 === 1 ? "synthesize" : "align",
+    sceneIndex,
+    sceneCount,
+    lineIndex: finished ? null : (progress.lineIndex ?? null),
+    lineCount: finished ? null : (progress.lineCount ?? null),
+    phase: finished && progress.unit !== "image" ? null : (progress.phase ?? null),
   };
 }
 
@@ -143,7 +150,8 @@ const RESUME_STEP: Record<string, StepId> = {
 /** Role agent của từng bước máy làm (để lấy thời gian đã chạy thật). */
 const STEP_ROLES: Partial<Record<StepId, string[]>> = {
   research: ["research"],
-  script: ["script"],
+  // Storyboard (vai `visual`) chạy trong bước viết kịch bản: tạo hình mới rồi chụp ảnh từng cảnh.
+  script: ["script", "visual"],
   assets: ["visual", "voice"],
   render: ["video", "qa"],
   export: ["video"],

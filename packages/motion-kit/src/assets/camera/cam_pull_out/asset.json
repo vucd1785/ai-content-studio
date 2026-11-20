@@ -1,0 +1,12 @@
+{
+  "id": "cam_pull_out",
+  "kind": "camera",
+  "version": "0.1.0",
+  "description": "Lùi máy chậm từ 7% về khung gốc, mở ra toàn cảnh.",
+  "tags": ["lùi ra", "mở cảnh"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

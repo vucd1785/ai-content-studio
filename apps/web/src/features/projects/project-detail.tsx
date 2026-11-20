@@ -1,11 +1,14 @@
 import { lazy, Suspense, useState } from "react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { FinalReviewPanel } from "@/features/final-review/final-review-panel";
 import { RunControls } from "@/features/final-review/run-controls";
+import { RunHealthNotice } from "@/features/run/run-health";
 import { RunProgress } from "@/features/run/run-progress";
 import { ScriptReviewPanel } from "@/features/script-review/script-review-panel";
 import { useWorkflowRun } from "@/features/script-review/use-script-review";
 import { UsagePanel } from "@/features/usage/usage-panel";
 import { vi } from "@/i18n/vi";
+import { PROJECT_TABS, type ProjectTab } from "@/lib/hash-route";
 import { cn } from "@/lib/utils";
 import { BriefForm } from "./brief-form";
 import { ReferenceUpload } from "./reference-upload";
@@ -16,12 +19,8 @@ import { useProjectDetail } from "./use-projects";
 const PreviewPanel = lazy(() =>
   import("@/features/preview/preview-panel").then((module) => ({ default: module.PreviewPanel })),
 );
-const StudioWorkspace = lazy(() =>
-  import("@/studio/studio-workspace").then((module) => ({ default: module.StudioWorkspace })),
-);
-
-type Tab = "brief" | "running" | "script" | "preview" | "final";
-const TABS: Tab[] = ["brief", "running", "script", "preview", "final"];
+type Tab = ProjectTab;
+const TABS: readonly Tab[] = PROJECT_TABS;
 
 /** Màn mở sẵn theo trạng thái run (06 mục Năm màn hình). Director vẫn mở màn khác được. */
 export function defaultTab(status: string | null): Tab {
@@ -41,11 +40,22 @@ export function defaultTab(status: string | null): Tab {
  * Vùng làm việc của một dự án (P2-11, 06-3D-UI-DESIGN): tiêu đề, thanh tiến trình bảy bước, rồi màn của bước hiện tại.
  * Brief và bắt đầu lượt chạy; Đang chạy (studio 3D là khối chính); Duyệt kịch bản; Preview và version; Bản cuối.
  */
-export function ProjectDetail({ projectId }: { projectId: string }) {
+export function ProjectDetail({
+  projectId,
+  tab: routeTab,
+  onTab,
+}: {
+  projectId: string;
+  /** Tab trên URL (P7-04); null là tab theo trạng thái run. */
+  tab?: ProjectTab | null;
+  onTab?: (tab: ProjectTab) => void;
+}) {
   const detail = useProjectDetail(projectId);
   const runId = detail.data?.workflowRun?.id ?? null;
   const run = useWorkflowRun(runId);
-  const [chosenTab, setChosenTab] = useState<Tab | null>(null);
+  const [localTab, setLocalTab] = useState<Tab | null>(null);
+  const chosenTab = onTab === undefined ? localTab : (routeTab ?? null);
+  const setChosenTab = onTab ?? setLocalTab;
 
   if (detail.isPending) {
     return <p className="text-muted-foreground text-sm">{vi.app.loading}</p>;
@@ -60,7 +70,9 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header className="flex flex-wrap items-center gap-3">
-        <h1 className="flex-1 text-2xl font-semibold">{project.title}</h1>
+        <h1 className="text-2xl font-semibold">{project.title}</h1>
+        <StatusBadge status={status} />
+        <span className="flex-1" />
         {run.data?.workflowRun.llmModel ? (
           <span className="text-muted-foreground text-xs" data-testid="run-model">
             {vi.runSteps.model} {run.data.workflowRun.llmModel}
@@ -101,18 +113,22 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         className="flex flex-col gap-5"
       >
         {tab === "brief" ? (
-          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="flex flex-col gap-5">
+          <div className="@container">
+            <div className="grid items-start gap-5 @3xl:grid-cols-[minmax(0,1fr)_18rem]">
               {/* key theo project: đổi project thì nạp lại form; lưu brief không remount (giữ thông báo) */}
               <BriefForm key={project.id} projectId={project.id} brief={brief} />
-              <ReferenceUpload projectId={project.id} references={references} />
+              {/* Cột phải: bắt đầu lượt chạy và tài liệu tham khảo. `min-w-0` để nội dung dài (ô chọn model) không
+                  nới cột 18rem rồi tràn khỏi trang. */}
+              <div className="flex min-w-0 flex-col gap-5">
+                <StartRunButton
+                  projectId={project.id}
+                  hasBrief={brief !== null}
+                  latestStatus={status}
+                  durationSec={brief?.durationSec ?? null}
+                />
+                <ReferenceUpload projectId={project.id} references={references} />
+              </div>
             </div>
-            <StartRunButton
-              projectId={project.id}
-              hasBrief={brief !== null}
-              latestStatus={status}
-              durationSec={brief?.durationSec ?? null}
-            />
           </div>
         ) : null}
         {tab === "running" ? (
@@ -120,17 +136,9 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             <p className="text-muted-foreground text-sm">{vi.workspace.noRunYet}</p>
           ) : (
             <>
+              <RunHealthNotice runId={runId} />
               <RunControls runId={runId} />
-              <section
-                aria-label={vi.studio.canvas}
-                className="rounded-2xl border bg-[#0b0d12] p-4"
-              >
-                <Suspense
-                  fallback={<p className="text-muted-foreground text-sm">{vi.app.loading}</p>}
-                >
-                  <StudioWorkspace runId={runId} />
-                </Suspense>
-              </section>
+              {/* P7-04: studio 3D chuyển sang panel giám sát và chế độ Giám sát. */}
               <UsagePanel runId={runId} />
             </>
           )

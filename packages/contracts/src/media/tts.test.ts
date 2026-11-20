@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  alignmentValidationSchema,
   alignRequestSchema,
   alignResponseSchema,
-  alignmentValidationSchema,
   revalidateGateRequestSchema,
   synthesizeRequestSchema,
 } from "./tts.js";

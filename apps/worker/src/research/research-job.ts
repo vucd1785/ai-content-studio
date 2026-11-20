@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
-  type FetchLog,
   type FactRejectionReason,
+  type FetchLog,
   filterResearchFacts,
   type Research,
   type ResearchSource,
@@ -18,10 +18,15 @@ import {
   type JobContext,
   JobStateError,
   loadJobContext,
-  scriptJobKeyAfterResearch,
   type StudioDb,
+  scriptJobKeyAfterResearch,
 } from "@studio/db";
-import { advanceTransition as nextStatus, isInside, readJsonArtifact, writeJsonArtifact } from "../jobs/job-support.js";
+import {
+  isInside,
+  advanceTransition as nextStatus,
+  readJsonArtifact,
+  writeJsonArtifact,
+} from "../jobs/job-support.js";
 import { LlmError } from "../llm/errors.js";
 import { createGeminiResearchAdapter, type ResearchLlm } from "../llm/gemini-research-adapter.js";
 import {
@@ -110,6 +115,11 @@ async function gatherSources(context: JobContext, deps: ResearchJobDeps): Promis
   let fileIndex = 0;
   let urlIndex = 0;
   for (const ref of context.references) {
+    if (ref.kind === "user_file" && /\.(png|jpe?g|webp)$/.test(ref.uri)) {
+      // ADR-030: ảnh là hình dùng trong video, không phải tài liệu để nghiên cứu.
+      skippedReferences.push({ referenceId: ref.id, reason: "image_for_video" });
+      continue;
+    }
     if (ref.kind === "user_file") {
       const text = await readUploadText(deps.dataDir, ref.uri).catch(() => null);
       if (text === null) {
@@ -132,7 +142,10 @@ async function gatherSources(context: JobContext, deps: ResearchJobDeps): Promis
         continue;
       }
       const sourceId = `url-${++urlIndex}`;
-      const title = (ref.title ?? result.title ?? new URL(result.log.finalUrl).hostname).slice(0, 200);
+      const title = (ref.title ?? result.title ?? new URL(result.log.finalUrl).hostname).slice(
+        0,
+        200,
+      );
       documents.push({ sourceId, title, origin: "fetched_url", text: result.text });
       sources.push({ id: sourceId, title, origin: "fetched_url", url: result.log.finalUrl });
     }
@@ -201,7 +214,11 @@ export async function runResearchJob(
     fetchLog: gathered.fetchLog,
     userReferenceSourceIds: gathered.userReferenceSourceIds,
   };
-  const inputHash = researchInputHash({ brief: briefInput, documents: gathered.documents, sources: gathered.sources });
+  const inputHash = researchInputHash({
+    brief: briefInput,
+    documents: gathered.documents,
+    sources: gathered.sources,
+  });
 
   // Cache (P5-01): cùng nội dung brief và cùng nội dung nguồn thì dùng lại research, không gọi provider.
   // Vẫn lọc lại theo fetch log của lần này để fact `verified` chỉ đứng trên nguồn vừa fetch được.
@@ -212,7 +229,11 @@ export async function runResearchJob(
     repairCount: number;
     reusedFromArtifactId?: string;
   } | null = null;
-  const cached = await findResearchArtifactByInputHash(db, context.workflowRun.projectId, inputHash);
+  const cached = await findResearchArtifactByInputHash(
+    db,
+    context.workflowRun.projectId,
+    inputHash,
+  );
   if (cached !== null) {
     const research = await readJsonArtifact(deps.dataDir, cached.storageKey, researchSchema);
     if (research !== null) {
@@ -228,10 +249,15 @@ export async function runResearchJob(
   }
 
   if (outcome === null) {
-    const ceiling = deps.llmCallCeiling ?? llmCallCeiling(await countChangesRequested(db, context.workflowRun.id));
+    const ceiling =
+      deps.llmCallCeiling ??
+      llmCallCeiling(await countChangesRequested(db, context.workflowRun.id));
     const metered = createMeteredClient(deps.client, {
       ceiling,
-      store: dbUsageStore(db, { workflowRunId: context.workflowRun.id, agentRunId: context.agentRun.id }),
+      store: dbUsageStore(db, {
+        workflowRunId: context.workflowRun.id,
+        agentRunId: context.agentRun.id,
+      }),
     });
     const llm = (deps.createLlm ?? ((client) => createGeminiResearchAdapter({ client })))(metered);
     let extraction;
@@ -285,7 +311,13 @@ export async function runResearchJob(
   const [fetchLogArtifact, researchArtifact] = await completeJob(db, {
     jobId,
     artifacts: [
-      { type: "fetch_log", schemaVersion: "1", contentHash: fetchLogHash, storageKey: fetchLogKey, metadata },
+      {
+        type: "fetch_log",
+        schemaVersion: "1",
+        contentHash: fetchLogHash,
+        storageKey: fetchLogKey,
+        metadata,
+      },
       {
         type: "research",
         schemaVersion: "1",
@@ -297,7 +329,9 @@ export async function runResearchJob(
           rejectedFacts: outcome.rejected,
           skippedReferences: gathered.skippedReferences,
           repairCount: outcome.repairCount,
-          ...(outcome.reusedFromArtifactId === undefined ? {} : { reusedFromArtifactId: outcome.reusedFromArtifactId }),
+          ...(outcome.reusedFromArtifactId === undefined
+            ? {}
+            : { reusedFromArtifactId: outcome.reusedFromArtifactId }),
         },
       },
     ],
@@ -305,7 +339,11 @@ export async function runResearchJob(
     runTransition: nextStatus("researching", "research_ready"),
     inputHash,
     // Job kế tiếp (P3-04): script viết hai phương án từ research này.
-    nextJob: { role: "script", queue: "llm", idempotencyKey: scriptJobKeyAfterResearch(runId, jobId) },
+    nextJob: {
+      role: "script",
+      queue: "llm",
+      idempotencyKey: scriptJobKeyAfterResearch(runId, jobId),
+    },
   });
   if (fetchLogArtifact === undefined || researchArtifact === undefined) {
     throw new Error("complete_job_failed");
@@ -316,6 +354,8 @@ export async function runResearchJob(
     fetchLogArtifactId: fetchLogArtifact.id,
     usage: outcome.usage,
     rejectedFacts: outcome.rejected,
-    ...(outcome.reusedFromArtifactId === undefined ? {} : { reusedFromArtifactId: outcome.reusedFromArtifactId }),
+    ...(outcome.reusedFromArtifactId === undefined
+      ? {}
+      : { reusedFromArtifactId: outcome.reusedFromArtifactId }),
   };
 }

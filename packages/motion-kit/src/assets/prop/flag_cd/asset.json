@@ -1,0 +1,25 @@
+{
+  "id": "flag_cd",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Cộng hòa Dân chủ Congo bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Cộng hòa Dân chủ Congo.",
+  "tags": [
+    "cờ Cộng hòa Dân chủ Congo",
+    "nước Cộng hòa Dân chủ Congo",
+    "người Cộng hòa Dân chủ Congo",
+    "Cộng hòa Dân chủ Congo",
+    "Democratic Republic of the Congo",
+    "quốc kỳ Cộng hòa Dân chủ Congo"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

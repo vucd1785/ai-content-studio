@@ -1,0 +1,19 @@
+{
+  "id": "prop_cuon_sach_luat_a6d0",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Cuốn sách luật chơi bìa xanh lá phát sáng mở trên giá gỗ nhỏ, một trang chậm rãi lật qua, những đốm sáng xanh nhỏ bay lên từ các trang và quầng sáng phía sau nhịp nhàng mạnh lên, dịu xuống.",
+  "tags": [
+    "sách luật chơi",
+    "CUDA",
+    "phần mềm",
+    "sách phát sáng",
+    "lật trang",
+    "NVIDIA"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "5bd0ed4b-e18e-491f-a349-b614fb4b2e92:2:r1",
+  "licenses": []
+}

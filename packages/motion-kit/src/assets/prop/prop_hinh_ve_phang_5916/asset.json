@@ -1,0 +1,18 @@
+{
+  "id": "prop_hinh_ve_phang_5916",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Đồng hồ báo thức tròn màu đỏ cam, có hai chuông trên đỉnh; kim giờ quay êm từ số 7 sang số 9 rồi trở về, mặt đồng hồ nháy sáng theo nhịp và hai chuông rung nhẹ.",
+  "tags": [
+    "đồng hồ báo thức",
+    "giấc ngủ",
+    "thức dậy",
+    "giờ giấc",
+    "chuông reo"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": "d6822d5e-b803-46c0-8736-17fd5df13e8f:1:r2",
+  "licenses": []
+}

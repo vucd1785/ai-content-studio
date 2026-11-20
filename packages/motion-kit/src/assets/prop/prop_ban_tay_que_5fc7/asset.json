@@ -1,0 +1,18 @@
+{
+  "id": "prop_ban_tay_que_5fc7",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Một bàn tay que xòe ra, trên lòng bàn tay dựng đứng cây bút chì vàng đang chao qua chao lại; bàn tay nhích theo hướng nghiêng của bút để giữ thăng bằng, kèm vạch chuyển động và tia lấp lánh.",
+  "tags": [
+    "bàn tay que",
+    "bút chì",
+    "giữ thăng bằng",
+    "chao đảo",
+    "tên lửa hạ cánh"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "a73a195c-7bc3-4bb2-83c7-aa5d2c7e207e:1:r5",
+  "licenses": []
+}

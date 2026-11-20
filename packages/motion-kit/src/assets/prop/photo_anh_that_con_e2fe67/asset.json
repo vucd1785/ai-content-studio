@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_con_e2fe67",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật con chip GPU NVIDIA dùng cho AI, viền phát sáng xanh lá nhẹ, khẽ nhấp nháy.",
+  "tags": [
+    "NVIDIA GPU chip",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "candidate",
+  "requestKey": "51c5a86d-2348-43cb-b3f4-53b856f46f65:fba124b1:2:r1",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "tomshardware.com",
+      "url": "https://www.tomshardware.com/news/nvidia-hopper-h100-sxm5-pictured",
+      "file": "https://cdn.mos.cms.futurecdn.net/LyDiT8auxq3sJNZFZXV7V9-1280-80.png",
+      "attribution": "Ảnh: Nvidia's Hopper H100 SXM5 Pictured: Monstrous GPU Has Brutal VRM Config (https://www.tomshardware.com/news/nvidia-hopper-h100-sxm5-pictured)"
+    }
+  ]
+}

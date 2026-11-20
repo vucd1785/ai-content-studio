@@ -1,0 +1,12 @@
+{
+  "id": "prop_server",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Tủ máy chủ chạy bình thường: bốn ngăn, đèn xanh nhấp nháy.",
+  "tags": ["máy chủ", "server", "mạng", "dữ liệu"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

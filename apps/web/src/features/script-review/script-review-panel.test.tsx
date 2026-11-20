@@ -222,6 +222,9 @@ describe("so sánh kịch bản (P2-07)", () => {
     renderPanel();
     await screen.findByRole("button", { name: vi.scriptReview.approveVariant1 });
     expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      // ADR-020: nút sửa câu của hai phương án không gửi decision.
+      vi.scriptReview.edit.start,
+      vi.scriptReview.edit.start,
       vi.scriptReview.reject,
       vi.scriptReview.requestChanges,
       vi.scriptReview.approveVariant1,
@@ -308,5 +311,38 @@ describe("so sánh kịch bản (P2-07)", () => {
     expect(
       api.fetchMock.mock.calls.some(([url]) => String(url).startsWith("/api/artifacts/")),
     ).toBe(false);
+  });
+});
+
+describe("sửa câu tại Cổng 1 (ADR-020)", () => {
+  it("chỉ gửi câu đã đổi của đúng phương án, không gửi decision", async () => {
+    const EDIT_URL = `POST /api/workflow-runs/${RUN_ID}/script-edits`;
+    const sent: unknown[] = [];
+    const fresh = statefulServer("waiting_script_approval", {
+      [EDIT_URL]: (init) => {
+        sent.push(JSON.parse(String(init?.body)));
+        return jsonResponse(201, {
+          artifactId: "00000000-0000-4000-8000-0000000000f1",
+          version: 3,
+          retargetedShots: [],
+        });
+      },
+    });
+    renderPanel();
+    const user = userEvent.setup();
+    const [editFirst] = await screen.findAllByRole("button", { name: vi.scriptReview.edit.start });
+    await user.click(editFirst as HTMLElement);
+    const boxes = screen.getAllByRole("textbox").filter((el) => el.id !== "script-review-note");
+    expect(boxes).toHaveLength(2);
+    await user.clear(boxes[1] as HTMLElement);
+    await user.type(boxes[1] as HTMLElement, "Muối đến từ đá.");
+    await user.click(screen.getByRole("button", { name: vi.scriptReview.edit.save }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toEqual({
+      artifactId: ARTIFACT_ID,
+      variantIndex: 1,
+      edits: [{ lineId: "l2", text: "Muối đến từ đá." }],
+    });
+    expect(fresh.callsTo(APPROVAL_URL)).toHaveLength(0);
   });
 });

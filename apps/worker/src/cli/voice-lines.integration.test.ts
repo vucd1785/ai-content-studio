@@ -31,7 +31,7 @@ import { alignmentJsonPath, PipelineError, resolveRepoRoot, ttsWavPath } from ".
  */
 const SAMPLE_RATE = 16_000;
 const WORD_MS = 300;
-const GATE_POLICY_VERSION = "2.1.0-repair-zero-length";
+const GATE_POLICY_VERSION = "2.2.0-extend-last-word";
 
 function pcmWav(samples: Int16Array): Buffer {
   const data = Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength);

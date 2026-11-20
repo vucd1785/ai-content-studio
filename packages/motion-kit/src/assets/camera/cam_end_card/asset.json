@@ -1,0 +1,12 @@
+{
+  "id": "cam_end_card",
+  "kind": "camera",
+  "version": "0.1.0",
+  "description": "Khung kết mời theo dõi: máy lùi nhẹ và nâng lên, nhân vật ở phần dưới khung, chừa trời phía trên cho thẻ kết. Code dùng cho cảnh kết.",
+  "tags": ["kết video", "thẻ kết", "mời theo dõi"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

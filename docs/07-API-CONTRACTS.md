@@ -103,7 +103,67 @@ Task P6-07 (đọc), P6-11 (giao diện, ghi). Nguồn: [ADR-013](decisions/ADR-
 
 - `voiceId` phải có trong `GET /api/tts-voices` lúc ghi, sai là `validation_error`; `voiceId` của nhân vật `speaks = false` là `validation_error`. Seed không có giọng; chỉ Director gán.
 - Duyệt tài sản và bỏ yêu cầu không ghi `approvals`, không đổi `workflow_runs.status`.
+- **Đã có (P7-03, P7-09, [ADR-017](decisions/ADR-017-auto-asset-generation.md)):**
+  - `GET /api/motion-assets?kind=&status=` trả `{ assets: [{ assetId, kind, version, tags, createdBy, status, hasPreview }] }`.
+  - `GET /api/workflow-runs/:runId/asset-requests` trả `{ requests: [{ id, scriptArtifactId, variantIndex, requestKey, kind, description, sceneIds, fallbackAssetId, status, asset }] }`.
+  - `GET /api/motion-assets/:assetId/preview` trả `image/png` từ `DATA_DIR/motion-assets/<id>.png`.
+- **Không có `POST /api/motion-assets/:assetId/approve`.** Theo ADR-017, `POST /api/workflow-runs/:runId/approvals` cổng `script` với `decision: approved` đổi tài sản `candidate` của phương án được duyệt thành `approved` trong cùng giao dịch. Event `approval.recorded` có thêm `approvedAssetIds`.
+- `POST /api/projects/:projectId/workflow-runs` nhận thêm `creativeMode` (`standard` hoặc `creative`); không gửi là `creative` (ADR-017 mục 1).
+- `POST /api/projects/:projectId/workflow-runs` nhận thêm `aspectRatio` (`9:16` hoặc `16:9`); không gửi là `9:16`. `workflowRun` trả `aspectRatio`, run cũ là `9:16` ([ADR-022](decisions/ADR-022-asset-quality-and-wide-frame.md) mục 3).
 - Ảnh storyboard và ảnh xem trước tài sản đi qua `GET /api/artifacts/:artifactId/media` mở rộng: artifact `storyboard` nhận query `still=<stillKey>` và chỉ phục vụ `.png` (`image/png`) nằm trong danh sách `stillKey` của artifact đó; ảnh tài sản qua `GET /api/motion-assets/:assetId/preview`. Cùng luật chặn thoát volume như hiện tại.
+
+## Bộ đăng bài (ADR-018)
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/api/brand-profile/contact` | Liên hệ bản quyền của kênh mặc định: `{ brandProfileId, displayName, copyrightContact }` |
+| `PUT` | `/api/brand-profile/contact` | Body `{ copyrightContact, displayName? }`: liên hệ ≤ 300 ký tự (chuỗi rỗng là xóa); tên kênh 1–60 ký tự, một dòng, thiếu là giữ tên cũ (ADR-021) |
+| `POST` | `/api/workflow-runs/:runId/publish-kit` | Tạo lại bộ đăng bài. `202 { status: "queued" }`; `409 conflict` khi run chưa `exported` hoặc đang có job `publish` |
+| `GET` | `/api/youtube/connection` | ADR-031: trạng thái kết nối YouTube của kênh mặc định (`configured`, `connected`, tên và avatar kênh, `lastError`). Không trả token |
+| `POST` | `/api/youtube/oauth/start` | Trả `{ authUrl }` đăng nhập Google (PKCE, `state` một lần, 10 phút). `409` khi `.env` chưa cấu hình |
+| `GET` | `/api/youtube/oauth/callback` | Google chuyển về; không cần cookie, kiểm `state`. Trả trang HTML ngắn (CSP `default-src 'none'`) |
+| `DELETE` | `/api/youtube/connection` | Ngắt kết nối: xóa token đã mã hóa, thu hồi ở Google |
+| `PUT` | `/api/youtube/config` | Body `{ clientId, clientSecret }` (secret rỗng là giữ secret cũ). Ghi vào `.env`, tự tạo `STUDIO_TOKEN_KEY` nếu chưa có, dùng ngay. Trả trạng thái kết nối (không có secret). `400` khi sai định dạng hoặc chưa từng có secret |
+| `GET` | `/api/workflow-runs/:runId/youtube-uploads` | Các lần đăng của run: trạng thái job, link, `privacyStatus` đọc lại từ YouTube, ảnh bìa; `busy`, `lastError` |
+| `POST` | `/api/workflow-runs/:runId/youtube-uploads` | Body `youtubeUploadRequestSchema` (hộp xác nhận). `202 { status, uploadId }`. `409` khi run chưa `exported`, chưa kết nối, đang đăng, mô tả còn dòng nhắc liên hệ, hoặc bản xuất đã đăng mà thiếu `confirmRepeat: true` |
+| `POST` | `/api/youtube-uploads/:uploadId/thumbnail` | Đặt lại ảnh bìa cho video đã đăng. `202`; `409` khi video chưa đăng hoặc đang có job đăng |
+| `GET` | `/api/videos` | Chỉ đọc (P8-08): bản xuất mới nhất của mỗi run đã xuất ở mọi dự án, mới nhất trước: chủ đề, dự án, khung, thời lượng, ảnh bìa, lần đăng YouTube gần nhất và link (Short hoặc thường) |
+
+Nội dung bộ đăng bài đọc qua `GET /api/artifacts/:id` (artifact `publish_kit`, schema `publishKitSchema`).
+
+## Sửa câu tại Cổng 1 (ADR-020)
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `POST` | `/api/workflow-runs/:runId/script-edits` | Body `{ artifactId, variantIndex: 1 \| 2, edits: [{ lineId, text }] }` (1–60 câu, mỗi câu 1–300 ký tự). |
+
+- **201:** `{ artifactId, version, retargetedShots: [{ shotId, cutOnWord }] }`, là artifact `script` version mới.
+- **409:**
+  - `invalid_transition`: run không ở `waiting_script_approval`;
+  - `conflict`: `artifactId` không còn là script mới nhất.
+- **400:** câu không có trong phương án.
+- **404:** artifact không thuộc run.
+- Route không gọi LLM, không ghi approval, không đổi trạng thái run.
+
+## Cổng 2, ảnh bìa, kho (ADR-021)
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `POST` | `/api/workflow-runs/:runId/redo` | Làm lại một phần. Body là một trong: `{ kind: "revoice", sceneId }`, `{ kind: "background", sceneId, backgroundId }`, `{ kind: "regenerate_asset", assetId, note }` (ghi chú 1–500 ký tự), `{ kind: "rerender" }`. |
+| `GET` | `/api/artifacts/:artifactId/thumbnail` | Ảnh bìa `image/jpeg` của artifact `export`. 404 khi chưa có. |
+| `GET` | `/api/motion-assets/usage` | `{ videos: [{ projectId, projectName, workflowRunId, exported }], usage: { [assetId]: number[] } }`. Số trong `usage` là chỉ số trong `videos`. |
+
+**`POST /redo`:**
+
+- **202:** `{ redoId, status }`. `status` là `producing_assets` (đọc lại) hoặc `preview_rendering`.
+- **409 `invalid_transition`:** run không ở `waiting_final_approval`.
+- **400:**
+  - cảnh không có trong video;
+  - bối cảnh không có trong kho;
+  - hình cần tạo lại không phải đồ vật hoặc bối cảnh đang có trong video.
+- Route không gọi LLM, không ghi approval.
+
+**`POST /api/workflow-runs/:runId/approvals`:** cổng `final` với `approved` trả `409 conflict`, `details.reason = "channel_name_required"`, khi kênh của run chưa đặt tên (tên rỗng hoặc "Kênh mặc định").
 
 ## SSE
 

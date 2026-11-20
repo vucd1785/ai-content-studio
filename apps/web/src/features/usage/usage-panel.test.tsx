@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi as vitest } from "vitest";
 import { vi } from "@/i18n/vi";
 import { apiError, installFakeApi, jsonResponse, NOW_ISO } from "@/test/fake-api";
 import { UsagePanel } from "./usage-panel";
-import { sumUsage } from "./usage-totals";
+import { formatUsd, sumUsage } from "./usage-totals";
 
 /** Source của màn usage (trừ test), đọc qua Vite `?raw` để quét tĩnh. */
 const RAW_SOURCES = import.meta.glob<string>(["./*.ts", "./*.tsx", "!./*.test.tsx"], {
@@ -76,7 +76,8 @@ describe("màn usage (P5-02)", () => {
     expect(stat(vi.usage.inputTokens)).toBe(new Intl.NumberFormat("vi-VN").format(2000));
     expect(stat(vi.usage.outputTokens)).toBe("450");
     expect(stat(vi.usage.thinkingTokens)).toBe("50");
-    expect(stat(vi.usage.estimatedCost)).toBe("0.000155");
+    // ADR-020: chi phí dưới một xu ghi gọn thay cho "0.000155".
+    expect(stat(vi.usage.estimatedCost)).toBe("< 0,01 USD");
     expect(screen.getAllByRole("row")).toHaveLength(3);
     expect(screen.getAllByText("model-da-luu")).toHaveLength(2);
   });
@@ -96,8 +97,15 @@ describe("màn usage (P5-02)", () => {
     expect(totals.inputTokens).toBe(1_000_005);
   });
 
+  it("ghi chi phí dễ đọc: 0, dưới một xu, số thường (ADR-020)", () => {
+    expect(formatUsd("0.000000")).toBe("0 USD");
+    expect(formatUsd("0.004000")).toBe("< 0,01 USD");
+    expect(formatUsd("1.234567")).toBe("1,23 USD");
+  });
+
   it("không hard-code đơn giá trong component", () => {
     expect(Object.keys(RAW_SOURCES).sort()).toEqual([
+      "./usage-page.tsx",
       "./usage-panel.tsx",
       "./usage-totals.ts",
       "./use-usage.ts",

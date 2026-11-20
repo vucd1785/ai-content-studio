@@ -8,7 +8,8 @@
     "./gemini": "./src/gemini.ts",
     "./claude-code": "./src/claude-code.ts",
     "./session-env": "./src/session-env.ts",
-    "./data-dir": "./src/data-dir.ts"
+    "./data-dir": "./src/data-dir.ts",
+    "./youtube": "./src/youtube.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

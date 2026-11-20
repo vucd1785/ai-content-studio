@@ -1,0 +1,19 @@
+{
+  "id": "prop_ba_vong_tron_8571",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Bảng phấn xanh trên giá gỗ: ba vòng tròn phấn đỏ, xanh lá và xanh dương lần lượt lớn dần rồi giao nhau tại một điểm. Điểm giao lóe sáng, bật ra một ghim định vị nhỏ khẽ nhún nhảy, sau đó cả hình mờ đi và lặp lại.",
+  "tags": [
+    "định vị",
+    "ghim bản đồ",
+    "vòng tròn giao nhau",
+    "bảng phấn",
+    "GPS",
+    "tam giác đạc"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "74229f27-057f-4ddd-a62b-c5c8faa83225:1:r5",
+  "licenses": []
+}

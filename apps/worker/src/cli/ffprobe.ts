@@ -127,3 +127,27 @@ export function probeMaxVolumeDb(path: string): number | null {
     return null;
   }
 }
+
+/** Một khung JPEG chất lượng cao của video ở `atMs` (ảnh bìa, ADR-021). Lỗi ffmpeg thì ném lỗi. */
+export function extractJpegFrame(videoPath: string, atMs: number, outPath: string): void {
+  const result = spawnSync(
+    "ffmpeg",
+    [
+      "-hide_banner",
+      "-y",
+      "-ss",
+      (Math.max(0, atMs) / 1000).toFixed(3),
+      "-i",
+      videoPath,
+      "-frames:v",
+      "1",
+      "-q:v",
+      "2",
+      outPath,
+    ],
+    { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 },
+  );
+  if (result.status !== 0) {
+    throw new Error(`ffmpeg thumbnail failed: ${(result.stderr ?? "").slice(-300)}`);
+  }
+}

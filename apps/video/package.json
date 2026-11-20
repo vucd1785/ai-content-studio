@@ -8,6 +8,7 @@
     "./render-props/common": "./src/render-props/common.ts",
     "./player": "./src/player.ts",
     "./stick-story/props": "./src/stick-story/stick-story-props.ts",
+    "./stick-story/fixture": "./src/stick-story/stick-story-fixture.ts",
     "./stick-story/render": "./src/stick-story/cached-render.ts"
   },
   "scripts": {
@@ -22,6 +23,7 @@
     "@remotion/captions": "4.0.539",
     "@remotion/cli": "4.0.539",
     "@remotion/renderer": "4.0.539",
+    "@studio/audio-kit": "workspace:*",
     "@studio/contracts": "workspace:*",
     "@studio/motion-kit": "workspace:*",
     "react": "^19.0.0",

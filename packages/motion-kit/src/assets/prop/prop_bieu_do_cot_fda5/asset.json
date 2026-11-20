@@ -1,0 +1,18 @@
+{
+  "id": "prop_bieu_do_cot_fda5",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Biểu đồ cột vẽ phẳng có ba cột xanh dương và xanh lá cao dần, cột cuối vọt cao nhất. Các cột khẽ nhún lên xuống theo nhịp lệch nhau, mũi tên đi lên nhấp nhô và ngôi sao lấp lánh nhịp nhàng trên đỉnh cột cuối.",
+  "tags": [
+    "biểu đồ cột",
+    "tăng trưởng",
+    "giá trị công ty",
+    "đồ thị",
+    "kinh tế"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "41929e16-b2c5-41d3-b805-7aa0c8f05fd0:83e850b8:2:r3",
+  "licenses": []
+}

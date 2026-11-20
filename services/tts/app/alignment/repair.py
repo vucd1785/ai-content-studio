@@ -7,6 +7,9 @@ Từ đó được cho một khoảng ngắn để phụ đề hiển thị đư
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from app.alignment.extend_last_word import extend_last_word
 from app.alignment.schema import AlignmentValidation, AlignmentWord
 from app.alignment.validate import validate_alignment
 
@@ -64,11 +67,22 @@ def validate_with_repair(
     words: list[AlignmentWord],
     expected_tokens: list[str],
     duration_ms: int,
+    wav_path: Path | None = None,
 ) -> tuple[list[AlignmentWord], AlignmentValidation]:
-    """Sửa từ độ dài 0 rồi validate; ghi `repairedWordCount` và một warning cho mỗi từ được sửa."""
+    """Sửa từ độ dài 0, kéo dài từ cuối theo PCM nếu có `wav_path`, rồi validate.
+
+    Ghi `repairedWordCount`, `lastWordExtendedMs` và một warning cho mỗi lần sửa.
+    """
     fixed, repaired = repair_zero_length_words(words, duration_ms)
+    fixed, extended_ms = extend_last_word(fixed, duration_ms, wav_path)
     validation = validate_alignment(fixed, expected_tokens, duration_ms)
     validation.repairedWordCount = len(repaired)
+    validation.lastWordExtendedMs = extended_ms
+    if extended_ms > 0:
+        validation.warnings.append(
+            f"extended last word {fixed[-1].text!r} by {extended_ms} ms to "
+            f"{fixed[-1].endMs} ms (PCM energy)"
+        )
     validation.warnings.extend(
         f"repaired zero-length interval at index {i}: {fixed[i].text!r} -> "
         f"{fixed[i].startMs}-{fixed[i].endMs} ms (estimated)"

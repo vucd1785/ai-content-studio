@@ -1,0 +1,18 @@
+{
+  "id": "prop_dien_thoai_thong_6549",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chiếc điện thoại thông minh dựng trên đế gỗ và cắm dây sạc. Trên màn hình, biểu tượng pin lần lượt nảy lên từng vạch xanh cho tới khi đầy, kèm tia sét nhấp nháy. Khi pin đầy, điện thoại tỏa sáng và lấp lánh rồi bắt đầu lại vòng sạc.",
+  "tags": [
+    "điện thoại",
+    "sạc pin",
+    "pin đầy",
+    "điện năng",
+    "dây sạc"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "9ea0d0e7-7391-4db0-b0ff-72ac4a6fa0aa:08644792:1:r2",
+  "licenses": []
+}

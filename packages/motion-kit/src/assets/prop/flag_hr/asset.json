@@ -1,0 +1,24 @@
+{
+  "id": "flag_hr",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ Croatia bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước Croatia.",
+  "tags": [
+    "cờ Croatia",
+    "nước Croatia",
+    "người Croatia",
+    "Croatia",
+    "quốc kỳ Croatia"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

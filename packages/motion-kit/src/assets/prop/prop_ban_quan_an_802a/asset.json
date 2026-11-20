@@ -1,0 +1,19 @@
+{
+  "id": "prop_ban_quan_an_802a",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Bàn quán ăn gỗ vẽ phẳng có ba người que ngồi trò chuyện: hai người hai bên lần lượt khoa tay rồi chậm lại, đầu khẽ gật, cốc cà phê bốc khói uốn lượn, phía trên có bóng đèn ý tưởng nhỏ chớp sáng theo nhịp.",
+  "tags": [
+    "bàn quán ăn",
+    "người que trò chuyện",
+    "cà phê bốc khói",
+    "bóng đèn ý tưởng",
+    "khởi nghiệp",
+    "bàn bạc"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "726356ab-b945-48b0-8e3b-98fd16b1ee9b:1:r3",
+  "licenses": []
+}

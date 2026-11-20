@@ -1,0 +1,24 @@
+{
+  "id": "flag_io",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Lá cờ British Indian Ocean Territory bay trên cột cờ. Hình cờ lấy từ nguồn có sẵn (flag-icons), đúng chi tiết; dùng khi nhắc tới nước British Indian Ocean Territory.",
+  "tags": [
+    "cờ British Indian Ocean Territory",
+    "nước British Indian Ocean Territory",
+    "người British Indian Ocean Territory",
+    "British Indian Ocean Territory",
+    "quốc kỳ British Indian Ocean Territory"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": [
+    {
+      "name": "MIT",
+      "source": "flag-icons 7.5.0 (github.com/lipis/flag-icons)",
+      "file": "LICENSE.flag-icons"
+    }
+  ]
+}

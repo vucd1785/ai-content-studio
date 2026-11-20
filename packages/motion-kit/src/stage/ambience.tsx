@@ -49,7 +49,7 @@ const ForegroundBlur: FC = () => (
   </g>
 );
 
-const Vignette: FC = () => (
+const Vignette: FC<{ width: number; height: number }> = ({ width, height }) => (
   <g>
     <defs>
       <radialGradient id="mk-amb-veil" cx="0.5" cy="0.55" r="0.75">
@@ -57,7 +57,7 @@ const Vignette: FC = () => (
         <stop offset="1" stopColor="#120c08" stopOpacity="0.62" />
       </radialGradient>
     </defs>
-    <rect x={0} y={0} width={1080} height={1920} fill="url(#mk-amb-veil)" />
+    <rect x={0} y={0} width={width} height={height} fill="url(#mk-amb-veil)" />
   </g>
 );
 
@@ -65,9 +65,13 @@ export const Ambience: FC<{
   kinds: readonly AmbienceKind[];
   layer: "back" | "front" | "screen";
   frame: number;
-}> = ({ kinds, layer, frame }) => {
+  /** Khung hình của lớp `screen`; mặc định khung dọc. */
+  frameSize?: { width: number; height: number };
+}> = ({ kinds, layer, frame, frameSize = { width: 1080, height: 1920 } }) => {
   if (layer === "screen") {
-    return kinds.includes("vignette") ? <Vignette /> : null;
+    return kinds.includes("vignette") ? (
+      <Vignette width={frameSize.width} height={frameSize.height} />
+    ) : null;
   }
   if (layer === "back") {
     return kinds.includes("dust") ? <Dust frame={frame} /> : null;

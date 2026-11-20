@@ -1,8 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
-import { applyWorkflowCommand } from "@studio/contracts";
-import type { JobContext } from "@studio/db";
+import {
+  applyWorkflowCommand,
+  type RedoRequestFile,
+  redoRequestFileSchema,
+  redoStorageKey,
+} from "@studio/contracts";
+import { type JobContext, redoIdFromJobKey } from "@studio/db";
 import type { z } from "zod/v4";
 
 /** Phần dùng chung của job agent (research P3-03, script P3-04): file artifact JSON và cạnh workflow. */
@@ -29,7 +34,11 @@ export async function writeJsonArtifact(dataDir: string, key: string, value: unk
 }
 
 /** Đọc artifact JSON đã lưu và validate. Thiếu file, path thoát `DATA_DIR` hoặc sai schema thì `null`. */
-export async function readJsonArtifact<T>(dataDir: string, storageKey: string, schema: z.ZodType<T>) {
+export async function readJsonArtifact<T>(
+  dataDir: string,
+  storageKey: string,
+  schema: z.ZodType<T>,
+) {
   try {
     const target = resolve(dataDir, storageKey);
     if (!isInside(await realpath(dataDir), await realpath(target))) {
@@ -49,4 +58,25 @@ export function advanceTransition(from: RunStatus, to: RunStatus) {
     throw new Error(`invalid_transition ${from} -> ${to}`);
   }
   return { from, to: result.to };
+}
+
+/**
+ * Yêu cầu làm lại của job (ADR-021) theo `redoId` trong key. `null`: job thường; `"unreadable"`: key có `redoId`
+ * nhưng file thiếu hoặc sai schema (job phải trượt, không đoán).
+ */
+export async function readRedoRequest(
+  dataDir: string,
+  workflowRunId: string,
+  idempotencyKey: string,
+): Promise<RedoRequestFile | null | "unreadable"> {
+  const redoId = redoIdFromJobKey(idempotencyKey);
+  if (redoId === null) {
+    return null;
+  }
+  const file = await readJsonArtifact(
+    dataDir,
+    redoStorageKey(workflowRunId, redoId),
+    redoRequestFileSchema,
+  );
+  return file === null || file.redoId !== redoId ? "unreadable" : file;
 }

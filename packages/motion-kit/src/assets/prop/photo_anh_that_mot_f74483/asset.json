@@ -1,0 +1,23 @@
+{
+  "id": "photo_anh_that_mot_f74483",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Ảnh thật một chip GPU NVIDIA (không thấy logo rõ), mặt chip phát sáng xanh lá nhẹ.",
+  "tags": [
+    "NVIDIA GPU chip",
+    "ảnh thật"
+  ],
+  "brandProfile": null,
+  "createdBy": "director",
+  "status": "approved",
+  "requestKey": "7c50ffb2-d09c-4285-a8dd-bd6a7f0f6080:70821d45:1:r2",
+  "licenses": [
+    {
+      "name": "Chưa rõ giấy phép, bản quyền thuộc chủ sở hữu",
+      "source": "tomshardware.com",
+      "url": "https://www.tomshardware.com/news/nvidia-hopper-h100-sxm5-pictured",
+      "file": "https://cdn.mos.cms.futurecdn.net/LyDiT8auxq3sJNZFZXV7V9-1280-80.png",
+      "attribution": "Ảnh: Nvidia's Hopper H100 SXM5 Pictured: Monstrous GPU Has Brutal VRM Config (https://www.tomshardware.com/news/nvidia-hopper-h100-sxm5-pictured)"
+    }
+  ]
+}

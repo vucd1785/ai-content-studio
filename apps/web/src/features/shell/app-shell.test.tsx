@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi as vitest } from "vitest";
 import { vi } from "@/i18n/vi";
 import { installFakeApi } from "@/test/fake-api";
@@ -51,12 +51,37 @@ describe("AppShell", () => {
     }
   });
 
-  it("trang dự án là vùng chính; cột dự án chỉ có khi mở một dự án (P2-11)", async () => {
+  it("ba vùng: điều hướng, vùng chính là trang tổng quan, panel giám sát (P7-04)", async () => {
     renderShell();
     expect(screen.getByRole("main", { name: vi.shell.regionWorkspace })).toBeTruthy();
     expect(await screen.findByRole("heading", { name: vi.home.heading })).toBeTruthy();
-    expect(screen.queryByRole("complementary", { name: vi.shell.regionProjects })).toBeNull();
+    expect(screen.getByRole("complementary", { name: vi.shell.regionProjects })).toBeTruthy();
+    expect(screen.getByRole("complementary", { name: vi.shell.regionMonitor })).toBeTruthy();
     expect(screen.getByTestId("worker-status").textContent).toBe(vi.worker.stopped);
+    expect(
+      screen.getByRole("button", { name: vi.shell.navOverview }).getAttribute("aria-current"),
+    ).toBe("page");
+  });
+
+  it("chế độ Tập trung ẩn panel giám sát; theme Tối đặt lớp dark và được nhớ (P7-04)", async () => {
+    renderShell();
+    await screen.findByRole("heading", { name: vi.home.heading });
+    fireEvent.click(screen.getByRole("button", { name: vi.shell.modes.focus }));
+    expect(screen.queryByRole("complementary", { name: vi.shell.regionMonitor })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: vi.shell.themes.dark }));
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(window.localStorage.getItem("studio.ui-prefs")).toContain('"theme":"dark"');
+    fireEvent.click(screen.getByRole("button", { name: vi.shell.themes.light }));
+    fireEvent.click(screen.getByRole("button", { name: vi.shell.modes.work }));
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
+
+  it("điều hướng ghi vào hash: Kho hình động mở màn riêng (P7-04)", async () => {
+    renderShell();
+    await screen.findByRole("heading", { name: vi.home.heading });
+    fireEvent.click(screen.getByRole("button", { name: vi.shell.navLibrary }));
+    expect(window.location.hash).toBe("#/library");
+    expect(await screen.findByRole("heading", { name: vi.shell.navLibrary })).toBeTruthy();
   });
 
   it("từ điển vi không chứa từ điều khiển English (trừ tên sản phẩm và thuật ngữ Brief)", () => {

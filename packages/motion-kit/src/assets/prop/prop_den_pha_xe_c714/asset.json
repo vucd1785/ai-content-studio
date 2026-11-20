@@ -1,0 +1,19 @@
+{
+  "id": "prop_den_pha_xe_c714",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Đèn pha xe vẽ phẳng, gắn trên một cột ngắn, phát ánh sáng vàng tỏa thành nhiều tia dài như pháo hoa; các tia dài ngắn và chớp nháy nhè nhẹ, quầng sáng phập phồng theo nhịp.",
+  "tags": [
+    "đèn pha",
+    "đèn xe ban đêm",
+    "tia sáng",
+    "chói mắt",
+    "loạn thị",
+    "ánh sáng tỏa"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "eb4896b4-3171-462b-8403-5d93a811567e:1:r3",
+  "licenses": []
+}

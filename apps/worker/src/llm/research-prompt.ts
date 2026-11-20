@@ -30,6 +30,10 @@ export function researchSystemInstruction(): string {
     'Use claimStatus "verified" only when the cited document states the fact.',
     'Use "user_provided" for facts the Director wrote in the brief notes or their own files,',
     'and "assumption" for anything else. Write summary and statements in Vietnamese.',
+    // ADR-020: số liệu nên đối chiếu nhiều nguồn trước khi lên video.
+    "For numbers and records, cite every document that states them. When documents disagree, keep the more",
+    "conservative figure and say in the summary which documents disagree. When a number rests on only one",
+    "document, say so in the summary so the Director can check it.",
   ].join("\n");
 }
 
@@ -38,7 +42,10 @@ function encodeUntrusted(value: unknown): string {
   return JSON.stringify(value, null, 2).replace(/</g, "\\u003c");
 }
 
-export function buildResearchPrompt(input: { brief: BriefInput; documents: ResearchDocument[] }): string {
+export function buildResearchPrompt(input: {
+  brief: BriefInput;
+  documents: ResearchDocument[];
+}): string {
   const { brief } = input;
   return [
     "Brief:",

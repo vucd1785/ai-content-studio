@@ -1,0 +1,18 @@
+{
+  "id": "prop_luong_gio_manh_0e4f",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Luồng gió mạnh vẽ phẳng gồm các vệt cong trắng xanh, đầu cuộn xoáy, liên tục trôi từ trái sang phải. Mỗi vệt hiện dần rồi mờ đi theo nhịp lặp đều; kèm theo là chiếc lá nhỏ bay chao và các đốm lấp lánh bị gió cuốn theo.",
+  "tags": [
+    "gió mạnh",
+    "luồng gió",
+    "gió xoáy",
+    "thời tiết",
+    "không khí"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "4f098ce0-7e52-4d97-bcce-0f13fc1d3773:1:r4",
+  "licenses": []
+}

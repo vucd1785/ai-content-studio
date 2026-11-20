@@ -2,33 +2,104 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Font giao diện: Be Vietnam Pro (SIL OFL 1.1), dùng chung file với phụ đề video (P6-21, P7-04).
+ * File nằm trong repo nên không cần mạng.
+ */
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../video/src/fonts/BeVietnamPro-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 500;
+  font-display: swap;
+  src: url("../../video/src/fonts/BeVietnamPro-Medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../video/src/fonts/BeVietnamPro-SemiBold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../video/src/fonts/BeVietnamPro-Bold.ttf") format("truetype");
+}
+
+/*
+ * Token thiết kế theo docs/design/ui-kit/07_DESIGN_TOKENS (P7-04, Director chọn sáng ấm mặc định 2026-11-10).
+ * Màu chữ/nền đạt WCAG AA; trạng thái luôn kèm chữ hoặc icon, không chỉ màu.
+ */
 :root {
-  /* Token thiết kế (06-3D-UI-DESIGN mục Token), dùng chung cho 2D và studio 3D. */
-  --radius: 0.625rem;
-  --background: #0f1115;
-  --foreground: #e8e9ec;
-  --card: #171a21;
-  --card-foreground: #e8e9ec;
-  --primary: #5b78ff;
-  --primary-foreground: #0b0d12;
-  --secondary: #22262f;
-  --secondary-foreground: #e8e9ec;
-  --muted: #22262f;
-  --muted-foreground: #9aa0aa;
-  --destructive: #e5534b;
-  --border: #262a33;
-  --input: #2c313b;
-  --ring: #5b78ff;
-  --success: #3fb27f;
-  --warning: #e7a33e;
-  --surface-raised: #13161c;
+  --radius: 0.75rem;
+  --background: #f4efe6;
+  --foreground: #1f2a44;
+  --card: #fffaf3;
+  --card-foreground: #1f2a44;
+  --surface-raised: #fffaf3;
+  --primary: #f26b3a;
+  --primary-foreground: #23130d;
+  --secondary: #f1e7db;
+  --secondary-foreground: #1f2a44;
+  --muted: #f1e7db;
+  --muted-foreground: #48536a;
+  --border: #ddd1bf;
+  --input: #a9a7a5;
+  --ring: #0d5977;
+  --destructive: #892629;
+  --destructive-bg: #fce6e4;
+  --success: #205b39;
+  --success-bg: #e0f3e5;
+  --warning: #714a04;
+  --warning-bg: #fff0c9;
+  --info: #16536c;
+  --info-bg: #dbf4fc;
+  --speaker-ti: #b4441c;
+  --speaker-bit: #0f5f78;
+  --speaker-dau: #1d6f63;
   --font-sans: "Be Vietnam Pro", system-ui, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f2f5fb;
+  --card: #1c2940;
+  --card-foreground: #f2f5fb;
+  --surface-raised: #152036;
+  --primary: #ff9569;
+  --primary-foreground: #29160e;
+  --secondary: #27364f;
+  --secondary-foreground: #f2f5fb;
+  --muted: #27364f;
+  --muted-foreground: #c1c9d6;
+  --border: #33435c;
+  --input: #55647b;
+  --ring: #8fe9ff;
+  --destructive: #ffbec1;
+  --destructive-bg: #542c36;
+  --success: #9eedb7;
+  --success-bg: #204235;
+  --warning: #ffe1a0;
+  --warning-bg: #493c1d;
+  --info: #a6ebff;
+  --info-bg: #1c4655;
+  --speaker-ti: #ffb08a;
+  --speaker-bit: #8fe9ff;
+  --speaker-dau: #8fe0d4;
+  color-scheme: dark;
 }
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -40,12 +111,20 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-bg: var(--destructive-bg);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
   --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
   --color-surface-raised: var(--surface-raised);
+  --color-speaker-ti: var(--speaker-ti);
+  --color-speaker-bit: var(--speaker-bit);
+  --color-speaker-dau: var(--speaker-dau);
   --font-sans: var(--font-sans);
 }
 
@@ -56,5 +135,23 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    font-size: 15px;
+  }
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore-start lint/complexity/noImportantStyles: giảm chuyển động phải thắng mọi lớp Tailwind */
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    /* biome-ignore-end lint/complexity/noImportantStyles: hết khối giảm chuyển động */
   }
 }

@@ -4,8 +4,10 @@ import {
   agentRuns,
   approvals,
   artifacts,
+  createBrandProfileForTests,
   createDbConnection,
   createProject,
+  deleteBrandProfileForTests,
   deleteProjectCascadeForTests,
   getWorkflowRunDetail,
   insertBrief,
@@ -13,6 +15,7 @@ import {
   listEventsForRun,
   nextStatusAfterApproval,
   recordApproval,
+  setProjectBrandForTests,
   workflowRuns,
 } from "@studio/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -31,6 +34,7 @@ const createdProjectIds: string[] = [];
 let db: Db;
 let closeDb: () => Promise<void>;
 let dataDir = "";
+let namedBrandId = "";
 
 async function seedRun(
   status: RunStatus,
@@ -41,6 +45,8 @@ async function seedRun(
 ) {
   const project = await createProject(db, "P2-04 test run");
   createdProjectIds.push(project.id);
+  // ADR-021: duyệt bản cuối cần kênh có tên; dùng kênh thử thay vì đổi tên kênh mặc định.
+  await setProjectBrandForTests(db, project.id, namedBrandId);
   const brief = await insertBrief(db, project.id, {
     topic: "Redis",
     audience: "Dev",
@@ -127,12 +133,14 @@ describe("approval API (P2-04)", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     dataDir = await mkdtemp(join(tmpdir(), "studio-p2-04-"));
+    namedBrandId = await createBrandProfileForTests(db, "Kênh thử P2-04");
   });
 
   afterAll(async () => {
     for (const id of createdProjectIds) {
       await deleteProjectCascadeForTests(db, id);
     }
+    await deleteBrandProfileForTests(db, namedBrandId);
     await closeDb();
     const { rm } = await import("node:fs/promises");
     await rm(dataDir, { recursive: true, force: true });
@@ -921,6 +929,42 @@ describe("approval API (P2-04)", () => {
     };
     expect(body.workflowRun.llmModel).toBe(defaultModel);
     expect(body.agentRuns[0]).toHaveProperty("startedAt", null);
+    await app.close();
+  });
+
+  it("ADR-022: khung hình chọn khi bắt đầu run; mặc định 9:16, giá trị lạ bị từ chối", async () => {
+    const { app, cookie } = await createAuthedApp();
+    const project = await createProject(db, "ADR-022: khung hình");
+    createdProjectIds.push(project.id);
+    await insertBrief(db, project.id, {
+      topic: "Cầu vồng",
+      audience: "Trẻ em",
+      goal: "Hiểu cầu vồng",
+      durationSec: 60,
+      language: "vi",
+      tone: "vui",
+      visualStyle: "hoạt hình",
+    });
+    const url = `/api/projects/${project.id}/workflow-runs`;
+    const bad = await app.inject({
+      method: "POST",
+      url,
+      headers: { cookie },
+      payload: { aspectRatio: "4:3" },
+    });
+    expect(bad.statusCode).toBe(400);
+    const created = await app.inject({
+      method: "POST",
+      url,
+      headers: { cookie },
+      payload: { aspectRatio: "16:9" },
+    });
+    expect(created.statusCode).toBe(201);
+    const run = (created.json() as { workflowRun: { id: string; aspectRatio: string } })
+      .workflowRun;
+    expect(run.aspectRatio).toBe("16:9");
+    const stored = await getWorkflowRunDetail(db, run.id);
+    expect(stored?.workflowRun.aspectRatio).toBe("16:9");
     await app.close();
   });
 

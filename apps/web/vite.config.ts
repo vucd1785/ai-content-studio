@@ -23,6 +23,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
+    setupFiles: ["src/test/setup.ts"],
     // Test luồng form gõ nhiều giá trị bằng userEvent và chờ tới 5 s lúc khởi động lạnh;
     // mặc định 5 s của Vitest không đủ trên máy chậm.
     testTimeout: 15_000,

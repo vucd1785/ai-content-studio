@@ -1,0 +1,12 @@
+{
+  "id": "prop_queue_crowd",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Hàng bốn người xám xếp hàng, nhún lệch nhịp (đám đông, chen chỗ, khách giả).",
+  "tags": ["đám đông", "xếp hàng", "người"],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "approved",
+  "requestKey": null,
+  "licenses": []
+}

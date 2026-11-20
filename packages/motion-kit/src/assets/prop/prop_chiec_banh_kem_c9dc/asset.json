@@ -1,0 +1,18 @@
+{
+  "id": "prop_chiec_banh_kem_c9dc",
+  "kind": "prop",
+  "version": "0.1.0",
+  "description": "Chiếc bánh kem tròn tông xanh lá đặt trên đĩa, cắt thành tám miếng bằng nhau. Một miếng phía trước bên phải tách ra, nhẹ nhàng nhô lên rồi hạ xuống theo nhịp lặp, có độ nảy nhẹ. Xung quanh bánh có các đốm sáng lấp lánh nhấp nháy.",
+  "tags": [
+    "bánh kem",
+    "miếng bánh",
+    "chia phần",
+    "giá trị công ty",
+    "lấp lánh"
+  ],
+  "brandProfile": null,
+  "createdBy": "claude-code",
+  "status": "candidate",
+  "requestKey": "41929e16-b2c5-41d3-b805-7aa0c8f05fd0:83e850b8:1:r1",
+  "licenses": []
+}
